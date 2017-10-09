@@ -104,6 +104,9 @@
     <ClInclude Include="material_loading.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="string_utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="compile_all_shaders.bat">

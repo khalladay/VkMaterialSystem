@@ -6,8 +6,8 @@ struct MaterialRenderData;
 
 struct MaterialDefinition
 {
-	const char* vShaderPath;
-	const char* fShaderPath;
+	char* vShaderPath;
+	char* fShaderPath;
 	bool depthTest;
 	bool depthWrite;
 };

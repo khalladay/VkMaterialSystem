@@ -5,5 +5,5 @@ struct MaterialDefinition;
 
 namespace Material
 {
-	void load(const char* assetPath);
+	MaterialDefinition load(const char* assetPath);
 }

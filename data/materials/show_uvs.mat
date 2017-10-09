@@ -1,2 +1,2 @@
-VERTEX_SHADER:vertex_uvs.vert
-FRAGMENT_SHADER:fragment_passthrough.frag
+VERTEX_SHADER:vertex_uvs
+FRAGMENT_SHADER:fragment_passthrough
