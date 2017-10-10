@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 
 struct BinaryBuffer
 {
@@ -8,5 +7,5 @@ struct BinaryBuffer
 };
 
 BinaryBuffer*	loadBinaryFile(const char* filepath);
-std::string		loadTextFile(const char* filepath);
+const char*		loadTextFile(const char* filepath);
 void			freeBinaryBuffer(BinaryBuffer* buffer);

@@ -4,6 +4,9 @@
 #include <sstream>
 #include <algorithm>
 
+//yep this is gross, but I don't care enough to write my own string implementation
+//just to split the string here right now. 
+
 std::vector<std::string> split(std::string str, char delim, bool splitOnWhitespace)
 {
 	using std::string;

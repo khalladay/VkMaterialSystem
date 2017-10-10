@@ -10,7 +10,7 @@ namespace Material
 	{
 		MaterialDefinition def;
 
-		std::string buffer = loadTextFile(assetPath);
+		const char* buffer = loadTextFile(assetPath);
 
 		std::vector<std::string> parsedMaterial = split(buffer, ':', true);
 
@@ -20,7 +20,7 @@ namespace Material
 		def.vShaderPath = _strdup(vShaderPath.c_str());
 		def.fShaderPath = _strdup(fShaderPath.c_str());
 
-
+		free((void*)buffer);
 		return def;
 	}
 }

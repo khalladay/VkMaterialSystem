@@ -1,46 +1,45 @@
 #include "file_utils.h"
+#include "stdafx.h"
+
 #include <string.h>
-#include <fstream>
-#include <cassert>
-#include <sstream>
-
-void readAllBytes(std::ifstream& file, BinaryBuffer* outBlob, bool addNull)
-{
-	assert(file.is_open());
-	outBlob->size = (size_t)file.tellg();
-	if (addNull) outBlob->size++;
-
-	outBlob->data = (char*)malloc(outBlob->size);
-
-	file.seekg(0);
-
-	file.read(outBlob->data, outBlob->size);
-	if (addNull) outBlob->data[outBlob->size - 1] = '\0';
-	
-	file.close();
-
-	assert(!file.is_open());
-
-}
+#include <stdio.h>
 
 BinaryBuffer* loadBinaryFile(const char* filepath)
 {
-	BinaryBuffer* outBlob = (BinaryBuffer*)malloc(sizeof(BinaryBuffer));
+	BinaryBuffer* outBuf = (BinaryBuffer*)malloc(sizeof(BinaryBuffer));
 
-	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-	readAllBytes(file, outBlob, false);
+	FILE* inFile;
+	fopen_s(&inFile,filepath, "rb");
+	assert(inFile);
+	
+	fseek(inFile, 0, SEEK_END);
+	outBuf->size = ftell(inFile);
+	rewind(inFile);
 
-	return outBlob;
+	outBuf->data = (char *)calloc(1,(outBuf->size + 1)); // Enough memory for file + \0
+	fread(outBuf->data, outBuf->size, 1, inFile); // Read in the entire file
+	fclose(inFile); // Close the file
+
+	return outBuf;
 }
 
-std::string loadTextFile(const char* filepath)
+const char* loadTextFile(const char* filepath)
 {
-	std::ifstream t(filepath);
+	FILE* inFile;
+	fopen_s(&inFile, filepath, "r");
+	assert(inFile);
 
-	std::stringstream buffer;
-	buffer << t.rdbuf();
-	
-	return buffer.str();
+	fseek(inFile, 0, SEEK_END);
+	long size = ftell(inFile);
+	rewind(inFile);
+
+	char* outString = (char *)calloc(1, size + 1); // Enough memory for file + \0
+
+	fread(outString, size, 1, inFile); // Read in the entire file
+	outString[size] = '\0';
+	fclose(inFile); // Close the file
+
+	return outString;
 }
 
 void freeBinaryBuffer(BinaryBuffer* buffer)
