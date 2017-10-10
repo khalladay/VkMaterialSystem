@@ -83,10 +83,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\deps;$(IncludePath)</IncludePath>
     <LibraryPath>..\deps\vulkan;$(LibraryPath)</LibraryPath>
+    <OutDir>..\build\</OutDir>
+    <IntDir>..\build\$(Platform)\$(Configuration)\VkMaterialSystem\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\deps;$(IncludePath)</IncludePath>
     <LibraryPath>..\deps\vulkan;$(LibraryPath)</LibraryPath>
+    <OutDir>..\build\</OutDir>
+    <IntDir>..\build\$(Platform)\$(Configuration)\VkMaterialSystem\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
