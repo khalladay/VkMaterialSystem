@@ -23,5 +23,8 @@
     <ClInclude Include="filesystem_utils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="string_split.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
