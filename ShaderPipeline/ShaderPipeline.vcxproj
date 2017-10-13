@@ -72,13 +72,13 @@
     <OutDir>..\build\</OutDir>
     <IntDir>..\build\$(Platform)\$(Configuration)\ShaderPipeline\</IntDir>
     <IncludePath>..\deps\argh;..\deps\spirv_cross;$(IncludePath)</IncludePath>
-    <LibraryPath>..\deps\spirv_cross;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\deps\spirv_cross\lib_debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\build\</OutDir>
     <IntDir>..\build\$(Platform)\$(Configuration)\ShaderPipeline\</IntDir>
     <IncludePath>..\deps\argh;..\deps\spirv_cross;$(IncludePath)</IncludePath>
-    <LibraryPath>..\deps\spirv_cross;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\deps\spirv_cross\lib_release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -129,6 +129,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="filesystem_utils.h" />
+    <ClInclude Include="material.h" />
+    <ClInclude Include="refl_info.h" />
     <ClInclude Include="string_split.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

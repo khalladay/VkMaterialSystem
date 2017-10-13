@@ -5,6 +5,9 @@
 #include "filesystem_utils.h"
 #include <stdint.h>
 #include "string_split.h"
+#include "material.h"
+
+std::string baseTypeToString(spirv_cross::SPIRType::BaseType type);
 
 int main(int argc, const char** argv)
 {
@@ -59,11 +62,21 @@ int main(int argc, const char** argv)
 	//finally, generated reflection files for all built shaders
 
 	{
+
 		std::vector<std::string> builtFiles = getFilesInDirectory(shaderOutPath);
 		for (uint32_t i = 0; i < builtFiles.size(); ++i)
 		{
+
+			if (builtFiles[i].find(".refl") != std::string::npos) continue;
+
+			ShaderData data = {};
+
 			std::string relPath = shaderOutPath + "\\" +builtFiles[i];
 			std::string fullPath = makeFullPath(relPath);
+
+			std::string reflPath = reflOutPath + "\\" + builtFiles[i];
+			FindReplace(reflPath, std::string(".spv"), std::string(".refl"));
+			std::string reflFullPath = makeFullPath(reflPath);
 
 			FILE* shaderFile;
 			fopen_s(&shaderFile, fullPath.c_str(), "rb");
@@ -87,7 +100,41 @@ int main(int argc, const char** argv)
 
 			for (spirv_cross::Resource res : resources.push_constant_buffers)
 			{
+				uint32_t id = res.id;
+				std::vector<spirv_cross::BufferRange> ranges = glsl.get_active_buffer_ranges(id);
 
+				data.pushConstants.name = res.name;
+
+				uint32_t totalSize = 0;
+				for (auto& range : ranges)
+				{
+					BlockMember mem;
+					mem.name = glsl.get_member_name(res.base_type_id, range.index);
+					mem.size = range.range;
+					mem.offset = range.offset;
+
+					totalSize += mem.size;
+
+					auto type = glsl.get_type(res.type_id);
+					
+					auto baseType = type.basetype;
+					std::string baseTypeString = baseTypeToString(baseType);
+					std::string mName = glsl.get_member_name(res.base_type_id, range.index);
+					
+			
+					printf("Accessing member of %s : %s (#%u), offset %u, size %u\n",  res.name.c_str(),glsl.get_member_name(res.base_type_id, range.index).c_str(),
+						range.index, range.offset, range.range);
+
+					data.pushConstants.members.push_back(mem);
+				}
+
+				data.pushConstants.size = totalSize;
+
+
+				uint32_t set = glsl.get_decoration(res.id, spv::DecorationDescriptorSet);
+				uint32_t binding = glsl.get_decoration(res.id, spv::DecorationBinding);
+				
+				printf("Found UBO %s at set = %u, binding = %u!\n",res.name.c_str(), set, binding);
 			}
 
 			for (spirv_cross::Resource res : resources.uniform_buffers)
@@ -100,12 +147,40 @@ int main(int argc, const char** argv)
 
 			}
 
-
+			//write out material
+			std::string shader = getReflectionString(data);
+			FILE *file;
+			fopen_s(&file, reflFullPath.c_str(), "w");
+			int results = fputs(shader.c_str(), file);
+			assert(results != EOF);
+			fclose(file);
 		}
 	}
 
-
-
 	getchar();
 	return 0;
+}
+
+std::string baseTypeToString(spirv_cross::SPIRType::BaseType type)
+{
+	std::string names[] = {
+		"Unknown",
+		"Void",
+		"Boolean",
+		"Char",
+		"Int",
+		"UInt",
+		"Int64",
+		"UInt64",
+		"AtomicCounter",
+		"Float",
+		"Double",
+		"Struct",
+		"Image",
+		"SampledImage",
+		"Sampler"
+	};
+
+	return names[type];
+
 }

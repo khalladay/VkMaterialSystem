@@ -26,5 +26,11 @@
     <ClInclude Include="string_split.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="refl_info.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="material.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
