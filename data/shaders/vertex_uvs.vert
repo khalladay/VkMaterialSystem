@@ -4,8 +4,7 @@
 layout(push_constant) uniform PER_OBJECT 
 { 
 	vec4 col;
-	vec4 poop; 
-	mat4 crap;
+	vec4 tint; 
 }pc;
 
 layout(location = 0) in vec3 vertex;
@@ -23,6 +22,6 @@ out gl_PerVertex
 void main() 
 {
     gl_Position = vec4(vertex, 1.0);
-    fragColor = pc.col + pc.poop;
+    fragColor = pc.col * pc.tint;
 }
 

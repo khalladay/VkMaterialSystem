@@ -65,6 +65,17 @@ namespace Material
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(&outMaterial.descriptorSetLayout, 1);
 
+		if (def.pcDefinition.size > 0)
+		{
+			VkPushConstantRange pushConstantRange = {};
+			pushConstantRange.offset = 0;
+			pushConstantRange.size = def.pcDefinition.size;
+			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+			pipelineLayoutInfo.pushConstantRangeCount = 1;
+		}
+
 		res = vkCreatePipelineLayout(GContext.device, &pipelineLayoutInfo, nullptr, &outMaterial.pipelineLayout);
 		assert(res == VK_SUCCESS);
 

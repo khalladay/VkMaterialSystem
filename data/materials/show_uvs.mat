@@ -1,16 +1,2 @@
-VERTEX_SHADER vertex_uvs
-col = (255 20 255 0)
-
-
-push_constant 231
-	vec4 col 0
-	vec4 poop 16
-	mat4 crap 32
-
-uniform:obj:size:999
-	mat4 c
-	vec3 d
-	vec2 e
-	float m
-
-FRAGMENT_SHADER fragment_passthrough
+VERTEX_SHADER:vertex_uvs
+FRAGMENT_SHADER:fragment_passthrough
