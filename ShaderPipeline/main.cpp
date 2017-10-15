@@ -139,6 +139,12 @@ int main(int argc, const char** argv)
 
 			for (spirv_cross::Resource res : resources.uniform_buffers)
 			{
+				uint32_t id = res.id;
+				std::vector<spirv_cross::BufferRange> ranges = glsl.get_active_buffer_ranges(id);
+				uint32_t set = glsl.get_decoration(res.id, spv::DecorationDescriptorSet);
+				uint32_t binding = glsl.get_decoration(res.id, spv::DecorationBinding);
+
+				printf("Found UBO %s at set = %u, binding = %u!\n", res.name.c_str(), set, binding);
 
 			}
 

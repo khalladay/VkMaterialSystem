@@ -109,9 +109,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="compile_all_shaders.bat">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="..\data\shaders\fragment_passthrough.frag">
       <Filter>data\shaders</Filter>
     </None>

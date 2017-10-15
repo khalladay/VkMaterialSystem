@@ -4,6 +4,15 @@
 struct MaterialAsset;
 struct MaterialRenderData;
 
+enum class ShaderStage : uint8_t
+{
+	VERTEX,
+	FRAGMENT,
+	GEOMETRY,
+	COMPUTE,
+	MAX
+};
+
 struct BlockMember
 {
 	char name[32];
@@ -19,24 +28,31 @@ struct OpaqueBlockDefinition
 	BlockMember* blockMembers;
 };
 
+struct ShaderStageDefinition
+{
+	ShaderStage stage;
+	char* shaderPath;
+	
+	OpaqueBlockDefinition* uniformBlocks;
+	uint32_t numUniformBlocks;
+};
+
 struct MaterialDefinition
 {
-	char* vShaderPath;
-	char* fShaderPath;
 	bool depthTest;
 	bool depthWrite;
-	OpaqueBlockDefinition pcDefinition;
 
+	OpaqueBlockDefinition pcBlock;
+
+	uint32_t numShaderStages;
+	ShaderStageDefinition* stages;
 };
 
 enum class PushConstant : uint8_t
 {
 	MVP = 1,
 	Col,
-	Tint,
-	
-	//new items should be added above max
-
+	Time,
 	MAX
 };
 
@@ -45,7 +61,10 @@ namespace Material
 	void make(MaterialDefinition def);
 
 	MaterialRenderData getRenderData();
+	
 	void setPushConstantVector(PushConstant var, glm::vec4& data);
+	void setPushConstantFloat(PushConstant var, float data);
 	void setPushConstantMatrix(PushConstant var, glm::mat4& data);
+
 	void destroy();
 }

@@ -19,6 +19,16 @@ MaterialStorage matStorage;
 
 namespace Material
 {
+
+	VkShaderStageFlagBits shaderStageEnumToVkEnum(ShaderStage stage)
+	{
+		if (stage == ShaderStage::VERTEX) return VK_SHADER_STAGE_VERTEX_BIT;
+		if (stage == ShaderStage::FRAGMENT) return VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		assert(0);
+		return VK_SHADER_STAGE_ALL;
+	}
+
 	void make(MaterialDefinition def)
 	{
 		using vkh::GContext;
@@ -27,13 +37,15 @@ namespace Material
 
 		VkResult res;
 
-		VkPipelineShaderStageCreateInfo vertShaderStageInfo = vkh::shaderPipelineStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT);
-		vkh::createShaderModule(vertShaderStageInfo.module, def.vShaderPath, GContext.device);
-
-		VkPipelineShaderStageCreateInfo fragShaderStageInfo = vkh::shaderPipelineStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT);
-		vkh::createShaderModule(fragShaderStageInfo.module, def.fShaderPath, GContext.device);
-
-		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+		for (uint32_t i = 0; i < def.numShaderStages; ++i)
+		{
+			ShaderStageDefinition& stageDef = def.stages[i];
+			VkPipelineShaderStageCreateInfo shaderStageInfo = vkh::shaderPipelineStageCreateInfo(shaderStageEnumToVkEnum(stageDef.stage));
+			vkh::createShaderModule(shaderStageInfo.module, stageDef.shaderPath, GContext.device);
+		
+			shaderStages.push_back(shaderStageInfo);
+		}
 	
 		///////////////////////////////////////////////////////////////////////////////
 		//set up descriptorSetLayout
@@ -63,33 +75,33 @@ namespace Material
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(&outMaterial.descriptorSetLayout, 1);
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(&outMaterial.descriptorSetLayout, 1);		
 
-		if (def.pcDefinition.size > 0)
+		if (def.pcBlock.size > 0)
 		{
 			VkPushConstantRange pushConstantRange = {};
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = def.pcDefinition.size;
+			pushConstantRange.size = def.pcBlock.size;
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 
-			matStorage.mat.rData.pushConstantLayout = (uint8_t*)malloc(sizeof(uint8_t) * def.pcDefinition.num * 2);
-			matStorage.mat.rData.pushConstantSize = def.pcDefinition.size;
+			matStorage.mat.rData.pushConstantLayout = (uint8_t*)malloc(sizeof(uint8_t) * def.pcBlock.num * 2);
+			matStorage.mat.rData.pushConstantSize = def.pcBlock.size;
 			matStorage.mat.rData.pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
 
-			for (uint32_t i = 0; i < def.pcDefinition.num; ++i)
+			for (uint32_t i = 0; i < def.pcBlock.num; ++i)
 			{
-				BlockMember& mem = def.pcDefinition.blockMembers[i];
+				BlockMember& mem = def.pcBlock.blockMembers[i];
 				
 				if (strcmp(&mem.name[0], "col") == 0)
 				{
 					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Col);
 				}
-				if (strcmp(&mem.name[0], "tint") == 0)
+				if (strcmp(&mem.name[0], "time") == 0)
 				{
-					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Tint);
+					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Time);
 				}
 
 				matStorage.mat.rData.pushConstantLayout[i * 2 + 1] = mem.offset;
@@ -131,8 +143,8 @@ namespace Material
 
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = 2;
-		pipelineInfo.pStages = shaderStages;
+		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.pStages = shaderStages.data();
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
 		pipelineInfo.pViewportState = &viewportState;
@@ -156,8 +168,12 @@ namespace Material
 		res = vkCreateGraphicsPipelines(GContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &outMaterial.pipeline);
 		assert(res == VK_SUCCESS);
 
-		vkDestroyShaderModule(GContext.device, vertShaderStageInfo.module, nullptr);
-		vkDestroyShaderModule(GContext.device, fragShaderStageInfo.module, nullptr);
+
+		for (uint32_t i = 0; i < shaderStages.size(); ++i)
+		{
+			vkDestroyShaderModule(GContext.device, shaderStages[i].module, nullptr);
+
+		}
 	}
 
 	void setPushConstantVector(PushConstant var, glm::vec4& data)
@@ -178,7 +194,32 @@ namespace Material
 
 	void setPushConstantMatrix(PushConstant var, glm::mat4& data)
 	{
+		MaterialRenderData& rData = Material::getRenderData();
+		uint8_t numVars = rData.pushConstantSize / (sizeof(uint8_t) * 2);
 
+		for (uint32_t i = 0; i < numVars; i += 2)
+		{
+			if (rData.pushConstantLayout[i] == (uint8_t)var)
+			{
+				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(glm::mat4));
+				break;
+			}
+		}
+	}
+
+	void setPushConstantFloat(PushConstant var, float data)
+	{
+		MaterialRenderData& rData = Material::getRenderData();
+		uint8_t numVars = rData.pushConstantSize / (sizeof(uint8_t) * 2);
+
+		for (uint32_t i = 0; i < numVars; i += 2)
+		{
+			if (rData.pushConstantLayout[i] == (uint8_t)var)
+			{
+				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(float));
+				break;
+			}
+		}
 	}
 
 	MaterialRenderData getRenderData()

@@ -113,7 +113,8 @@
       <AdditionalDependencies>vulkan-1.lib;dxguid.lib;Winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>compile_all_shaders.bat</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -183,7 +184,6 @@
     <None Include="..\data\materials\show_uvs.mat" />
     <None Include="..\data\shaders\fragment_passthrough.frag" />
     <None Include="..\data\shaders\vertex_uvs.vert" />
-    <None Include="compile_all_shaders.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

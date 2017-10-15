@@ -27,7 +27,7 @@ std::string getReflectionString(ShaderData& data)
 	std::string outStr = "";
 	if (data.pushConstants.size > 0)
 	{
-		outStr += "push_constants " + std::to_string(data.pushConstants.size);
+		outStr += "push_constants:" + std::to_string(data.pushConstants.size);
 		outStr += "\n";
 
 		for (uint32_t i = 0; i < data.pushConstants.members.size(); ++i)
