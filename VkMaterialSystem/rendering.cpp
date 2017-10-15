@@ -110,6 +110,18 @@ namespace Rendering
 		VkBuffer vertexBuffers[] = { mesh.vBuffer };
 		VkDeviceSize offsets[] = { 0 };
 
+		Material::setPushConstantVector(PushConstant::Col, glm::vec4(1.0, 1.0, 1.0, 1.0));
+		Material::setPushConstantVector(PushConstant::Tint, glm::vec4(1.0, 0.0, 1.0, 1.0));
+
+		vkCmdPushConstants(
+			commandBuffers[imageIndex],
+			mat.pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			Material::getRenderData().pushConstantSize,
+			Material::getRenderData().pushConstantData);
+
+
 		vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.descSet, 0, 0);
 
 		vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);

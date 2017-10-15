@@ -74,6 +74,26 @@ namespace Material
 
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
+
+			matStorage.mat.rData.pushConstantLayout = (uint8_t*)malloc(sizeof(uint8_t) * def.pcDefinition.num * 2);
+			matStorage.mat.rData.pushConstantSize = def.pcDefinition.size;
+			matStorage.mat.rData.pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
+
+			for (uint32_t i = 0; i < def.pcDefinition.num; ++i)
+			{
+				BlockMember& mem = def.pcDefinition.blockMembers[i];
+				
+				if (strcmp(&mem.name[0], "col") == 0)
+				{
+					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Col);
+				}
+				if (strcmp(&mem.name[0], "tint") == 0)
+				{
+					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Tint);
+				}
+
+				matStorage.mat.rData.pushConstantLayout[i * 2 + 1] = mem.offset;
+			}
 		}
 
 		res = vkCreatePipelineLayout(GContext.device, &pipelineLayoutInfo, nullptr, &outMaterial.pipelineLayout);
@@ -138,6 +158,27 @@ namespace Material
 
 		vkDestroyShaderModule(GContext.device, vertShaderStageInfo.module, nullptr);
 		vkDestroyShaderModule(GContext.device, fragShaderStageInfo.module, nullptr);
+	}
+
+	void setPushConstantVector(PushConstant var, glm::vec4& data)
+	{
+		MaterialRenderData& rData = Material::getRenderData();
+		uint8_t numVars = rData.pushConstantSize / (sizeof(uint8_t) * 2);
+
+		for (uint32_t i = 0; i < numVars; i+=2)
+		{
+			if (rData.pushConstantLayout[i] == (uint8_t)var)
+			{
+				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(glm::vec4));
+				break;
+			}
+		}
+	}
+
+
+	void setPushConstantMatrix(PushConstant var, glm::mat4& data)
+	{
+
 	}
 
 	MaterialRenderData getRenderData()
