@@ -53,9 +53,32 @@ namespace Material
 
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
 
+		for (uint32_t i = 0; i < def.numShaderStages; ++i)
+		{
+			ShaderStageDefinition& stageDef = def.stages[i];
 
-		VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(0, static_cast<uint32_t>(bindings.size()));
+			if (stageDef.numUniformBlocks > 0)
+			{
+				for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
+				{
+					OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
+					VkDescriptorSetLayoutBinding layoutBinding = {};
+					layoutBinding.binding = blockDef.binding;
+					layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+					layoutBinding.descriptorCount = 1;
+					layoutBinding.stageFlags = shaderStageEnumToVkEnum(stageDef.stage);
+					layoutBinding.pImmutableSamplers = nullptr; // Optional
 
+					bindings.push_back(layoutBinding);
+
+
+				}
+			}
+		}
+
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(bindings.data(), static_cast<uint32_t>(bindings.size()));
+		
 		res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &outMaterial.descriptorSetLayout);
 		assert(res == VK_SUCCESS);
 

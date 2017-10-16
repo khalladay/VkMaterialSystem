@@ -9,6 +9,37 @@
 
 std::string baseTypeToString(spirv_cross::SPIRType::BaseType type);
 
+void createUniformBlockForResource(UniformBlock* outBlock, spirv_cross::Resource res, spirv_cross::CompilerGLSL& compiler)
+{	
+	uint32_t id = res.id;
+	std::vector<spirv_cross::BufferRange> ranges = compiler.get_active_buffer_ranges(id);
+
+	outBlock->name = res.name;
+
+	uint32_t totalSize = 0;
+	for (auto& range : ranges)
+	{
+		BlockMember mem;
+		mem.name = compiler.get_member_name(res.base_type_id, range.index);
+		mem.size = range.range;
+		mem.offset = range.offset;
+
+		totalSize += mem.size;
+
+		auto type = compiler.get_type(res.type_id);
+
+		auto baseType = type.basetype;
+		std::string baseTypeString = baseTypeToString(baseType);
+		std::string mName = compiler.get_member_name(res.base_type_id, range.index);
+
+		outBlock->members.push_back(mem);
+	}
+
+	outBlock->size = totalSize;
+	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
+	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
+}
+
 int main(int argc, const char** argv)
 {
 	argh::parser cmdl(argv);
@@ -59,8 +90,7 @@ int main(int argc, const char** argv)
 		}
 	}
 
-	//finally, generated reflection files for all built shaders
-
+	//finally, generate reflection files for all built shaders
 	{
 
 		std::vector<std::string> builtFiles = getFilesInDirectory(shaderOutPath);
@@ -100,52 +130,14 @@ int main(int argc, const char** argv)
 
 			for (spirv_cross::Resource res : resources.push_constant_buffers)
 			{
-				uint32_t id = res.id;
-				std::vector<spirv_cross::BufferRange> ranges = glsl.get_active_buffer_ranges(id);
-
-				data.pushConstants.name = res.name;
-
-				uint32_t totalSize = 0;
-				for (auto& range : ranges)
-				{
-					BlockMember mem;
-					mem.name = glsl.get_member_name(res.base_type_id, range.index);
-					mem.size = range.range;
-					mem.offset = range.offset;
-
-					totalSize += mem.size;
-
-					auto type = glsl.get_type(res.type_id);
-					
-					auto baseType = type.basetype;
-					std::string baseTypeString = baseTypeToString(baseType);
-					std::string mName = glsl.get_member_name(res.base_type_id, range.index);
-					
-			
-					printf("Accessing member of %s : %s (#%u), offset %u, size %u\n",  res.name.c_str(),glsl.get_member_name(res.base_type_id, range.index).c_str(),
-						range.index, range.offset, range.range);
-
-					data.pushConstants.members.push_back(mem);
-				}
-
-				data.pushConstants.size = totalSize;
-
-
-				uint32_t set = glsl.get_decoration(res.id, spv::DecorationDescriptorSet);
-				uint32_t binding = glsl.get_decoration(res.id, spv::DecorationBinding);
-				
-				printf("Found UBO %s at set = %u, binding = %u!\n",res.name.c_str(), set, binding);
+				createUniformBlockForResource(&data.pushConstants, res, glsl);
 			}
 
+			data.uniformBlocks.resize(resources.uniform_buffers.size());
+			uint32_t idx = 0;
 			for (spirv_cross::Resource res : resources.uniform_buffers)
 			{
-				uint32_t id = res.id;
-				std::vector<spirv_cross::BufferRange> ranges = glsl.get_active_buffer_ranges(id);
-				uint32_t set = glsl.get_decoration(res.id, spv::DecorationDescriptorSet);
-				uint32_t binding = glsl.get_decoration(res.id, spv::DecorationBinding);
-
-				printf("Found UBO %s at set = %u, binding = %u!\n", res.name.c_str(), set, binding);
-
+				createUniformBlockForResource(&data.uniformBlocks[idx++], res, glsl);
 			}
 
 			for (spirv_cross::Resource res : resources.sampled_images)

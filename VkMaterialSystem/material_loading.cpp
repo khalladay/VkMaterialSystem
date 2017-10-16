@@ -109,12 +109,16 @@ namespace Material
 
 						//TODO: flag when important a material with conflicting push constant layouts
 						currentBlock = &def.pcBlock;
+
 					}
 					else
 					{
 						OpaqueBlockDefinition block = {};
 						blockDefinitions.push_back(block);
 						currentBlock = &blockDefinitions[blockDefinitions.size() - 1];
+						currentBlock->binding = atoi(blockDecl[3].c_str());
+						currentBlock->set = atoi(blockDecl[2].c_str());
+
 					}
 
 					namePtr = &currentBlock->name[0];
