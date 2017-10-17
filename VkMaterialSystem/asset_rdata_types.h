@@ -10,8 +10,8 @@ struct MaterialRenderData
 {
 	vkh::VkhMaterial vkMat;
 	
-	//every odd entry maps to a PushConstant enum, every even entry is the offset into the pc buffer
-	uint8_t* pushConstantLayout;
+	//every odd entry is a hashed string name, every even entry is a value
+	uint32_t* pushConstantLayout;
 	uint32_t pushConstantSize;
 
 	//should use a stack allocator here

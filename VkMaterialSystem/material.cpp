@@ -4,6 +4,7 @@
 #include "vkh_initializers.h"
 #include "vkh.h"
 #include <vector>
+#include "hash.h"
 
 struct MaterialAsset
 {
@@ -70,8 +71,6 @@ namespace Material
 					layoutBinding.pImmutableSamplers = nullptr; // Optional
 
 					bindings.push_back(layoutBinding);
-
-
 				}
 			}
 		}
@@ -110,23 +109,15 @@ namespace Material
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 
-			matStorage.mat.rData.pushConstantLayout = (uint8_t*)malloc(sizeof(uint8_t) * def.pcBlock.num * 2);
+			matStorage.mat.rData.pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.num * 2);
 			matStorage.mat.rData.pushConstantSize = def.pcBlock.size;
 			matStorage.mat.rData.pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
 
 			for (uint32_t i = 0; i < def.pcBlock.num; ++i)
 			{
 				BlockMember& mem = def.pcBlock.blockMembers[i];
-				
-				if (strcmp(&mem.name[0], "col") == 0)
-				{
-					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Col);
-				}
-				if (strcmp(&mem.name[0], "time") == 0)
-				{
-					matStorage.mat.rData.pushConstantLayout[i * 2] = static_cast<uint8_t>(PushConstant::Time);
-				}
 
+				matStorage.mat.rData.pushConstantLayout[i * 2] = HASH(&mem.name[0]);
 				matStorage.mat.rData.pushConstantLayout[i * 2 + 1] = mem.offset;
 			}
 		}
@@ -199,14 +190,16 @@ namespace Material
 		}
 	}
 
-	void setPushConstantVector(PushConstant var, glm::vec4& data)
+	void setPushConstantVector(const char* var, glm::vec4& data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
-		uint8_t numVars = rData.pushConstantSize / (sizeof(uint8_t) * 2);
+		uint8_t numVars = rData.pushConstantSize / (sizeof(uint32_t) * 2);
+
+		uint32_t varHash = HASH(var);
 
 		for (uint32_t i = 0; i < numVars; i+=2)
 		{
-			if (rData.pushConstantLayout[i] == (uint8_t)var)
+			if (rData.pushConstantLayout[i] == varHash)
 			{
 				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(glm::vec4));
 				break;
@@ -215,14 +208,15 @@ namespace Material
 	}
 
 
-	void setPushConstantMatrix(PushConstant var, glm::mat4& data)
+	void setPushConstantMatrix(const char* var, glm::mat4& data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
-		uint8_t numVars = rData.pushConstantSize / (sizeof(uint8_t) * 2);
+		uint8_t numVars = rData.pushConstantSize / (sizeof(uint32_t) * 2);
+		uint32_t varHash = HASH(var);
 
 		for (uint32_t i = 0; i < numVars; i += 2)
 		{
-			if (rData.pushConstantLayout[i] == (uint8_t)var)
+			if (rData.pushConstantLayout[i] == varHash)
 			{
 				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(glm::mat4));
 				break;
@@ -230,14 +224,15 @@ namespace Material
 		}
 	}
 
-	void setPushConstantFloat(PushConstant var, float data)
+	void setPushConstantFloat(const char* var, float data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
-		uint8_t numVars = rData.pushConstantSize / (sizeof(uint8_t) * 2);
+		uint8_t numVars = rData.pushConstantSize / (sizeof(uint32_t) * 2);
+		uint32_t varHash = HASH(var);
 
 		for (uint32_t i = 0; i < numVars; i += 2)
 		{
-			if (rData.pushConstantLayout[i] == (uint8_t)var)
+			if (rData.pushConstantLayout[i] == varHash)
 			{
 				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(float));
 				break;

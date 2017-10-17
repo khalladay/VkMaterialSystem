@@ -110,8 +110,8 @@ namespace Rendering
 		VkBuffer vertexBuffers[] = { mesh.vBuffer };
 		VkDeviceSize offsets[] = { 0 };
 
-		Material::setPushConstantVector(PushConstant::Col, glm::vec4(1.0, 1.0, 1.0, 1.0));
-		Material::setPushConstantFloat(PushConstant::Time, os_getMilliseconds() / 10000.0f );
+		Material::setPushConstantVector("col", glm::vec4(1.0, 1.0, 1.0, 1.0));
+		Material::setPushConstantFloat("time", os_getMilliseconds() / 10000.0f );
 
 		vkCmdPushConstants(
 			commandBuffers[imageIndex],

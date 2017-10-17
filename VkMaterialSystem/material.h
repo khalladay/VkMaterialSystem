@@ -50,23 +50,15 @@ struct MaterialDefinition
 	ShaderStageDefinition* stages;
 };
 
-enum class PushConstant : uint8_t
-{
-	MVP = 1,
-	Col,
-	Time,
-	MAX
-};
-
 namespace Material
 {
 	void make(MaterialDefinition def);
 
 	MaterialRenderData getRenderData();
 	
-	void setPushConstantVector(PushConstant var, glm::vec4& data);
-	void setPushConstantFloat(PushConstant var, float data);
-	void setPushConstantMatrix(PushConstant var, glm::mat4& data);
+	void setPushConstantVector(const char*, glm::vec4& data);
+	void setPushConstantFloat(const char*, float data);
+	void setPushConstantMatrix(const char*, glm::mat4& data);
 
 	void destroy();
 }
