@@ -96,6 +96,7 @@ namespace vkh
 		VkSemaphore				renderFinishedSemaphore;
 
 		VkDescriptorPool		uniformBufferDescPool;
+		VkDescriptorPool		dynamicUniformBufferDescPool;
 
 		//hate this being here, but if material can create itself
 		//this is where it has to live, otherwise rendering has to return
@@ -111,15 +112,24 @@ namespace vkh
 		VkAttachmentStoreOp store;
 	};
 
+	struct VkhUniformBuffer
+	{
+		VkBuffer* buffer;
+		uint32_t* bufferLayout;
+		uint32_t numElements;
+	};
+
 	struct VkhMaterial
 	{
 		VkPipeline pipeline;
 		VkPipelineLayout pipelineLayout;
-		VkDescriptorSetLayout descriptorSetLayout;
+
+		uint32_t layoutCount;
+		VkDescriptorSetLayout* descriptorSetLayouts;
 
 		//since we're using dynamic uniform buffers, 
 		//only the parent material needs a descriptor set 
-		VkDescriptorSet descSet;
+		VkDescriptorSet* descSets;
 
 	};
 

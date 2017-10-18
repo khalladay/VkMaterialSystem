@@ -44,7 +44,8 @@ namespace vkh
 		createCommandPool(outContext.presentCommandPool, outContext.device, outContext.gpu, outContext.gpu.presentQueueFamilyIdx);
 
 		//since we're only creating one of these for each material, this means we'll support 128 materials
-		createDescriptorPool(outContext.uniformBufferDescPool, outContext.device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 128); 
+		createDescriptorPool(outContext.dynamicUniformBufferDescPool, outContext.device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 128); 
+		createDescriptorPool(outContext.uniformBufferDescPool, outContext.device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128);
 
 		createVkSemaphore(outContext.imageAvailableSemaphore, outContext.device);
 		createVkSemaphore(outContext.renderFinishedSemaphore, outContext.device);

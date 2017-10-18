@@ -5,6 +5,7 @@
 #include "vkh.h"
 #include <vector>
 #include "hash.h"
+#include <map>
 
 struct MaterialAsset
 {
@@ -52,7 +53,9 @@ namespace Material
 		//set up descriptorSetLayout
 		///////////////////////////////////////////////////////////////////////////////
 
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
+	//	std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> setBindings;
 
 		for (uint32_t i = 0; i < def.numShaderStages; ++i)
 		{
@@ -65,39 +68,49 @@ namespace Material
 					OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
 					VkDescriptorSetLayoutBinding layoutBinding = {};
 					layoutBinding.binding = blockDef.binding;
-					layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+					layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 					layoutBinding.descriptorCount = 1;
 					layoutBinding.stageFlags = shaderStageEnumToVkEnum(stageDef.stage);
 					layoutBinding.pImmutableSamplers = nullptr; // Optional
 
-					bindings.push_back(layoutBinding);
+					setBindings[blockDef.set].push_back(layoutBinding);
 				}
 			}
 		}
 
+		std::vector<VkDescriptorSetLayout> layouts;
+		layouts.resize(setBindings.size());
 
-		VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(bindings.data(), static_cast<uint32_t>(bindings.size()));
-		
-		res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &outMaterial.descriptorSetLayout);
-		assert(res == VK_SUCCESS);
+		//each key is a set
+		for (auto& setPair : setBindings) 
+		{
+			
+			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
+			
+			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &layouts[setPair.first]);
+			assert(res == VK_SUCCESS);
 
+		}
+
+		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * layouts.size());
+		outMaterial.layoutCount = layouts.size();
+		memcpy(outMaterial.descriptorSetLayouts, layouts.data(), sizeof(VkDescriptorSetLayout) * layouts.size());
 
 		///////////////////////////////////////////////////////////////////////////////
 		//allocate descriptor sets
 		///////////////////////////////////////////////////////////////////////////////
 
-		VkDescriptorSetLayout layouts[] = { outMaterial.descriptorSetLayout };
+		VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, layouts.size(), GContext.uniformBufferDescPool);
+		outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * outMaterial.layoutCount);
 
-		VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(layouts, 1, GContext.uniformBufferDescPool);
-
-		res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.descSet);
+		res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.descSets);
 		assert(res == VK_SUCCESS);
 
 		///////////////////////////////////////////////////////////////////////////////
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(&outMaterial.descriptorSetLayout, 1);		
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.layoutCount);		
 
 		if (def.pcBlock.size > 0)
 		{
@@ -111,6 +124,9 @@ namespace Material
 
 			matStorage.mat.rData.pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.num * 2);
 			matStorage.mat.rData.pushConstantSize = def.pcBlock.size;
+			
+			assert(def.pcBlock.size < 128);
+
 			matStorage.mat.rData.pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
 
 			for (uint32_t i = 0; i < def.pcBlock.num; ++i)
@@ -121,6 +137,8 @@ namespace Material
 				matStorage.mat.rData.pushConstantLayout[i * 2 + 1] = mem.offset;
 			}
 		}
+
+	
 
 		res = vkCreatePipelineLayout(GContext.device, &pipelineLayoutInfo, nullptr, &outMaterial.pipelineLayout);
 		assert(res == VK_SUCCESS);
@@ -188,6 +206,69 @@ namespace Material
 			vkDestroyShaderModule(GContext.device, shaderStages[i].module, nullptr);
 
 		}
+
+
+		//now initialize all the buffers we need
+		size_t uboAlignment = GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
+
+		for (uint32_t i = 0; i < def.numShaderStages; ++i)
+		{
+			ShaderStageDefinition& stageDef = def.stages[i];
+
+			if (stageDef.numUniformBlocks > 0)
+			{
+				size_t lastSize = 0;
+				for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
+				{
+					OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
+					size_t dynamicAlignment = (blockDef.size / uboAlignment) * uboAlignment + ((blockDef.size % uboAlignment) > 0 ? uboAlignment : 0);
+
+
+					//for now, only allocate 1
+					vkh::createBuffer(matStorage.mat.rData.staticBuffer,
+						matStorage.mat.rData.staticMem,
+						dynamicAlignment,
+						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+						GContext.gpu.device,
+						GContext.device);
+
+					VkDescriptorBufferInfo bufferInfo = {};
+					bufferInfo.buffer = matStorage.mat.rData.staticBuffer;
+					bufferInfo.offset = lastSize;
+					bufferInfo.range = dynamicAlignment;
+					lastSize = dynamicAlignment;
+
+
+					void* mappedStagingBuffer;
+
+					vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
+
+					glm::vec4 tint = glm::vec4(0, 1, 0, 1);
+					memcpy(mappedStagingBuffer, &tint, sizeof(glm::vec4));
+
+
+					VkWriteDescriptorSet descriptorWrite = {};
+					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					descriptorWrite.dstSet = outMaterial.descSets[0];
+					descriptorWrite.dstBinding = 0; //refers to binding in shader
+					descriptorWrite.dstArrayElement = 0;
+					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+					descriptorWrite.descriptorCount = 1;
+					descriptorWrite.pBufferInfo = &bufferInfo;
+					descriptorWrite.pImageInfo = nullptr; // Optional
+					descriptorWrite.pTexelBufferView = nullptr; // Optional
+					vkUpdateDescriptorSets(GContext.device, 1, &descriptorWrite, 0, nullptr);
+
+				}
+			}
+
+
+		}
+
+
+
+
 	}
 
 	void setPushConstantVector(const char* var, glm::vec4& data)

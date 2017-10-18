@@ -92,7 +92,6 @@ int main(int argc, const char** argv)
 
 	//finally, generate reflection files for all built shaders
 	{
-
 		std::vector<std::string> builtFiles = getFilesInDirectory(shaderOutPath);
 		for (uint32_t i = 0; i < builtFiles.size(); ++i)
 		{
