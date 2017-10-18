@@ -124,6 +124,8 @@ namespace vkh
 		VkPipeline pipeline;
 		VkPipelineLayout pipelineLayout;
 
+		FixedArray<VkDescriptorSetLayout> descriptorSetLayoutArray;
+
 		uint32_t layoutCount;
 		VkDescriptorSetLayout* descriptorSetLayouts;
 

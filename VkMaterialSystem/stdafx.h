@@ -31,3 +31,5 @@
 #define APP_NAME "VkMaterialSystem"
 #define INITIAL_SCREEN_W 800
 #define INITIAL_SCREEN_H 600
+
+#include "fixed_array.h"

@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClInclude Include="asset_rdata_types.h" />
     <ClInclude Include="file_utils.h" />
+    <ClInclude Include="fixed_array.h" />
     <ClInclude Include="hash.h" />
     <ClInclude Include="material.h" />
     <ClInclude Include="material_loading.h" />
