@@ -2,10 +2,10 @@
 #include <argh.h>
 #include <string>
 #include <vector>
-#include "filesystem_utils.h"
 #include <stdint.h>
-#include "string_split.h"
-#include "material.h"
+#include "filesystem_utils.h"
+#include "string_utils.h"
+#include "shaderdata.h"
 
 std::string baseTypeToString(spirv_cross::SPIRType::BaseType type);
 
@@ -104,7 +104,7 @@ int main(int argc, const char** argv)
 			std::string fullPath = makeFullPath(relPath);
 
 			std::string reflPath = reflOutPath + "\\" + builtFiles[i];
-			FindReplace(reflPath, std::string(".spv"), std::string(".refl"));
+			findReplace(reflPath, std::string(".spv"), std::string(".refl"));
 			std::string reflFullPath = makeFullPath(reflPath);
 
 			FILE* shaderFile;

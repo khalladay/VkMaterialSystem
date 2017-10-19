@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include <Windows.h>
-#include "string_split.h"
+#include "string_utils.h"
 
 std::vector<std::string> getFilesInDirectory(std::string folder)
 {

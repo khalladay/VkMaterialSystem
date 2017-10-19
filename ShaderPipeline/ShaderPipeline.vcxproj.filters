@@ -23,13 +23,13 @@
     <ClInclude Include="filesystem_utils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="string_split.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="refl_info.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="material.h">
+    <ClInclude Include="string_utils.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shaderdata.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

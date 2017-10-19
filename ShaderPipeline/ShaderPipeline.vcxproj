@@ -71,13 +71,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\build\</OutDir>
     <IntDir>..\build\$(Platform)\$(Configuration)\ShaderPipeline\</IntDir>
-    <IncludePath>..\deps\argh;..\deps\spirv_cross;$(IncludePath)</IncludePath>
+    <IncludePath>..\deps\argh;..\deps\spirv_cross;..\deps;$(IncludePath)</IncludePath>
     <LibraryPath>..\deps\spirv_cross\lib_debug;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\build\</OutDir>
     <IntDir>..\build\$(Platform)\$(Configuration)\ShaderPipeline\</IntDir>
-    <IncludePath>..\deps\argh;..\deps\spirv_cross;$(IncludePath)</IncludePath>
+    <IncludePath>..\deps\argh;..\deps\spirv_cross;..\deps;$(IncludePath)</IncludePath>
     <LibraryPath>..\deps\spirv_cross\lib_release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -129,9 +129,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="filesystem_utils.h" />
-    <ClInclude Include="material.h" />
+    <ClInclude Include="shaderdata.h" />
     <ClInclude Include="refl_info.h" />
-    <ClInclude Include="string_split.h" />
+    <ClInclude Include="string_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

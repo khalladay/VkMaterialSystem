@@ -16,7 +16,7 @@ void splitString(std::string& str, std::vector<std::string>& splitTarget, std::s
 	splitTarget.push_back(str.substr(last));
 }
 
-void FindReplace(std::string& line, std::string& oldString, std::string& newString) 
+void findReplace(std::string& line, std::string& oldString, std::string& newString) 
 {
 	using std::string;
 
