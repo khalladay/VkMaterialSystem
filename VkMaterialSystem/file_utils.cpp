@@ -36,7 +36,7 @@ const char* loadTextFile(const char* filepath)
 	char* outString = (char *)calloc(1, size + 1); // Enough memory for file + \0
 
 	fread(outString, size, 1, inFile); // Read in the entire file
-	outString[size] = '\0';
+	//outString[size] = '\0';
 	fclose(inFile); // Close the file
 
 	return outString;

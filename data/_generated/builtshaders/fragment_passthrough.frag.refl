@@ -1,3 +1,15 @@
-INST_STATIC:16:0:0
-	tint:16:0
-
+{
+    "uniforms": [
+        {
+            "name": "INST_STATIC",
+            "size": 16,
+            "set": 0,
+            "binding": 0,
+            "elements": [
+                {
+                    "name": "tint",
+                    "size": 16,
+                    "offset": 0
+                }
+            ]
+        }

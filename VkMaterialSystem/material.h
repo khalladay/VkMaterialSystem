@@ -24,9 +24,10 @@ struct OpaqueBlockDefinition
 {
 	char name[32];
 	uint32_t size;
-	uint32_t num;
 	uint32_t binding;
 	uint32_t set;
+
+	uint32_t num;
 	BlockMember* blockMembers;
 };
 

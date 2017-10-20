@@ -1,2 +1,20 @@
-VERTEX_SHADER:vertex_uvs
-FRAGMENT_SHADER:fragment_passthrough
+{
+"shaders":[
+	{
+		"stage": "vertex",
+		"shader": "vertex_uvs",
+		"uniforms": []
+	},
+	{
+		"stage": "fragment",
+		"shader": "fragment_passthrough",
+		"uniforms": [{
+			"name": "INST_STATIC",
+			"members": [{
+				"name": "tint",
+				"value": [1, 1, 1, 1]
+			}]
+		}]
+	}
+]
+}
