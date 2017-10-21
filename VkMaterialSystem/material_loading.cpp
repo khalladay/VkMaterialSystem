@@ -52,8 +52,8 @@ namespace Material
 		size_t len = strlen(materialString);
 		Document materialDoc;
 		materialDoc.Parse(materialString, len);
-		assert(!materialDoc.HasParseError());
-		assert(materialDoc["shaders"].IsArray());
+
+		checkf(!materialDoc.HasParseError(), "Error parsing material file");
 
 		const Value& shaders = materialDoc["shaders"];
 		for (SizeType i = 0; i < shaders.Size(); i++)
@@ -74,21 +74,19 @@ namespace Material
 
 			std::string reflPath = generatedShaderPath + shaderName + shaderReflExtensionForStage(stageDef.stage);
 			const char* reflData = loadTextFile(reflPath.c_str());
+			size_t reflLen = strlen(reflData);
 
 			Document reflDoc;
-			reflDoc.Parse(reflData, strlen(reflData));
-
-			assert(!reflDoc.HasParseError());
+			reflDoc.Parse(reflData, reflLen);
+			checkf(!reflDoc.HasParseError(), "Error parsing reflection file");
 
 			if (reflDoc.HasMember("push_constants"))
 			{
 				const Value& pushConstants = reflDoc["push_constants"];
 
-				OpaqueBlockDefinition block = {};
-
-				block.binding = 0;
-				block.set = 0;
-				block.size = pushConstants["size"].GetInt();
+				def.pcBlock.binding = 0;
+				def.pcBlock.set = 0;
+				def.pcBlock.size = pushConstants["size"].GetInt();
 
 				const Value& elements = pushConstants["elements"];
 				assert(elements.IsArray());
@@ -105,11 +103,11 @@ namespace Material
 					members.push_back(mem);
 				}
 
-				block.num = members.size();
+				def.pcBlock.num = members.size();
 
-				block.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * block.num);
-				memcpy(block.blockMembers, members.data(), sizeof(BlockMember) * block.num);
-
+				def.pcBlock.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * def.pcBlock.num);
+				memcpy(def.pcBlock.blockMembers, members.data(), sizeof(BlockMember) * def.pcBlock.num);
+				
 			}
 
 			if (reflDoc.HasMember("uniforms"))
@@ -121,9 +119,36 @@ namespace Material
 				for (SizeType uni = 0; uni < uniforms.Size(); uni++)
 				{
 					const Value& uniform = uniforms[uni];
+
 					OpaqueBlockDefinition blockDef = {};
+					blockDef.binding = uniform["binding"].GetInt();
+					blockDef.set = uniform["set"].GetInt();
+					blockDef.size = uniform["size"].GetInt();
+					memcpy(blockDef.name, uniform["name"].GetString(), uniform["name"].GetStringLength());
+
+					const Value& elements = uniform["elements"];
+
+					std::vector<BlockMember> members;
+					for (SizeType elem = 0; elem < elements.Size(); elem++)
+					{
+						const Value& element = elements[elem];
+						BlockMember mem;
+						mem.offset = element["offset"].GetInt();
+						mem.size = element["size"].GetInt();
+						members.push_back(mem);
+					}
+
+					blockDef.num = members.size();
+
+					blockDef.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * blockDef.num);
+					memcpy(blockDef.blockMembers, members.data(), sizeof(BlockMember) * blockDef.num);
+					blockDefs.push_back(blockDef);
 
 				}
+
+				stageDef.numUniformBlocks = blockDefs.size();
+				stageDef.uniformBlocks = (OpaqueBlockDefinition*)malloc(sizeof(OpaqueBlockDefinition) * blockDefs.size());
+				memcpy(stageDef.uniformBlocks, blockDefs.data(), sizeof(OpaqueBlockDefinition) * blockDefs.size());
 			}
 
 			//parse shader uniform defaults 
@@ -134,139 +159,12 @@ namespace Material
 
 
 
-		//std::vector<std::string> parsedMaterial = split(buffer, ':', true);
-
-		//std::vector<ShaderStageDefinition> shaderStages;
-
-		////each line of the material file is a different shader stage, increment by two to get next line
-		//for (uint32_t i = 0; i < parsedMaterial.size(); i += 2)
-		//{
-		//	if (parsedMaterial[i].length() < 1) continue;
-		//	ShaderStageDefinition stageDef = {};
-		//	stageDef.stage = stringToShaderStage(parsedMaterial[i]);
-
-		//	std::string shaderPath = generatedShaderPath + parsedMaterial[i+1] + shaderExtensionForStage(stageDef.stage);
-
-		//	stageDef.shaderPath = (char*)malloc(shaderPath.length() + 1);
-		//	
-		//	copyCStrAndNullTerminate(stageDef.shaderPath, shaderPath.c_str());
-		//	
-		//	std::string reflPath = generatedShaderPath + parsedMaterial[i+1] + shaderReflExtensionForStage(stageDef.stage);
-		//	const char* reflData = loadTextFile(reflPath.c_str());
-
-		//	//we need to get data on every opaque block visible to the shader stage.
-		//	//each line in the refl file is either a block declaration or member info
-		//	std::vector<std::string> lines = split(reflData, '\n', true);
-
-		//	//we can only have one active block at a time
-		//	//so we just need a pointer to it, and a vector to hold members until we know
-		//	//how many there are
-		//	OpaqueBlockDefinition* currentBlock = nullptr;
-		//	std::vector<BlockMember> blockMembers;
-
-		//	//we need to track all the block definitions though, to write out at the end
-		//	std::vector<OpaqueBlockDefinition> blockDefinitions;
-
-		//	for (uint32_t lineIdx = 0; lineIdx < lines.size(); ++lineIdx)
-		//	{
-		//		std::string line = lines[lineIdx];
-		//		if (line.length() < 1) continue;
-
-		//		//lines that don't start with a tab declare a new block
-		//		if (line[0] != '\t')
-		//		{
-
-		//			//if we already have an active block, we need to end it, and start setting
-		//			//up a new one
-		//			if (currentBlock)
-		//			{
-		//				//which means we know how many members there are, and we can allocate the memory finally 
-		//				currentBlock->blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * blockMembers.size());
-		//				memcpy(currentBlock->blockMembers, blockMembers.data(), sizeof(BlockMember) * blockMembers.size());
-		//				currentBlock->num = blockMembers.size();
-
-		//				currentBlock = nullptr;
-		//				blockMembers.clear();
-		//			}
-
-		//			std::vector<std::string> blockDecl = split(line, ':', false);
-		//			
-		//			char* namePtr;
-
-		//			if (blockDecl[0] == "push_constants")
-		//			{
-		//				//there can only be one push constant layout for all shaders used in a pipeline
-		//				//so use the first pushconstant block you find as the layout for that. 
-
-		//				//TODO: flag when important a material with conflicting push constant layouts
-		//				currentBlock = &def.pcBlock;
-
-		//			}
-		//			else
-		//			{
-		//				OpaqueBlockDefinition block = {};
-		//				blockDefinitions.push_back(block);
-		//				currentBlock = &blockDefinitions[blockDefinitions.size() - 1];
-		//				currentBlock->binding = atoi(blockDecl[3].c_str());
-		//				currentBlock->set = atoi(blockDecl[2].c_str());
-
-		//			}
-
-		//			namePtr = &currentBlock->name[0];
-		//			
-		//			copyCStrAndNullTerminate(namePtr, blockDecl[0].c_str());
-		//			currentBlock->size = atoi(blockDecl[1].c_str());
-
-		//		}
-		//		else
-		//		{
-		//			//if we don't know what block this belongs to, crash because we're fucked. 
-		//			assert(currentBlock);
-
-		//			BlockMember mem;
-		//			line = line.substr(1, line.length() - 1);
-		//			std::vector<std::string> blockInfo = split(line, ':', false);
-
-		//			uint32_t nameLen = strlen(blockInfo[0].c_str()) + 1;
-		//			memcpy(mem.name, blockInfo[0].c_str(), nameLen);
-
-		//			//format name:size:offset
-		//			mem.name[nameLen - 1] = '\0';
-		//			mem.size = atoi(blockInfo[1].c_str());
-		//			mem.offset = atoi(blockInfo[2].c_str());
-
-		//			blockMembers.push_back(mem);
-
-
-		//		}
-		//	}
-		//	if (currentBlock)
-		//	{
-		//		//which means we know how many members there are, and we can allocate the memory finally 
-		//		currentBlock->blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * blockMembers.size());
-		//		memcpy(currentBlock->blockMembers, blockMembers.data(), sizeof(BlockMember) * blockMembers.size());
-		//		currentBlock->num = blockMembers.size();
-
-		//		currentBlock = nullptr;
-		//		blockMembers.clear();
-		//	}
-
-
-		//	//we now have all the block definitions we need
-
-		//	stageDef.numUniformBlocks = blockDefinitions.size();
-		//	stageDef.uniformBlocks = (OpaqueBlockDefinition*)malloc(sizeof(OpaqueBlockDefinition) * stageDef.numUniformBlocks);
-		//	memcpy(stageDef.uniformBlocks, blockDefinitions.data(), sizeof(OpaqueBlockDefinition) * stageDef.numUniformBlocks);
-
-		//	shaderStages.push_back(stageDef);
-		//	free((void*)reflData);
-		//}
-
-		//
-		//def.numShaderStages = shaderStages.size();
-		//def.stages = (ShaderStageDefinition*)malloc(sizeof(ShaderStageDefinition) * def.numShaderStages);
-		//memcpy(def.stages, shaderStages.data(), sizeof(ShaderStageDefinition) * def.numShaderStages);
-		//free((void*)buffer);
+		
+		def.numShaderStages = shaderStages.size();
+		def.stages = (ShaderStageDefinition*)malloc(sizeof(ShaderStageDefinition) * def.numShaderStages);
+		memcpy(def.stages, shaderStages.data(), sizeof(ShaderStageDefinition) * def.numShaderStages);
+		free((void*)materialString);
+		
 		return def;
 	}
 }

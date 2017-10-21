@@ -97,8 +97,11 @@ std::string getReflectionString(ShaderData& data)
 				}
 
 				writer.EndArray();
+				writer.EndObject();
 			}
 		}
+
+		writer.EndArray();
 	}
 
 	writer.EndObject();
