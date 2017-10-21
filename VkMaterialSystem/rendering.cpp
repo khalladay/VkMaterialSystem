@@ -110,8 +110,8 @@ namespace Rendering
 		VkBuffer vertexBuffers[] = { mesh.vBuffer };
 		VkDeviceSize offsets[] = { 0 };
 
-		Material::setPushConstantVector("col", glm::vec4(1.0, 1.0, 1.0, 1.0));
-		Material::setPushConstantFloat("time", os_getMilliseconds() / 10000.0f );
+		Material::setPushConstantVector("col", glm::vec4(1.0, 0.0, 1.0, 1.0));
+		Material::setPushConstantFloat("time", os_getMilliseconds() / 1000.0f);
 
 		vkCmdPushConstants(
 			commandBuffers[imageIndex],
@@ -121,7 +121,10 @@ namespace Rendering
 			Material::getRenderData().pushConstantSize,
 			Material::getRenderData().pushConstantData);
 
-		vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.layoutCount, &mat.descSets[0], 0, 0);
+		if (mat.layoutCount > 0)
+		{
+			vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.layoutCount, &mat.descSets[0], 0, 0);
+		}
 
 		vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.iBuffer, 0, VK_INDEX_TYPE_UINT32);

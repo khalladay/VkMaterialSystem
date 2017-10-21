@@ -100,12 +100,14 @@ namespace Material
 		//allocate descriptor sets
 		///////////////////////////////////////////////////////////////////////////////
 
-		VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, layouts.size(), GContext.uniformBufferDescPool);
-		outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * outMaterial.layoutCount);
+		if (layouts.size() > 0)
+		{
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, layouts.size(), GContext.uniformBufferDescPool);
+			outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * outMaterial.layoutCount);
 
-		res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.descSets);
-		assert(res == VK_SUCCESS);
-
+			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.descSets);
+			assert(res == VK_SUCCESS);
+		}
 		///////////////////////////////////////////////////////////////////////////////
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
@@ -168,6 +170,8 @@ namespace Material
 		VkPipelineColorBlendAttachmentState colorBlendAttachment = vkh::pipelineColorBlendAttachmentState(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
 		VkPipelineColorBlendStateCreateInfo colorBlending = vkh::pipelineColorBlendStateCreateInfo(colorBlendAttachment);
 
+		def.depthTest = false;
+		def.depthWrite = false;
 		VkPipelineDepthStencilStateCreateInfo depthStencil = vkh::pipelineDepthStencilStateCreateInfo(
 			def.depthTest ? VK_TRUE : VK_FALSE,
 			def.depthWrite ? VK_TRUE : VK_FALSE, 
@@ -244,7 +248,7 @@ namespace Material
 
 					vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
 
-					glm::vec4 tint = glm::vec4(0, 1, 0, 1);
+					glm::vec4 tint = glm::vec4(1, 0, 0, 1);
 					memcpy(mappedStagingBuffer, &tint, sizeof(glm::vec4));
 
 

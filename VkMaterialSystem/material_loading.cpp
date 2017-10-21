@@ -97,7 +97,9 @@ namespace Material
 					const Value& element = elements[elem];
 					BlockMember mem;
 
-					memcpy(mem.name, element["name"].GetString(), element["name"].GetStringLength());
+					checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
+
+					copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
 					mem.offset = element["offset"].GetInt();
 					mem.size = element["size"].GetInt();
 					members.push_back(mem);
@@ -124,8 +126,10 @@ namespace Material
 					blockDef.binding = uniform["binding"].GetInt();
 					blockDef.set = uniform["set"].GetInt();
 					blockDef.size = uniform["size"].GetInt();
-					memcpy(blockDef.name, uniform["name"].GetString(), uniform["name"].GetStringLength());
 
+					checkf(uniform["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
+
+					copyCStrAndNullTerminate(&blockDef.name[0], uniform["name"].GetString());
 					const Value& elements = uniform["elements"];
 
 					std::vector<BlockMember> members;
@@ -135,6 +139,10 @@ namespace Material
 						BlockMember mem;
 						mem.offset = element["offset"].GetInt();
 						mem.size = element["size"].GetInt();
+						
+						checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
+						copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
+
 						members.push_back(mem);
 					}
 
