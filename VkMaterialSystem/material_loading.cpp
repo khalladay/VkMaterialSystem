@@ -210,10 +210,7 @@ namespace Material
 							for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
 							{
 								mem.defaultValue[dv] = defaultValues[dv].GetFloat();
-							}
-							
-							
-							
+							}							
 						}
 
 						members.push_back(mem);

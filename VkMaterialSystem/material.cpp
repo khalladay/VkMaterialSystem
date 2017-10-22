@@ -248,14 +248,16 @@ namespace Material
 
 					vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
 
-					float* defaultData = (float*)malloc(blockDef.size);
+					char* defaultData = (char*)malloc(blockDef.size);
 	
 					memset(defaultData, 0, blockDef.size);
 
 					for (uint32_t k = 0; k < blockDef.num; ++k)
 					{
-						memcpy(defaultData + blockDef.blockMembers[k].offset, blockDef.blockMembers[k].defaultValue, blockDef.size);
+						memcpy(&defaultData[0] + blockDef.blockMembers[k].offset, blockDef.blockMembers[k].defaultValue, blockDef.blockMembers[k].size);
 					}
+
+
 					memcpy(mappedStagingBuffer, defaultData, blockDef.size);
 					free(defaultData);
 
