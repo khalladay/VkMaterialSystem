@@ -18,6 +18,7 @@ struct BlockMember
 	char name[32];
 	uint32_t size;
 	uint32_t offset;
+	float defaultValue[16];
 };
 
 struct OpaqueBlockDefinition

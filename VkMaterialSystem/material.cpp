@@ -248,9 +248,16 @@ namespace Material
 
 					vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
 
-					glm::vec4 tint = glm::vec4(1, 0, 0, 1);
-					memcpy(mappedStagingBuffer, &tint, sizeof(glm::vec4));
+					float* defaultData = (float*)malloc(blockDef.size);
+	
+					memset(defaultData, 0, blockDef.size);
 
+					for (uint32_t k = 0; k < blockDef.num; ++k)
+					{
+						memcpy(defaultData + blockDef.blockMembers[k].offset, blockDef.blockMembers[k].defaultValue, blockDef.size);
+					}
+					memcpy(mappedStagingBuffer, defaultData, blockDef.size);
+					free(defaultData);
 
 					VkWriteDescriptorSet descriptorWrite = {};
 					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -9,6 +9,13 @@
 
 namespace Material
 {
+	struct BlockDefaults
+	{
+		std::string blockName;
+		std::vector<std::string> memberNames;
+
+	};
+
 	ShaderStage stringToShaderStage(std::string str)
 	{
 		if (str == "vertex") return ShaderStage::VERTEX;
@@ -22,19 +29,49 @@ namespace Material
 	{
 		if (stage == ShaderStage::VERTEX) return ".vert.spv";
 		if (stage == ShaderStage::FRAGMENT) return ".frag.spv";
+
+		checkf(0, "Unsupported shader stage passed to function");
+		return "";
 	}
 
 	std::string shaderReflExtensionForStage(ShaderStage stage)
 	{
 		if (stage == ShaderStage::VERTEX) return ".vert.refl";
 		if (stage == ShaderStage::FRAGMENT) return ".frag.refl";
+		checkf(0, "Unsupported shader stage passed to function");
+		return "";
 	}
 
 	void copyCStrAndNullTerminate(char* dst, const char* src)
 	{
-		uint32_t len = strlen(src) + 1;
+		uint32_t len = static_cast<uint32_t>(strlen(src)) + 1;
 		memcpy(dst, src, len);
 		dst[len - 1] = '\0';
+	}
+
+	template <typename T>
+	bool getValueFromArray(rapidjson::Value& outValue, const rapidjson::Value& array, const char* targetKey, T& targetValue)
+	{
+		using namespace rapidjson;
+		
+		for (SizeType elem = 0; elem < array.Size(); elem++)
+		{
+			const Value& arrayItem = array[elem];
+			if (arrayItem.HasMember(targetKey))
+			{
+				if (arrayItem[targetKey].Is<T>())
+				{
+					if (arrayItem[targetKey].Get<T>() == targetValue)
+					{
+						outValue = arrayItem[targetKey];
+						return true;
+					}
+
+				}
+			}
+		}
+
+		return false;
 	}
 
 
@@ -58,11 +95,11 @@ namespace Material
 		const Value& shaders = materialDoc["shaders"];
 		for (SizeType i = 0; i < shaders.Size(); i++)
 		{
-			const Value& stage = shaders[i];
+			const Value& matStage = shaders[i];
 			ShaderStageDefinition stageDef = {};
-			stageDef.stage = stringToShaderStage(stage["stage"].GetString());
+			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
 
-			std::string shaderName = std::string(stage["shader"].GetString());
+			std::string shaderName = std::string(matStage["shader"].GetString());
 
 			std::string shaderPath = generatedShaderPath + shaderName + shaderExtensionForStage(stageDef.stage);
 			
@@ -105,7 +142,7 @@ namespace Material
 					members.push_back(mem);
 				}
 
-				def.pcBlock.num = members.size();
+				def.pcBlock.num = static_cast<uint32_t>(members.size());
 
 				def.pcBlock.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * def.pcBlock.num);
 				memcpy(def.pcBlock.blockMembers, members.data(), sizeof(BlockMember) * def.pcBlock.num);
@@ -115,6 +152,17 @@ namespace Material
 			if (reflDoc.HasMember("uniforms"))
 			{
 				const Value& uniforms = reflDoc["uniforms"];
+				
+				bool defaultsExist = matStage.HasMember("uniforms");
+				
+
+				std::vector<std::string> blocksWithDefaultsPresent;
+				const Value& defaultArray = matStage["uniforms"];
+				for (SizeType d = 0; d < defaultArray.Size(); ++d)
+				{
+					const Value& default = defaultArray[d];
+					blocksWithDefaultsPresent.push_back(default["name"].GetString());
+				}
 
 				std::vector<OpaqueBlockDefinition> blockDefs;
 
@@ -132,6 +180,11 @@ namespace Material
 					copyCStrAndNullTerminate(&blockDef.name[0], uniform["name"].GetString());
 					const Value& elements = uniform["elements"];
 
+					int blockDefaultsIndex = -1;
+
+					for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
+						if (!blocksWithDefaultsPresent[d].compare(uniform["name"].GetString())) blockDefaultsIndex = d;
+
 					std::vector<BlockMember> members;
 					for (SizeType elem = 0; elem < elements.Size(); elem++)
 					{
@@ -142,6 +195,26 @@ namespace Material
 						
 						checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
 						copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
+
+						if (blockDefaultsIndex > -1)
+						{
+							bool memberHasDefault = false;
+							const Value& defaultItem = matStage["uniforms"][blockDefaultsIndex];
+							const Value& defaultMembers = defaultItem["members"];
+
+							size_t curSize = defaultMembers.Size();
+							memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
+
+						
+							const Value& defaultValues = defaultMembers[elem]["value"];
+							for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+							{
+								mem.defaultValue[dv] = defaultValues[dv].GetFloat();
+							}
+							
+							
+							
+						}
 
 						members.push_back(mem);
 					}
