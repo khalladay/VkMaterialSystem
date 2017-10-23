@@ -20,10 +20,18 @@ struct UniformBlock
 	uint32_t binding;
 };
 
+struct TextureBlock
+{
+	std::string name;
+	uint32_t binding;
+	uint32_t set;
+};
+
 struct ShaderData
 {
 	UniformBlock pushConstants;
 	std::vector<UniformBlock> uniformBlocks;
+	std::vector<TextureBlock> textureBlocks;
 };
 
 std::string getReflectionString(ShaderData& data)
@@ -101,6 +109,25 @@ std::string getReflectionString(ShaderData& data)
 			}
 		}
 
+		writer.EndArray();
+	}
+
+	if (data.textureBlocks.size() > 0)
+	{
+		writer.Key("samplers");
+		writer.StartArray();
+
+		for (auto& block : data.textureBlocks)
+		{
+			writer.StartObject();
+			writer.Key("name");
+			writer.String(block.name.c_str());
+			writer.Key("binding");
+			writer.Int(block.binding);
+			writer.Key("set");
+			writer.Int(block.set);
+			writer.EndObject();
+		}
 		writer.EndArray();
 	}
 

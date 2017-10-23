@@ -18,5 +18,12 @@
                 }
             ]
         }
+    ],
+    "samplers": [
+        {
+            "name": "texSampler",
+            "binding": 1,
+            "set": 0
+        }
     ]
 }

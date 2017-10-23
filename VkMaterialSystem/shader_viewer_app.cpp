@@ -4,6 +4,7 @@
 #include "mesh.h"
 #include "procedural_geo.h"
 #include "material_loading.h"
+#include "texture.h"
 
 namespace App
 {
@@ -11,23 +12,16 @@ namespace App
 	{
 		Rendering::init();
 
-		MaterialDefinition def = { 0 };
-		
-		/*{
-			def.fShaderPath = "../data/shaders/fragment_passthrough.frag.spv";
-			def.vShaderPath = "../data/shaders/vertex_uvs.vert.spv";
-			def.depthTest = false;
-			def.depthWrite = true;
-			Material::make(def);
-		}
-*/
+		MaterialDefinition def = { 0 };		
 		{
 			def = Material::load("../data/materials/show_uvs.mat");
 			Material::make(def);
-
 		}
+
+
 		Mesh::quad();
-		
+		Texture::make("../data/textures/test_texture.jpg");
+
 	}
 
 	void tick(float deltaTime)

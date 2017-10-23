@@ -160,6 +160,7 @@
     <ClCompile Include="procedural_geo.cpp" />
     <ClCompile Include="rendering.cpp" />
     <ClCompile Include="shader_viewer_app.cpp" />
+    <ClCompile Include="texture.cpp" />
     <ClCompile Include="timing.cpp" />
     <ClCompile Include="vkh.cpp" />
   </ItemGroup>
@@ -178,6 +179,7 @@
     <ClInclude Include="shader_viewer_app.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="string_utils.h" />
+    <ClInclude Include="texture.h" />
     <ClInclude Include="timing.h" />
     <ClInclude Include="vkh.h" />
     <ClInclude Include="vkh_initializers.h" />

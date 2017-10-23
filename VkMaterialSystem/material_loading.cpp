@@ -81,31 +81,32 @@ namespace Material
 
 		const static std::string generatedShaderPath = "../data/_generated/builtshaders/";
 
-		MaterialDefinition def = {};
-		std::vector<ShaderStageDefinition> shaderStages;
-
-		const char* materialString = loadTextFile(assetPath); //(char *)calloc(1, size + 1); // Enough memory for file + \0
-
+		const char* materialString = loadTextFile(assetPath);
 		size_t len = strlen(materialString);
+
 		Document materialDoc;
 		materialDoc.Parse(materialString, len);
-
 		checkf(!materialDoc.HasParseError(), "Error parsing material file");
 
 		const Value& shaders = materialDoc["shaders"];
+
+		MaterialDefinition def = {};
+		std::vector<ShaderStageDefinition> shaderStages;
+		shaderStages.resize(shaders.Size());
+
+
 		for (SizeType i = 0; i < shaders.Size(); i++)
 		{
 			const Value& matStage = shaders[i];
-			ShaderStageDefinition stageDef = {};
+
+			ShaderStageDefinition& stageDef = shaderStages[i];
 			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
 
 			std::string shaderName = std::string(matStage["shader"].GetString());
-
 			std::string shaderPath = generatedShaderPath + shaderName + shaderExtensionForStage(stageDef.stage);
 			
 			stageDef.shaderPath = (char*)malloc(shaderPath.length() + 1);
 			copyCStrAndNullTerminate(stageDef.shaderPath, shaderPath.c_str());
-
 
 			//parse shader reflection file
 
@@ -216,7 +217,7 @@ namespace Material
 						members.push_back(mem);
 					}
 
-					blockDef.num = members.size();
+					blockDef.num = static_cast<uint32_t>(members.size());
 
 					blockDef.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * blockDef.num);
 					memcpy(blockDef.blockMembers, members.data(), sizeof(BlockMember) * blockDef.num);
@@ -224,21 +225,18 @@ namespace Material
 
 				}
 
-				stageDef.numUniformBlocks = blockDefs.size();
+				stageDef.numUniformBlocks = static_cast<uint32_t>(blockDefs.size());
 				stageDef.uniformBlocks = (OpaqueBlockDefinition*)malloc(sizeof(OpaqueBlockDefinition) * blockDefs.size());
 				memcpy(stageDef.uniformBlocks, blockDefs.data(), sizeof(OpaqueBlockDefinition) * blockDefs.size());
 			}
 
 			//parse shader uniform defaults 
-
-
-			shaderStages.push_back(stageDef);
 		}
 
 
 
 		
-		def.numShaderStages = shaderStages.size();
+		def.numShaderStages = static_cast<uint32_t>(shaderStages.size());
 		def.stages = (ShaderStageDefinition*)malloc(sizeof(ShaderStageDefinition) * def.numShaderStages);
 		memcpy(def.stages, shaderStages.data(), sizeof(ShaderStageDefinition) * def.numShaderStages);
 		free((void*)materialString);

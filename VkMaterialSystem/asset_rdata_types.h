@@ -21,8 +21,8 @@ struct MaterialRenderData
 	VkDeviceMemory staticMem;
 
 
-
-
+	VkBuffer* staticBuffers;
+	uint32_t numStaticBuffers;
 
 	uint32_t* dynamicBufferLayout;
 	VkBuffer* dynamicBuffers;
@@ -31,6 +31,14 @@ struct MaterialRenderData
 
 	uint32_t* offsets;
 	uint32_t numOffsets;
+};
+
+struct TextureRenderData
+{
+	vkh::VkhTexture vulkanTexture;
+	VkImageView view;
+	VkFormat format;
+	VkSampler sampler;
 };
 
 struct VertexRenderData

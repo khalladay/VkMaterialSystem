@@ -40,6 +40,16 @@ void createUniformBlockForResource(UniformBlock* outBlock, spirv_cross::Resource
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
 }
 
+void createTextureBlockForResource(TextureBlock* outBlock, spirv_cross::Resource res, spirv_cross::CompilerGLSL& compiler)
+{
+	uint32_t id = res.id;
+	std::vector<spirv_cross::BufferRange> ranges = compiler.get_active_buffer_ranges(id);
+
+	outBlock->name = res.name;
+	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
+	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
+}
+
 int main(int argc, const char** argv)
 {
 	argh::parser cmdl(argv);
@@ -139,9 +149,12 @@ int main(int argc, const char** argv)
 				createUniformBlockForResource(&data.uniformBlocks[idx++], res, glsl);
 			}
 
+
+			data.textureBlocks.resize(resources.sampled_images.size());
+			idx = 0;
 			for (spirv_cross::Resource res : resources.sampled_images)
 			{
-
+				createTextureBlockForResource(&data.textureBlocks[idx++], res, glsl);
 			}
 
 			//write out material

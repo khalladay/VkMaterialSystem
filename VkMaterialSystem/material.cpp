@@ -93,7 +93,7 @@ namespace Material
 		}
 
 		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * layouts.size());
-		outMaterial.layoutCount = layouts.size();
+		outMaterial.layoutCount = static_cast<uint32_t>(layouts.size());
 		memcpy(outMaterial.descriptorSetLayouts, layouts.data(), sizeof(VkDescriptorSetLayout) * layouts.size());
 
 		///////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ namespace Material
 
 		if (layouts.size() > 0)
 		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, layouts.size(), GContext.uniformBufferDescPool);
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, static_cast<uint32_t>(layouts.size()), GContext.uniformBufferDescPool);
 			outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * outMaterial.layoutCount);
 
 			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.descSets);
@@ -179,7 +179,7 @@ namespace Material
 
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
 		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		pipelineInfo.stageCount = shaderStages.size();
+		pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 		pipelineInfo.pStages = shaderStages.data();
 		pipelineInfo.pVertexInputState = &vertexInputInfo;
 		pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -221,6 +221,8 @@ namespace Material
 
 			if (stageDef.numUniformBlocks > 0)
 			{
+				std::vector<VkBuffer> staticBuffers;
+
 				size_t lastSize = 0;
 				for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
 				{
@@ -287,7 +289,7 @@ namespace Material
 	void setPushConstantVector(const char* var, glm::vec4& data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
-		uint8_t numVars = rData.pushConstantSize / (sizeof(uint32_t) * 2);
+		uint32_t numVars = static_cast<uint32_t>(rData.pushConstantSize / (sizeof(uint32_t) * 2));
 
 		uint32_t varHash = HASH(var);
 
@@ -305,7 +307,7 @@ namespace Material
 	void setPushConstantMatrix(const char* var, glm::mat4& data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
-		uint8_t numVars = rData.pushConstantSize / (sizeof(uint32_t) * 2);
+		uint32_t numVars = static_cast<uint32_t>(rData.pushConstantSize / (sizeof(uint32_t) * 2));
 		uint32_t varHash = HASH(var);
 
 		for (uint32_t i = 0; i < numVars; i += 2)
@@ -321,7 +323,7 @@ namespace Material
 	void setPushConstantFloat(const char* var, float data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
-		uint8_t numVars = rData.pushConstantSize / (sizeof(uint32_t) * 2);
+		uint32_t numVars = static_cast<uint32_t>(rData.pushConstantSize / (sizeof(uint32_t) * 2));
 		uint32_t varHash = HASH(var);
 
 		for (uint32_t i = 0; i < numVars; i += 2)

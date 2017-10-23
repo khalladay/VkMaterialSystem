@@ -12,6 +12,7 @@ layout(location = 0) in vec3 vertex;
 layout(location = 1) in vec2 uv;
 
 layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec2 fragUV;
 
 out gl_PerVertex 
 {
@@ -25,5 +26,6 @@ void main()
     gl_Position = vec4(vertex, 1.0);
 	float t = sin( mod(pc.time, 1.0)) * 2.0;
     fragColor = pc.col * t;
+	fragUV = uv;
 }
 
