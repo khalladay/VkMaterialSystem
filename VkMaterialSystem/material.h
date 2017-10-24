@@ -32,6 +32,14 @@ struct OpaqueBlockDefinition
 	BlockMember* blockMembers;
 };
 
+struct SamplerDefinition
+{
+	char name[32];
+	uint32_t set;
+	uint32_t binding;
+};
+
+
 struct ShaderStageDefinition
 {
 	ShaderStage stage;
@@ -39,6 +47,9 @@ struct ShaderStageDefinition
 	
 	OpaqueBlockDefinition* uniformBlocks;
 	uint32_t numUniformBlocks;
+
+	SamplerDefinition* samplers;
+	uint32_t numSamplers;
 };
 
 struct MaterialDefinition
@@ -50,6 +61,8 @@ struct MaterialDefinition
 
 	uint32_t numShaderStages;
 	ShaderStageDefinition* stages;
+
+
 };
 
 namespace Material

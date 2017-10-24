@@ -55,7 +55,9 @@ namespace Material
 
 	//	std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> setBindings;
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> uniformSetBindings;
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> samplerSetBindings;
+
 
 		for (uint32_t i = 0; i < def.numShaderStages; ++i)
 		{
@@ -73,40 +75,84 @@ namespace Material
 					layoutBinding.stageFlags = shaderStageEnumToVkEnum(stageDef.stage);
 					layoutBinding.pImmutableSamplers = nullptr; // Optional
 
-					setBindings[blockDef.set].push_back(layoutBinding);
+					uniformSetBindings[blockDef.set].push_back(layoutBinding);
+				}
+			}
+			if (stageDef.numSamplers > 0)
+			{
+
+				for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
+				{
+					SamplerDefinition& sampDef = stageDef.samplers[j];
+
+					VkDescriptorSetLayoutBinding layoutBinding = {};
+					layoutBinding.binding = sampDef.binding;
+					layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					layoutBinding.pImmutableSamplers = nullptr;
+					layoutBinding.descriptorCount = 1;
+					layoutBinding.stageFlags = shaderStageEnumToVkEnum(stageDef.stage);
+
+					samplerSetBindings[sampDef.set].push_back(layoutBinding);
+
 				}
 			}
 		}
 
-		std::vector<VkDescriptorSetLayout> layouts;
-		layouts.resize(setBindings.size());
+		std::vector<VkDescriptorSetLayout> uniformLayouts;
+		uniformLayouts.resize(uniformSetBindings.size());
+
+		std::vector<VkDescriptorSetLayout> samplerLayouts;
+		samplerLayouts.resize(samplerSetBindings.size());
+
 
 		//each key is a set
-		for (auto& setPair : setBindings) 
+		for (auto& setPair : uniformSetBindings) 
 		{
 			
 			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
 			
-			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &layouts[setPair.first]);
+			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[setPair.first]);
 			assert(res == VK_SUCCESS);
 
 		}
 
-		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * layouts.size());
-		outMaterial.layoutCount = static_cast<uint32_t>(layouts.size());
-		memcpy(outMaterial.descriptorSetLayouts, layouts.data(), sizeof(VkDescriptorSetLayout) * layouts.size());
+		for (auto& setPair : samplerSetBindings)
+		{
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
+
+			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &samplerLayouts[setPair.first]);
+			assert(res == VK_SUCCESS);
+
+		}
+
+		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * uniformLayouts.size());
+		outMaterial.layoutCount = static_cast<uint32_t>(uniformLayouts.size() + samplerLayouts.size());
+
+		memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * uniformLayouts.size());
+		memcpy(outMaterial.descriptorSetLayouts + uniformLayouts.size(), samplerLayouts.data(), sizeof(VkDescriptorSetLayout) * samplerLayouts.size());
+
 
 		///////////////////////////////////////////////////////////////////////////////
 		//allocate descriptor sets
 		///////////////////////////////////////////////////////////////////////////////
 
-		if (layouts.size() > 0)
+		if (uniformLayouts.size() > 0)
 		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, static_cast<uint32_t>(layouts.size()), GContext.uniformBufferDescPool);
-			outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * outMaterial.layoutCount);
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, static_cast<uint32_t>(uniformLayouts.size()), GContext.uniformBufferDescPool);
+			outMaterial.uniformDescSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * uniformLayouts.size());
 
-			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.descSets);
+			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.uniformDescSets);
 			assert(res == VK_SUCCESS);
+		}
+		if (samplerLayouts.size() > 0)
+		{
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts + uniformLayouts.size(), static_cast<uint32_t>(samplerLayouts.size()), GContext.samplerDescPool);
+			outMaterial.samplerDescSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * samplerLayouts.size());
+
+			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.samplerDescSets);
+			assert(res == VK_SUCCESS);
+
 		}
 		///////////////////////////////////////////////////////////////////////////////
 		//set up pipeline layout
@@ -219,6 +265,8 @@ namespace Material
 		{
 			ShaderStageDefinition& stageDef = def.stages[i];
 
+			std::vector<VkWriteDescriptorSet> descSetWrites;
+
 			if (stageDef.numUniformBlocks > 0)
 			{
 				std::vector<VkBuffer> staticBuffers;
@@ -263,19 +311,48 @@ namespace Material
 					memcpy(mappedStagingBuffer, defaultData, blockDef.size);
 					free(defaultData);
 
+
 					VkWriteDescriptorSet descriptorWrite = {};
 					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					descriptorWrite.dstSet = outMaterial.descSets[0];
-					descriptorWrite.dstBinding = 0; //refers to binding in shader
+					descriptorWrite.dstSet = outMaterial.uniformDescSets[0];
+					descriptorWrite.dstBinding = blockDef.binding; //refers to binding in shader
 					descriptorWrite.dstArrayElement = 0;
 					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 					descriptorWrite.descriptorCount = 1;
 					descriptorWrite.pBufferInfo = &bufferInfo;
 					descriptorWrite.pImageInfo = nullptr; // Optional
 					descriptorWrite.pTexelBufferView = nullptr; // Optional
-					vkUpdateDescriptorSets(GContext.device, 1, &descriptorWrite, 0, nullptr);
+					descSetWrites.push_back(descriptorWrite);
 
 				}
+				if (stageDef.numSamplers > 0)
+				{
+					for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
+					{
+						SamplerDefinition& sampDef = stageDef.samplers[j];
+
+						VkDescriptorImageInfo imageInfo = {};
+						imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+						imageInfo.imageView = textureImageView;
+						imageInfo.sampler = textureSampler;
+
+
+						VkWriteDescriptorSet descriptorWrite = {};
+						descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+						descriptorWrite.dstSet = outMaterial.samplerDescSets[0];
+						descriptorWrite.dstBinding = sampDef.binding; //refers to binding in shader
+						descriptorWrite.dstArrayElement = 0;
+						descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						descriptorWrite.descriptorCount = 1;
+						descriptorWrite.pBufferInfo = nullptr;
+						descriptorWrite.pImageInfo = &imageInfo; // Optional
+						descriptorWrite.pTexelBufferView = nullptr; // Optional
+						descSetWrites.push_back(descriptorWrite);
+					}
+
+				}
+				vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
+
 			}
 
 

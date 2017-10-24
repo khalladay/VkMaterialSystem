@@ -123,7 +123,7 @@ namespace Rendering
 
 		if (mat.layoutCount > 0)
 		{
-			vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.layoutCount, &mat.descSets[0], 0, 0);
+			vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.layoutCount, &mat.uniformDescSets[0], 0, 0);
 		}
 
 		vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);

@@ -230,7 +230,31 @@ namespace Material
 				memcpy(stageDef.uniformBlocks, blockDefs.data(), sizeof(OpaqueBlockDefinition) * blockDefs.size());
 			}
 
-			//parse shader uniform defaults 
+			if (reflDoc.HasMember("samplers"))
+			{
+				const Value& samplers = reflDoc["samplers"];
+
+				std::vector<SamplerDefinition> sampDefs;
+
+				for (SizeType s = 0; s < samplers.Size(); ++s)
+				{
+					const Value& element = samplers[s];
+					SamplerDefinition samp;
+
+					checkf(element["name"].GetStringLength() < 31, "sampler names must be less than 32 characters");
+					copyCStrAndNullTerminate(&samp.name[0], element["name"].GetString());
+
+					samp.binding = element["binding"].GetInt();
+					samp.set = element["set"].GetInt();
+					sampDefs.push_back(samp);
+					
+
+				}
+				stageDef.samplers = (SamplerDefinition*)malloc(sizeof(SamplerDefinition) * sampDefs.size());
+				memcpy(stageDef.samplers, sampDefs.data(), sizeof(SamplerDefinition) * samplers.Size());
+				stageDef.numSamplers = samplers.Size();
+
+			}
 		}
 
 

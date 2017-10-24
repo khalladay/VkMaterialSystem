@@ -97,6 +97,7 @@ namespace vkh
 
 		VkDescriptorPool		uniformBufferDescPool;
 		VkDescriptorPool		dynamicUniformBufferDescPool;
+		VkDescriptorPool		samplerDescPool;
 
 		//hate this being here, but if material can create itself
 		//this is where it has to live, otherwise rendering has to return
@@ -131,7 +132,9 @@ namespace vkh
 
 		//since we're using dynamic uniform buffers, 
 		//only the parent material needs a descriptor set 
-		VkDescriptorSet* descSets;
+		VkDescriptorSet* uniformDescSets;
+
+		VkDescriptorSet* samplerDescSets;
 
 	};
 
