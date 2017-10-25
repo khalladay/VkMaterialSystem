@@ -5,6 +5,7 @@
 #include "vkh.h"
 #include <vector>
 #include "hash.h"
+#include "texture.h"
 #include <map>
 
 struct MaterialAsset
@@ -130,7 +131,7 @@ namespace Material
 		outMaterial.layoutCount = static_cast<uint32_t>(uniformLayouts.size() + samplerLayouts.size());
 
 		memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * uniformLayouts.size());
-		memcpy(outMaterial.descriptorSetLayouts + uniformLayouts.size(), samplerLayouts.data(), sizeof(VkDescriptorSetLayout) * samplerLayouts.size());
+		memcpy(&outMaterial.descriptorSetLayouts[uniformLayouts.size()], samplerLayouts.data(), sizeof(VkDescriptorSetLayout) * samplerLayouts.size());
 
 
 		///////////////////////////////////////////////////////////////////////////////
@@ -147,7 +148,7 @@ namespace Material
 		}
 		if (samplerLayouts.size() > 0)
 		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts + uniformLayouts.size(), static_cast<uint32_t>(samplerLayouts.size()), GContext.samplerDescPool);
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[uniformLayouts.size()], static_cast<uint32_t>(samplerLayouts.size()), GContext.samplerDescPool);
 			outMaterial.samplerDescSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * samplerLayouts.size());
 
 			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, outMaterial.samplerDescSets);
@@ -266,7 +267,37 @@ namespace Material
 			ShaderStageDefinition& stageDef = def.stages[i];
 
 			std::vector<VkWriteDescriptorSet> descSetWrites;
+			if (stageDef.numSamplers > 0)
+			{
+				for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
+				{
+					SamplerDefinition& sampDef = stageDef.samplers[j];
 
+					TextureRenderData* tex = Texture::getRenderData();
+
+					VkDescriptorImageInfo imageInfo = {};
+					imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					imageInfo.imageView = tex->view;
+					imageInfo.sampler = tex->sampler;
+
+					//imageInfo.imageView = textureImageView;
+					//	imageInfo.sampler = textureSampler;
+
+
+					VkWriteDescriptorSet descriptorWrite = {};
+					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					descriptorWrite.dstSet = outMaterial.samplerDescSets[0];
+					descriptorWrite.dstBinding = sampDef.binding; //refers to binding in shader
+					descriptorWrite.dstArrayElement = 0;
+					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					descriptorWrite.descriptorCount = 1;
+					descriptorWrite.pBufferInfo = nullptr;
+					descriptorWrite.pImageInfo = &imageInfo; // Optional
+					descriptorWrite.pTexelBufferView = nullptr; // Optional
+					descSetWrites.push_back(descriptorWrite);
+				}
+
+			}
 			if (stageDef.numUniformBlocks > 0)
 			{
 				std::vector<VkBuffer> staticBuffers;
@@ -325,35 +356,9 @@ namespace Material
 					descSetWrites.push_back(descriptorWrite);
 
 				}
-				if (stageDef.numSamplers > 0)
-				{
-					for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
-					{
-						SamplerDefinition& sampDef = stageDef.samplers[j];
-
-						VkDescriptorImageInfo imageInfo = {};
-						imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-						imageInfo.imageView = textureImageView;
-						imageInfo.sampler = textureSampler;
-
-
-						VkWriteDescriptorSet descriptorWrite = {};
-						descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-						descriptorWrite.dstSet = outMaterial.samplerDescSets[0];
-						descriptorWrite.dstBinding = sampDef.binding; //refers to binding in shader
-						descriptorWrite.dstArrayElement = 0;
-						descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-						descriptorWrite.descriptorCount = 1;
-						descriptorWrite.pBufferInfo = nullptr;
-						descriptorWrite.pImageInfo = &imageInfo; // Optional
-						descriptorWrite.pTexelBufferView = nullptr; // Optional
-						descSetWrites.push_back(descriptorWrite);
-					}
-
-				}
-				vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
-
 			}
+
+			vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
 
 
 		}

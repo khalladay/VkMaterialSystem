@@ -1,24 +1,4 @@
 {
-    "uniforms": [
-        {
-            "name": "INST_STATIC",
-            "size": 28,
-            "set": 0,
-            "binding": 0,
-            "elements": [
-                {
-                    "name": "tint",
-                    "size": 16,
-                    "offset": 0
-                },
-                {
-                    "name": "tint2",
-                    "size": 12,
-                    "offset": 16
-                }
-            ]
-        }
-    ],
     "samplers": [
         {
             "name": "texSampler",

@@ -11,6 +11,7 @@ namespace App
 	void init()
 	{
 		Rendering::init();
+		Texture::make("../data/textures/test_texture.jpg");
 
 		MaterialDefinition def = { 0 };		
 		{
@@ -20,7 +21,6 @@ namespace App
 
 
 		Mesh::quad();
-		Texture::make("../data/textures/test_texture.jpg");
 
 	}
 

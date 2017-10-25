@@ -22,6 +22,11 @@ TextureStorage texStorage;
 
 namespace Texture
 {
+	TextureRenderData* getRenderData()
+	{
+		return &texStorage.tex.rData;
+	}
+
 	void make(const char* filepath)
 	{
 		TextureAsset t;
