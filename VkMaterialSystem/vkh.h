@@ -125,16 +125,13 @@ namespace vkh
 		VkPipeline pipeline;
 		VkPipelineLayout pipelineLayout;
 
-	//	FixedArray<VkDescriptorSetLayout> descriptorSetLayoutArray;
-
 		uint32_t layoutCount;
 		VkDescriptorSetLayout* descriptorSetLayouts;
 
 		//since we're using dynamic uniform buffers, 
 		//only the parent material needs a descriptor set 
-		VkDescriptorSet* uniformDescSets;
-
-		VkDescriptorSet* samplerDescSets;
+		VkDescriptorSet* descSets;
+		uint32_t numDescSets;
 
 	};
 

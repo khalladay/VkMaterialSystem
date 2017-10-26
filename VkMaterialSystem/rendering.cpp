@@ -121,11 +121,7 @@ namespace Rendering
 			Material::getRenderData().pushConstantSize,
 			Material::getRenderData().pushConstantData);
 
-		if (mat.layoutCount > 0)
-		{
-		}
-
-		vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.layoutCount, &mat.samplerDescSets[0], 0, 0);
+		vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.numDescSets, mat.descSets, 0, 0);
 
 		vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.iBuffer, 0, VK_INDEX_TYPE_UINT32);

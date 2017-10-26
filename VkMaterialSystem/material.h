@@ -61,8 +61,6 @@ struct MaterialDefinition
 
 	uint32_t numShaderStages;
 	ShaderStageDefinition* stages;
-
-
 };
 
 namespace Material
