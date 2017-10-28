@@ -1,5 +1,7 @@
 #include "texture.h"
 #include "asset_rdata_types.h"
+#include "hash.h"
+#include <map>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb\stb_image.h>
@@ -14,7 +16,7 @@ struct TextureAsset
 
 struct TextureStorage
 {
-	TextureAsset tex;
+	std::map<uint32_t, TextureAsset> data;
 };
 
 TextureStorage texStorage;
@@ -22,13 +24,20 @@ TextureStorage texStorage;
 
 namespace Texture
 {
-	TextureRenderData* getRenderData()
+	TextureRenderData* getRenderData(uint32_t texId)
 	{
-		return &texStorage.tex.rData;
+		return &texStorage.data[texId].rData;
 	}
 
-	void make(const char* filepath)
+	uint32_t make(const char* filepath)
 	{
+		uint32_t newId = hash(filepath);
+		if (texStorage.data.find(newId) != texStorage.data.end())
+		{
+			return newId;
+		}
+
+
 		TextureAsset t;
 
 		int texWidth, texHeight, texChannels;
@@ -83,12 +92,12 @@ namespace Texture
 		vkDestroyBuffer(vkh::GContext.device, stagingBuffer, nullptr);
 		vkFreeMemory(vkh::GContext.device, stagingBufferMemory, nullptr);
 
-		texStorage.tex = t;
-
+		texStorage.data.insert(std::pair<uint32_t, TextureAsset>(newId, t));
+		return newId;
 	}
 
 
-	void destroy()
+	void destroy(uint32_t texId)
 	{
 
 	}

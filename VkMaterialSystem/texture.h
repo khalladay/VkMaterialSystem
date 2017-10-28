@@ -6,7 +6,10 @@ struct TextureAsset;
 
 namespace Texture
 {
-	void make(const char* filepath);
-	TextureRenderData* getRenderData();
-	void destroy();
+	uint32_t make(const char* filepath);
+	
+
+	TextureRenderData* getRenderData(uint32_t texId);
+
+	void destroy(uint64_t texId);
 }

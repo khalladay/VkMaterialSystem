@@ -1,15 +1,5 @@
 #pragma once
-#include <cstdint>
+#include "stdafx.h"
 
-#define HASH(x) djb2a(x)
-
-uint32_t djb2a(const char *str)
-{
-	uint32_t hash = 5381;
-	int c;
-
-	while (c = *str++)
-		hash = hash * 33 ^ c;
-
-	return hash;
-}
+uint32_t hash(const char* str);
+uint64_t hash64(const char* str);

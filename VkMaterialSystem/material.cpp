@@ -188,7 +188,7 @@ namespace Material
 			{
 				BlockMember& mem = def.pcBlock.blockMembers[i];
 
-				matStorage.mat.rData.pushConstantLayout[i * 2] = HASH(&mem.name[0]);
+				matStorage.mat.rData.pushConstantLayout[i * 2] = hash(&mem.name[0]);
 				matStorage.mat.rData.pushConstantLayout[i * 2 + 1] = mem.offset;
 			}
 		}
@@ -349,16 +349,13 @@ namespace Material
 				{
 					SamplerDefinition& sampDef = stageDef.samplers[j];
 
-					TextureRenderData* tex = Texture::getRenderData();
+					uint32_t tex = Texture::make(sampDef.defaultTexName);
 
+					TextureRenderData* texData = Texture::getRenderData(tex);
 					VkDescriptorImageInfo imageInfo = {};
 					imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					imageInfo.imageView = tex->view;
-					imageInfo.sampler = tex->sampler;
-
-					//imageInfo.imageView = textureImageView;
-					//	imageInfo.sampler = textureSampler;
-
+					imageInfo.imageView = texData->view;
+					imageInfo.sampler = texData->sampler;
 
 					VkWriteDescriptorSet descriptorWrite = {};
 					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -389,7 +386,7 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t numVars = static_cast<uint32_t>(rData.pushConstantSize / (sizeof(uint32_t) * 2));
 
-		uint32_t varHash = HASH(var);
+		uint32_t varHash = hash(var);
 
 		for (uint32_t i = 0; i < numVars; i+=2)
 		{
@@ -406,7 +403,7 @@ namespace Material
 	{
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t numVars = static_cast<uint32_t>(rData.pushConstantSize / (sizeof(uint32_t) * 2));
-		uint32_t varHash = HASH(var);
+		uint32_t varHash = hash(var);
 
 		for (uint32_t i = 0; i < numVars; i += 2)
 		{
@@ -422,7 +419,7 @@ namespace Material
 	{
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t numVars = static_cast<uint32_t>(rData.pushConstantSize / (sizeof(uint32_t) * 2));
-		uint32_t varHash = HASH(var);
+		uint32_t varHash = hash(var);
 
 		for (uint32_t i = 0; i < numVars; i += 2)
 		{

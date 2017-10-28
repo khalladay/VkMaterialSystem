@@ -21,7 +21,7 @@
 		}],
 		"textures":[{
 			"name":"texSampler",
-			"texture":"test_texture"
+			"texture":"../data/textures/derpy_dog.jpg"
 		}
 		]
 	}

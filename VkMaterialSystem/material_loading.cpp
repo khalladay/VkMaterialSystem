@@ -152,10 +152,7 @@ namespace Material
 
 			if (reflDoc.HasMember("uniforms"))
 			{
-				const Value& uniforms = reflDoc["uniforms"];
-				
-				bool defaultsExist = matStage.HasMember("uniforms");
-				
+				const Value& uniforms = reflDoc["uniforms"];				
 
 				std::vector<std::string> blocksWithDefaultsPresent;
 				const Value& defaultArray = matStage["uniforms"];
@@ -193,7 +190,7 @@ namespace Material
 						BlockMember mem;
 						mem.offset = element["offset"].GetInt();
 						mem.size = element["size"].GetInt();
-						
+
 						checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
 						copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
 
@@ -206,12 +203,12 @@ namespace Material
 							size_t curSize = defaultMembers.Size();
 							memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
 
-						
+
 							const Value& defaultValues = defaultMembers[elem]["value"];
 							for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
 							{
 								mem.defaultValue[dv] = defaultValues[dv].GetFloat();
-							}							
+							}
 						}
 
 						members.push_back(mem);
@@ -224,6 +221,7 @@ namespace Material
 					blockDefs.push_back(blockDef);
 
 				}
+				
 
 				stageDef.numUniformBlocks = static_cast<uint32_t>(blockDefs.size());
 				stageDef.uniformBlocks = (OpaqueBlockDefinition*)malloc(sizeof(OpaqueBlockDefinition) * blockDefs.size());
@@ -234,6 +232,15 @@ namespace Material
 			{
 				const Value& samplers = reflDoc["samplers"];
 
+				std::vector<std::string> samplersWithDefaultPresent;
+				const Value& defaultArray = matStage["textures"];
+				for (SizeType d = 0; d < defaultArray.Size(); ++d)
+				{
+					const Value& default = defaultArray[d];
+					samplersWithDefaultPresent.push_back(default["name"].GetString());
+				}
+
+
 				std::vector<SamplerDefinition> sampDefs;
 
 				for (SizeType s = 0; s < samplers.Size(); ++s)
@@ -241,13 +248,26 @@ namespace Material
 					const Value& element = samplers[s];
 					SamplerDefinition samp;
 
+					int sampDefaultIndex = -1;
+
+					for (uint32_t d = 0; d < samplersWithDefaultPresent.size(); ++d)
+						if (!samplersWithDefaultPresent[d].compare(element["name"].GetString())) sampDefaultIndex = d;
+
+
 					checkf(element["name"].GetStringLength() < 31, "sampler names must be less than 32 characters");
 					copyCStrAndNullTerminate(&samp.name[0], element["name"].GetString());
 
 					samp.binding = element["binding"].GetInt();
 					samp.set = element["set"].GetInt();
-					sampDefs.push_back(samp);
-					
+
+					if (sampDefaultIndex > -1)
+					{
+						const Value& defaultItem = matStage["textures"][sampDefaultIndex];
+						const Value& defaultName = defaultItem["texture"];
+						copyCStrAndNullTerminate(&samp.defaultTexName[0], defaultName.GetString());
+					}
+
+					sampDefs.push_back(samp);					
 
 				}
 				stageDef.samplers = (SamplerDefinition*)malloc(sizeof(SamplerDefinition) * sampDefs.size());

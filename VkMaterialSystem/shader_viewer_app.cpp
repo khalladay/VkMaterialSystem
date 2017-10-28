@@ -11,7 +11,7 @@ namespace App
 	void init()
 	{
 		Rendering::init();
-		Texture::make("../data/textures/test_texture.jpg");
+		//Texture::make("../data/textures/test_texture.jpg");
 
 		MaterialDefinition def = { 0 };		
 		{

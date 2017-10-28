@@ -37,6 +37,7 @@ struct SamplerDefinition
 	char name[32];
 	uint32_t set;
 	uint32_t binding;
+	char defaultTexName[64];
 };
 
 
