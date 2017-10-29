@@ -1,6 +1,25 @@
 #pragma once
 #include "stdafx.h"
 
+#if 0
+Still remaining to do: 
+	* support for samplers at a lower set number than an opaque block
+	* support for multiple uniform blocks at different bindings in same set
+	* support for multiple uniform blocks in different snets
+	* support for multiple unifomr blocks in same set but different binding
+	* support for multiple samplers
+	* support for push constant in fragment and vertex shader
+	* support for setting images at runtime
+
+	* write a material validation step that ensures
+		* push constants are the same in all stages if used
+		* all default values are formatted correctly, and if textures, that those textures exist
+
+	* first post about this - just put everything in static uniforms 
+	* second post - support for multiple objects, dynamic uniform buffers 
+
+#endif 
+
 struct MaterialAsset;
 struct MaterialRenderData;
 

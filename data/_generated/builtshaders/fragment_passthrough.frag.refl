@@ -3,7 +3,7 @@
         {
             "name": "INST_STATIC",
             "size": 28,
-            "set": 0,
+            "set": 1,
             "binding": 0,
             "elements": [
                 {
@@ -23,7 +23,7 @@
         {
             "name": "texSampler",
             "binding": 0,
-            "set": 1
+            "set": 0
         }
     ]
 }

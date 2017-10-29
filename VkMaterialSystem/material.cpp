@@ -46,7 +46,6 @@ namespace Material
 			ShaderStageDefinition& stageDef = def.stages[i];
 			VkPipelineShaderStageCreateInfo shaderStageInfo = vkh::shaderPipelineStageCreateInfo(shaderStageEnumToVkEnum(stageDef.stage));
 			vkh::createShaderModule(shaderStageInfo.module, stageDef.shaderPath, GContext.device);
-		
 			shaderStages.push_back(shaderStageInfo);
 		}
 	
@@ -54,49 +53,28 @@ namespace Material
 		//set up descriptorSetLayout
 		///////////////////////////////////////////////////////////////////////////////
 
-	//	std::vector<VkDescriptorSetLayoutBinding> bindings;
-
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> uniformSetBindings;
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> samplerSetBindings;
-
 
 		for (uint32_t i = 0; i < def.numShaderStages; ++i)
 		{
 			ShaderStageDefinition& stageDef = def.stages[i];
 
-			if (stageDef.numUniformBlocks > 0)
+			for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
 			{
-				for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
-				{
-					OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
-					VkDescriptorSetLayoutBinding layoutBinding = {};
-					layoutBinding.binding = blockDef.binding;
-					layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-					layoutBinding.descriptorCount = 1;
-					layoutBinding.stageFlags = shaderStageEnumToVkEnum(stageDef.stage);
-					layoutBinding.pImmutableSamplers = nullptr; // Optional
+				OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
+				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shaderStageEnumToVkEnum(stageDef.stage), blockDef.binding, 1);
 
-					uniformSetBindings[blockDef.set].push_back(layoutBinding);
-				}
+				uniformSetBindings[blockDef.set].push_back(layoutBinding);
 			}
-			if (stageDef.numSamplers > 0)
+
+			for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
 			{
+				SamplerDefinition& sampDef = stageDef.samplers[j];
+				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, shaderStageEnumToVkEnum(stageDef.stage), sampDef.binding, 1);
 
-				for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
-				{
-					SamplerDefinition& sampDef = stageDef.samplers[j];
-
-					VkDescriptorSetLayoutBinding layoutBinding = {};
-					layoutBinding.binding = sampDef.binding;
-					layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					layoutBinding.pImmutableSamplers = nullptr;
-					layoutBinding.descriptorCount = 1;
-					layoutBinding.stageFlags = shaderStageEnumToVkEnum(stageDef.stage);
-
-					samplerSetBindings[sampDef.set].push_back(layoutBinding);
-
-				}
-			}
+				samplerSetBindings[sampDef.set].push_back(layoutBinding);
+			}			
 		}
 
 		std::vector<VkDescriptorSetLayout> uniformLayouts;
@@ -109,23 +87,20 @@ namespace Material
 		//each key is a set
 		for (auto& setPair : uniformSetBindings) 
 		{
-			
 			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
 			
-			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[setPair.first]);
-			assert(res == VK_SUCCESS);
-
+			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[0]);
+			checkf(res == VK_SUCCESS, "Error creating descriptor set layout for material");
 		}
 
 		for (auto& setPair : samplerSetBindings)
 		{
-
 			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
 
 			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &samplerLayouts[0]);
-			assert(res == VK_SUCCESS);
-
+			checkf(res == VK_SUCCESS, "Error creating descriptor set layout for material");
 		}
+
 		uint32_t numDecsriptorSets = static_cast<uint32_t>(uniformLayouts.size() + samplerLayouts.size());
 
 		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * numDecsriptorSets);

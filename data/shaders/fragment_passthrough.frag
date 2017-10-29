@@ -1,13 +1,13 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 0, set = 0) uniform INST_STATIC
+layout(binding = 0, set = 1) uniform INST_STATIC
 {
 	vec4 tint;
 	vec3 tint2;
 }static_data;
 
-layout(binding = 0, set = 1) uniform sampler2D texSampler;
+layout(binding = 0, set = 0) uniform sampler2D texSampler;
 
 
 layout(location = 0) out vec4 outColor;
