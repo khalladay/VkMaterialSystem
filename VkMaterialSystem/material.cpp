@@ -32,6 +32,15 @@ namespace Material
 		return VK_SHADER_STAGE_ALL;
 	}
 
+	VkDescriptorType inputTypeEnumToVkEnum(InputType type)
+	{
+		if (type == InputType::SAMPLER) return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		if (type == InputType::UNIFORM) return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+		checkf(0, "trying to use an unsupported descriptor type in a material");
+		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+	}
+
 	void make(MaterialDefinition def)
 	{
 		using vkh::GContext;
@@ -54,60 +63,52 @@ namespace Material
 		///////////////////////////////////////////////////////////////////////////////
 
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> uniformSetBindings;
-		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> samplerSetBindings;
 
+		uint32_t inputOffset = 0;
 		for (uint32_t i = 0; i < def.numShaderStages; ++i)
 		{
 			ShaderStageDefinition& stageDef = def.stages[i];
 
-			for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
+			for (uint32_t j = 0; j < stageDef.numInputs; ++j)
 			{
-				OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
-				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, shaderStageEnumToVkEnum(stageDef.stage), blockDef.binding, 1);
+				ShaderInput& inputDef = def.inputs[inputOffset + j];
+				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(inputDef.type), shaderStageEnumToVkEnum(stageDef.stage), inputDef.binding, 1);
 
-				uniformSetBindings[blockDef.set].push_back(layoutBinding);
+				uniformSetBindings[inputDef.set].push_back(layoutBinding);
 			}
 
-			for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
-			{
-				SamplerDefinition& sampDef = stageDef.samplers[j];
-				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, shaderStageEnumToVkEnum(stageDef.stage), sampDef.binding, 1);
-
-				samplerSetBindings[sampDef.set].push_back(layoutBinding);
-			}			
+			inputOffset += stageDef.numInputs;
 		}
 
 		std::vector<VkDescriptorSetLayout> uniformLayouts;
+		std::vector<VkDescriptorType> uniformTypes;
+		std::vector<VkDescriptorSetLayoutBinding> inOrderBindings;
+
 		uniformLayouts.resize(uniformSetBindings.size());
-
-		std::vector<VkDescriptorSetLayout> samplerLayouts;
-		samplerLayouts.resize(samplerSetBindings.size());
-
+		uniformTypes.resize(uniformSetBindings.size());
 
 		//each key is a set
 		for (auto& setPair : uniformSetBindings) 
 		{
 			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
 			
-			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[0]);
+			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[setPair.first]);
+			uniformTypes[setPair.first] = setPair.second[0].descriptorType;
+		
+			for (uint32_t layoutBinding = 0; layoutBinding < setPair.second.size(); ++layoutBinding)
+			{
+				inOrderBindings.push_back(setPair.second[layoutBinding]);
+			}
+
 			checkf(res == VK_SUCCESS, "Error creating descriptor set layout for material");
 		}
 
-		for (auto& setPair : samplerSetBindings)
-		{
-			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
-
-			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &samplerLayouts[0]);
-			checkf(res == VK_SUCCESS, "Error creating descriptor set layout for material");
-		}
-
-		uint32_t numDecsriptorSets = static_cast<uint32_t>(uniformLayouts.size() + samplerLayouts.size());
+		uint32_t numDecsriptorSets = static_cast<uint32_t>(uniformLayouts.size());
 
 		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * numDecsriptorSets);
-		outMaterial.layoutCount = numDecsriptorSets;
+		memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * numDecsriptorSets);
 
-		memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * uniformLayouts.size());
-		memcpy(&outMaterial.descriptorSetLayouts[uniformLayouts.size()], samplerLayouts.data(), sizeof(VkDescriptorSetLayout) * samplerLayouts.size());
+		outMaterial.layoutCount = numDecsriptorSets;
 
 		outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * numDecsriptorSets);
 		outMaterial.numDescSets = numDecsriptorSets;
@@ -116,50 +117,49 @@ namespace Material
 		//allocate descriptor sets
 		///////////////////////////////////////////////////////////////////////////////
 
-		uint32_t descSetOffset = 0;
-
-		if (uniformLayouts.size() > 0)
+		for (uint32_t j = 0; j < uniformLayouts.size(); ++j)
 		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(outMaterial.descriptorSetLayouts, static_cast<uint32_t>(uniformLayouts.size()), GContext.uniformBufferDescPool);
+			VkDescriptorPool* targetPool;
+			if (uniformTypes[j] == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{
+				targetPool = &GContext.uniformBufferDescPool;
+			}
+			else
+			{
+				targetPool = &GContext.samplerDescPool;
+			}
 
-			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.descSets[descSetOffset]);
-			descSetOffset += static_cast<uint32_t>(uniformLayouts.size());
-			assert(res == VK_SUCCESS);
-		}
-		if (samplerLayouts.size() > 0)
-		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[uniformLayouts.size()], static_cast<uint32_t>(samplerLayouts.size()), GContext.samplerDescPool);
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[j], 1, *targetPool);
 
-			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.descSets[descSetOffset]);
-			descSetOffset += static_cast<uint32_t>(samplerLayouts.size());
-
-			assert(res == VK_SUCCESS);
+			res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.descSets[j]);
+			checkf(res == VK_SUCCESS, "Error allocating descriptor set");
 
 		}
+
 		///////////////////////////////////////////////////////////////////////////////
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.layoutCount);		
 
-		if (def.pcBlock.size > 0)
+		if (def.pcBlock.sizeBytes > 0)
 		{
 			VkPushConstantRange pushConstantRange = {};
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = def.pcBlock.size;
+			pushConstantRange.size = def.pcBlock.sizeBytes;
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 
-			matStorage.mat.rData.pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.num * 2);
-			matStorage.mat.rData.pushConstantSize = def.pcBlock.size;
+			matStorage.mat.rData.pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.numBlockMembers * 2);
+			matStorage.mat.rData.pushConstantSize = def.pcBlock.sizeBytes;
 			
-			assert(def.pcBlock.size < 128);
+			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
 
 			matStorage.mat.rData.pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
 
-			for (uint32_t i = 0; i < def.pcBlock.num; ++i)
+			for (uint32_t i = 0; i < def.pcBlock.numBlockMembers; ++i)
 			{
 				BlockMember& mem = def.pcBlock.blockMembers[i];
 
@@ -248,112 +248,102 @@ namespace Material
 		std::vector<VkWriteDescriptorSet> descSetWrites;
 
 		uint32_t curDescSet = 0;
+		inputOffset = 0;
+
+		std::vector<VkDescriptorBufferInfo> uniformBufferInfos;
+		std::vector<VkDescriptorImageInfo> imageInfos;
+
 		for (uint32_t i = 0; i < def.numShaderStages; ++i)
 		{
 			ShaderStageDefinition& stageDef = def.stages[i];
 
-			if (stageDef.numUniformBlocks > 0)
+			if (stageDef.numInputs > 0)
 			{
 				std::vector<VkBuffer> staticBuffers;
 
 				size_t lastSize = 0;
-				for (uint32_t j = 0; j < stageDef.numUniformBlocks; ++j)
+				for (uint32_t j = 0; j < stageDef.numInputs; ++j)
 				{
-					OpaqueBlockDefinition& blockDef = stageDef.uniformBlocks[j];
-					size_t dynamicAlignment = (blockDef.size / uboAlignment) * uboAlignment + ((blockDef.size % uboAlignment) > 0 ? uboAlignment : 0);
+					ShaderInput& inputDef = def.inputs[j + inputOffset];
+					size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
+					
+					VkDescriptorBufferInfo* bufferPtr		= nullptr;
+					VkDescriptorImageInfo* imageInfoPtr		= nullptr;
 
-
-					//for now, only allocate 1
-					vkh::createBuffer(matStorage.mat.rData.staticBuffer,
-						matStorage.mat.rData.staticMem,
-						dynamicAlignment,
-						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-						GContext.gpu.device,
-						GContext.device);
-
-					VkDescriptorBufferInfo bufferInfo = {};
-					bufferInfo.buffer = matStorage.mat.rData.staticBuffer;
-					bufferInfo.offset = lastSize;
-					bufferInfo.range = dynamicAlignment;
-					lastSize = dynamicAlignment;
-
-
-					void* mappedStagingBuffer;
-
-					vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
-
-					char* defaultData = (char*)malloc(blockDef.size);
-	
-					memset(defaultData, 0, blockDef.size);
-
-					for (uint32_t k = 0; k < blockDef.num; ++k)
+					if (inputDef.type == InputType::UNIFORM)
 					{
-						memcpy(&defaultData[0] + blockDef.blockMembers[k].offset, blockDef.blockMembers[k].defaultValue, blockDef.blockMembers[k].size);
+						
+						VkDescriptorBufferInfo uniformBufferInfo;
+
+						//for now, only allocate 1
+						vkh::createBuffer(matStorage.mat.rData.staticBuffer,
+							matStorage.mat.rData.staticMem,
+							dynamicAlignment,
+							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+							GContext.gpu.device,
+							GContext.device);
+
+						uniformBufferInfo.buffer = matStorage.mat.rData.staticBuffer;
+						uniformBufferInfo.offset = lastSize;
+						uniformBufferInfo.range = dynamicAlignment;
+						lastSize = dynamicAlignment;
+
+						uniformBufferInfos.push_back(uniformBufferInfo);
+						bufferPtr = &uniformBufferInfos[uniformBufferInfos.size() - 1];
+
+						void* mappedStagingBuffer;
+
+						vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
+
+						char* defaultData = (char*)malloc(inputDef.sizeBytes);
+
+						memset(defaultData, 0, inputDef.sizeBytes);
+
+						for (uint32_t k = 0; k < inputDef.numBlockMembers; ++k)
+						{
+							memcpy(&defaultData[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
+						}
+
+
+						memcpy(mappedStagingBuffer, defaultData, inputDef.sizeBytes);
+
+						free(defaultData);
+					}
+					else if (inputDef.type == InputType::SAMPLER)
+					{
+						VkDescriptorImageInfo imageInfo = {};
+
+						uint32_t tex = Texture::make(inputDef.defaultValue);
+
+						TextureRenderData* texData = Texture::getRenderData(tex);
+						imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+						imageInfo.imageView = texData->view;
+						imageInfo.sampler = texData->sampler;
+
+						imageInfos.push_back(imageInfo);
+						imageInfoPtr = &imageInfos[imageInfos.size() - 1];
 					}
 
-
-					memcpy(mappedStagingBuffer, defaultData, blockDef.size);
-					free(defaultData);
-
-
 					VkWriteDescriptorSet descriptorWrite = {};
 					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 					descriptorWrite.dstSet = outMaterial.descSets[curDescSet++];
-					descriptorWrite.dstBinding = blockDef.binding; //refers to binding in shader
+					descriptorWrite.dstBinding = inputDef.binding; //refers to binding in shader
 					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+					descriptorWrite.descriptorType = inputTypeEnumToVkEnum(inputDef.type);
 					descriptorWrite.descriptorCount = 1;
-					descriptorWrite.pBufferInfo = &bufferInfo;
-					descriptorWrite.pImageInfo = nullptr; // Optional
-					descriptorWrite.pTexelBufferView = nullptr; // Optional
-					descSetWrites.push_back(descriptorWrite);
-
-				}
-			}
-
-
-		}
-		for (uint32_t i = 0; i < def.numShaderStages; ++i)
-		{
-			ShaderStageDefinition& stageDef = def.stages[i];
-
-			if (stageDef.numSamplers > 0)
-			{
-				for (uint32_t j = 0; j < stageDef.numSamplers; ++j)
-				{
-					SamplerDefinition& sampDef = stageDef.samplers[j];
-
-					uint32_t tex = Texture::make(sampDef.defaultTexName);
-
-					TextureRenderData* texData = Texture::getRenderData(tex);
-					VkDescriptorImageInfo imageInfo = {};
-					imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					imageInfo.imageView = texData->view;
-					imageInfo.sampler = texData->sampler;
-
-					VkWriteDescriptorSet descriptorWrite = {};
-					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					descriptorWrite.dstSet = outMaterial.descSets[curDescSet++];
-					descriptorWrite.dstBinding = sampDef.binding; //refers to binding in shader
-					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					descriptorWrite.descriptorCount = 1;
-					descriptorWrite.pBufferInfo = nullptr;
-					descriptorWrite.pImageInfo = &imageInfo; // Optional
+					descriptorWrite.pBufferInfo = bufferPtr;
+					descriptorWrite.pImageInfo = imageInfoPtr; // Optional
 					descriptorWrite.pTexelBufferView = nullptr; // Optional
 					descSetWrites.push_back(descriptorWrite);
 				}
+				inputOffset += stageDef.numInputs;
 
 			}
 		}
 
+		
 		vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
-
-
-
-
-
 	}
 
 	void setPushConstantVector(const char* var, glm::vec4& data)

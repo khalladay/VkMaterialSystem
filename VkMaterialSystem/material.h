@@ -3,7 +3,6 @@
 
 #if 0
 Still remaining to do: 
-	* support for samplers at a lower set number than an opaque block
 	* support for multiple uniform blocks at different bindings in same set
 	* support for multiple uniform blocks in different snets
 	* support for multiple unifomr blocks in same set but different binding
@@ -32,6 +31,13 @@ enum class ShaderStage : uint8_t
 	MAX
 };
 
+enum class InputType : uint8_t
+{
+	UNIFORM,
+	SAMPLER,
+	PUSH_CONSTANT
+};
+
 struct BlockMember
 {
 	char name[32];
@@ -40,36 +46,27 @@ struct BlockMember
 	float defaultValue[16];
 };
 
-struct OpaqueBlockDefinition
+struct ShaderInput
 {
-	char name[32];
-	uint32_t size;
-	uint32_t binding;
-	uint32_t set;
+	ShaderStage owningStage;
+	InputType type;
+	uint8_t set;
+	uint8_t binding;
+	uint8_t numBlockMembers;
+	uint32_t sizeBytes;
 
-	uint32_t num;
+	//null for sampler
 	BlockMember* blockMembers;
-};
 
-struct SamplerDefinition
-{
 	char name[32];
-	uint32_t set;
-	uint32_t binding;
-	char defaultTexName[64];
+	char defaultValue[64];
 };
-
 
 struct ShaderStageDefinition
 {
 	ShaderStage stage;
-	char* shaderPath;
-	
-	OpaqueBlockDefinition* uniformBlocks;
-	uint32_t numUniformBlocks;
-
-	SamplerDefinition* samplers;
-	uint32_t numSamplers;
+	char shaderPath[256];
+	uint8_t numInputs;
 };
 
 struct MaterialDefinition
@@ -77,10 +74,15 @@ struct MaterialDefinition
 	bool depthTest;
 	bool depthWrite;
 
-	OpaqueBlockDefinition pcBlock;
+	ShaderInput pcBlock;
 
 	uint32_t numShaderStages;
 	ShaderStageDefinition* stages;
+
+	//in order based on set
+	ShaderInput* inputs;
+	uint32_t numInputs;
+
 };
 
 namespace Material

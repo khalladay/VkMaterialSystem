@@ -55,6 +55,12 @@ int main(int argc, const char** argv)
 	argh::parser cmdl(argv);
 	if (!cmdl(3)) printf("ShaderPipeline: usage: ShaderPipeline <path to shader folder> <path to output shader folder> <path to output reflection folder> \n");
 
+	float test1[16];
+	size_t s1 = sizeof(test1);
+	char test2[64];
+	size_t s2 = sizeof(test2);
+	printf("S1: %d , S2: %d\n", s1, s2);
+
 	std::string shaderInPath = cmdl[1];
 	std::string shaderOutPath = cmdl[2];
 	std::string reflOutPath = cmdl[3];
