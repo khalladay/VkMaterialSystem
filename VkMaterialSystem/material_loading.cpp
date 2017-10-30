@@ -226,7 +226,7 @@ namespace Material
 					blockDef.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * blockDef.numBlockMembers);
 					memcpy(blockDef.blockMembers, members.data(), sizeof(BlockMember) * blockDef.numBlockMembers);
 					inputDefs.push_back(blockDef);
-
+					stageDef.numInputs++;
 				}
 			}
 
@@ -273,11 +273,9 @@ namespace Material
 					}
 
 					inputDefs.push_back(samp);					
-
+					stageDef.numInputs++;
 				}
 			}
-
-			stageDef.numInputs = static_cast<uint32_t>(inputDefs.size());
 		}
 
 
@@ -294,7 +292,7 @@ namespace Material
 		def.stages = (ShaderStageDefinition*)malloc(sizeof(ShaderStageDefinition) * def.numShaderStages);
 		memcpy(def.stages, shaderStages.data(), sizeof(ShaderStageDefinition) * def.numShaderStages);
 		free((void*)materialString);
-		
+
 		return def;
 	}
 }

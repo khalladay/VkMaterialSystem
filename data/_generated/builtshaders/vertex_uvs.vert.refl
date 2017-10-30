@@ -13,5 +13,20 @@
                 "offset": 16
             }
         ]
-    }
+    },
+    "uniforms": [
+        {
+            "name": "INST_STATIC",
+            "size": 12,
+            "set": 1,
+            "binding": 0,
+            "elements": [
+                {
+                    "name": "offset",
+                    "size": 12,
+                    "offset": 0
+                }
+            ]
+        }
+    ]
 }

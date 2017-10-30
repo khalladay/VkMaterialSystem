@@ -3,7 +3,13 @@
 	{
 		"stage": "vertex",
 		"shader": "vertex_uvs",
-		"uniforms": []
+		"uniforms": [{
+			"name":"INST_STATIC",
+			"members":[{
+			"name":"offset",
+			"value":[0.25,0.25,0.0]
+			}]
+		}]
 	},
 	{
 		"stage": "fragment",

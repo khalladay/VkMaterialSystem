@@ -7,7 +7,7 @@
 #include "hash.h"
 #include "texture.h"
 #include <map>
-
+#include <algorithm>
 struct MaterialAsset
 {
 	MaterialRenderData rData;
@@ -44,7 +44,7 @@ namespace Material
 	void make(MaterialDefinition def)
 	{
 		using vkh::GContext;
-		
+
 		vkh::VkhMaterial& outMaterial = matStorage.mat.rData.vkMat;
 
 		VkResult res;
@@ -57,14 +57,15 @@ namespace Material
 			vkh::createShaderModule(shaderStageInfo.module, stageDef.shaderPath, GContext.device);
 			shaderStages.push_back(shaderStageInfo);
 		}
-	
+
 		///////////////////////////////////////////////////////////////////////////////
 		//set up descriptorSetLayout
 		///////////////////////////////////////////////////////////////////////////////
 
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> uniformSetBindings;
-
 		uint32_t inputOffset = 0;
+
+
 		for (uint32_t i = 0; i < def.numShaderStages; ++i)
 		{
 			ShaderStageDefinition& stageDef = def.stages[i];
@@ -88,13 +89,13 @@ namespace Material
 		uniformTypes.resize(uniformSetBindings.size());
 
 		//each key is a set
-		for (auto& setPair : uniformSetBindings) 
+		for (auto& setPair : uniformSetBindings)
 		{
 			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setPair.second.data(), static_cast<uint32_t>(setPair.second.size()));
-			
+
 			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[setPair.first]);
 			uniformTypes[setPair.first] = setPair.second[0].descriptorType;
-		
+
 			for (uint32_t layoutBinding = 0; layoutBinding < setPair.second.size(); ++layoutBinding)
 			{
 				inOrderBindings.push_back(setPair.second[layoutBinding]);
@@ -140,7 +141,7 @@ namespace Material
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.layoutCount);		
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.layoutCount);
 
 		if (def.pcBlock.sizeBytes > 0)
 		{
@@ -154,7 +155,7 @@ namespace Material
 
 			matStorage.mat.rData.pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.numBlockMembers * 2);
 			matStorage.mat.rData.pushConstantSize = def.pcBlock.sizeBytes;
-			
+
 			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
 
 			matStorage.mat.rData.pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
@@ -168,7 +169,7 @@ namespace Material
 			}
 		}
 
-	
+
 
 		res = vkCreatePipelineLayout(GContext.device, &pipelineLayoutInfo, nullptr, &outMaterial.pipelineLayout);
 		assert(res == VK_SUCCESS);
@@ -191,7 +192,7 @@ namespace Material
 		VkViewport viewport = vkh::viewport(0, 0, static_cast<float>(GContext.swapChain.extent.width), static_cast<float>(GContext.swapChain.extent.height));
 		VkRect2D scissor = vkh::rect2D(0, 0, GContext.swapChain.extent.width, GContext.swapChain.extent.height);
 		VkPipelineViewportStateCreateInfo viewportState = vkh::pipelineViewportStateCreateInfo(&viewport, 1, &scissor, 1);
-		
+
 		VkPipelineRasterizationStateCreateInfo rasterizer = vkh::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
 		VkPipelineMultisampleStateCreateInfo multisampling = vkh::pipelineMultisampleStateCreateInfo();
 
@@ -202,7 +203,7 @@ namespace Material
 		def.depthWrite = false;
 		VkPipelineDepthStencilStateCreateInfo depthStencil = vkh::pipelineDepthStencilStateCreateInfo(
 			def.depthTest ? VK_TRUE : VK_FALSE,
-			def.depthWrite ? VK_TRUE : VK_FALSE, 
+			def.depthWrite ? VK_TRUE : VK_FALSE,
 			VK_COMPARE_OP_LESS);
 
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -252,97 +253,94 @@ namespace Material
 
 		std::vector<VkDescriptorBufferInfo> uniformBufferInfos;
 		std::vector<VkDescriptorImageInfo> imageInfos;
+		uint32_t lastSize = 0;
+		uint32_t lastSet = 0;
 
-		for (uint32_t i = 0; i < def.numShaderStages; ++i)
+		for (uint32_t i = 0; i < def.numInputs; ++i)
 		{
-			ShaderStageDefinition& stageDef = def.stages[i];
 
-			if (stageDef.numInputs > 0)
+			ShaderInput& inputDef = def.inputs[i + inputOffset];
+			size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
+
+			VkDescriptorBufferInfo* bufferPtr = nullptr;
+			VkDescriptorImageInfo* imageInfoPtr = nullptr;
+
+			if (inputDef.type == InputType::UNIFORM)
 			{
-				std::vector<VkBuffer> staticBuffers;
 
-				size_t lastSize = 0;
-				for (uint32_t j = 0; j < stageDef.numInputs; ++j)
+				VkDescriptorBufferInfo uniformBufferInfo;
+
+				//for now, only allocate 1
+				vkh::createBuffer(matStorage.mat.rData.staticBuffer,
+					matStorage.mat.rData.staticMem,
+					dynamicAlignment,
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+					GContext.gpu.device,
+					GContext.device);
+
+				uniformBufferInfo.buffer = matStorage.mat.rData.staticBuffer;
+				uniformBufferInfo.offset = lastSet == inputDef.set ? lastSize : 0;
+				uniformBufferInfo.range = dynamicAlignment;
+
+				lastSize += dynamicAlignment;
+				if (lastSet != inputDef.set)
 				{
-					ShaderInput& inputDef = def.inputs[j + inputOffset];
-					size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
-					
-					VkDescriptorBufferInfo* bufferPtr		= nullptr;
-					VkDescriptorImageInfo* imageInfoPtr		= nullptr;
-
-					if (inputDef.type == InputType::UNIFORM)
-					{
-						
-						VkDescriptorBufferInfo uniformBufferInfo;
-
-						//for now, only allocate 1
-						vkh::createBuffer(matStorage.mat.rData.staticBuffer,
-							matStorage.mat.rData.staticMem,
-							dynamicAlignment,
-							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-							GContext.gpu.device,
-							GContext.device);
-
-						uniformBufferInfo.buffer = matStorage.mat.rData.staticBuffer;
-						uniformBufferInfo.offset = lastSize;
-						uniformBufferInfo.range = dynamicAlignment;
-						lastSize = dynamicAlignment;
-
-						uniformBufferInfos.push_back(uniformBufferInfo);
-						bufferPtr = &uniformBufferInfos[uniformBufferInfos.size() - 1];
-
-						void* mappedStagingBuffer;
-
-						vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
-
-						char* defaultData = (char*)malloc(inputDef.sizeBytes);
-
-						memset(defaultData, 0, inputDef.sizeBytes);
-
-						for (uint32_t k = 0; k < inputDef.numBlockMembers; ++k)
-						{
-							memcpy(&defaultData[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
-						}
-
-
-						memcpy(mappedStagingBuffer, defaultData, inputDef.sizeBytes);
-
-						free(defaultData);
-					}
-					else if (inputDef.type == InputType::SAMPLER)
-					{
-						VkDescriptorImageInfo imageInfo = {};
-
-						uint32_t tex = Texture::make(inputDef.defaultValue);
-
-						TextureRenderData* texData = Texture::getRenderData(tex);
-						imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-						imageInfo.imageView = texData->view;
-						imageInfo.sampler = texData->sampler;
-
-						imageInfos.push_back(imageInfo);
-						imageInfoPtr = &imageInfos[imageInfos.size() - 1];
-					}
-
-					VkWriteDescriptorSet descriptorWrite = {};
-					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					descriptorWrite.dstSet = outMaterial.descSets[curDescSet++];
-					descriptorWrite.dstBinding = inputDef.binding; //refers to binding in shader
-					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = inputTypeEnumToVkEnum(inputDef.type);
-					descriptorWrite.descriptorCount = 1;
-					descriptorWrite.pBufferInfo = bufferPtr;
-					descriptorWrite.pImageInfo = imageInfoPtr; // Optional
-					descriptorWrite.pTexelBufferView = nullptr; // Optional
-					descSetWrites.push_back(descriptorWrite);
+					lastSize = 0;
 				}
-				inputOffset += stageDef.numInputs;
+				lastSet = inputDef.set;
 
+				uniformBufferInfos.push_back(uniformBufferInfo);
+				bufferPtr = &uniformBufferInfos[uniformBufferInfos.size() - 1];
+
+				void* mappedStagingBuffer;
+
+				vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
+
+				char* defaultData = (char*)malloc(inputDef.sizeBytes);
+
+				memset(defaultData, 0, inputDef.sizeBytes);
+
+				for (uint32_t k = 0; k < inputDef.numBlockMembers; ++k)
+				{
+					memcpy(&defaultData[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
+				}
+
+
+				memcpy(mappedStagingBuffer, defaultData, inputDef.sizeBytes);
+
+				free(defaultData);
 			}
+			else if (inputDef.type == InputType::SAMPLER)
+			{
+				VkDescriptorImageInfo imageInfo = {};
+
+				uint32_t tex = Texture::make(inputDef.defaultValue);
+
+				TextureRenderData* texData = Texture::getRenderData(tex);
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = texData->sampler;
+
+				imageInfos.push_back(imageInfo);
+				imageInfoPtr = &imageInfos[imageInfos.size() - 1];
+			}
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = outMaterial.descSets[curDescSet++];
+			descriptorWrite.dstBinding = inputDef.binding; //refers to binding in shader
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(inputDef.type);
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = bufferPtr;
+			descriptorWrite.pImageInfo = imageInfoPtr; // Optional
+			descriptorWrite.pTexelBufferView = nullptr; // Optional
+			descSetWrites.push_back(descriptorWrite);
 		}
 
-		
+
+		//it's kinda weird that the order of desc writes has to be the order of sets. 
 		vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
 	}
 
