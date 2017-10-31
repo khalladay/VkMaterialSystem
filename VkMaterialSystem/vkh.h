@@ -96,7 +96,7 @@ namespace vkh
 		VkSemaphore				renderFinishedSemaphore;
 
 		VkDescriptorPool		uniformBufferDescPool;
-		VkDescriptorPool		dynamicUniformBufferDescPool;
+		VkDescriptorPool		descriptorPool;
 		VkDescriptorPool		samplerDescPool;
 
 		//hate this being here, but if material can create itself
@@ -169,7 +169,7 @@ namespace vkh
 	void createVkSemaphore(VkSemaphore& outSemaphore, const VkDevice& device);
 
 	void createRenderPass(VkRenderPass& outPass, std::vector<VkAttachmentDescription>& colorAttachments, VkAttachmentDescription* depthAttachment, const VkDevice& device);
-	void createDescriptorPool(VkDescriptorPool& outPool, const VkDevice& device, VkDescriptorType descriptorType, uint32_t maxDescriptors);
+	void createDescriptorPool(VkDescriptorPool& outPool, const VkDevice& device, std::vector<VkDescriptorType>& descriptorTypes, std::vector<uint32_t>& maxDescriptors);
 	void createFence(VkFence& outFence, VkDevice& device);
 
 	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size);

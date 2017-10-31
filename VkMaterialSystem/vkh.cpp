@@ -44,9 +44,20 @@ namespace vkh
 		createCommandPool(outContext.presentCommandPool, outContext.device, outContext.gpu, outContext.gpu.presentQueueFamilyIdx);
 
 		//since we're only creating one of these for each material, this means we'll support 128 materials
-		createDescriptorPool(outContext.dynamicUniformBufferDescPool, outContext.device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 128); 
-		createDescriptorPool(outContext.uniformBufferDescPool, outContext.device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 128);
-		createDescriptorPool(outContext.samplerDescPool, outContext.device, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128);
+
+		std::vector<VkDescriptorType> types;
+		types.reserve(3);
+		types.push_back(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+		types.push_back(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		types.push_back(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+		std::vector<uint32_t> counts;
+		counts.reserve(3);
+		counts.push_back(128);
+		counts.push_back(128);
+		counts.push_back(128);
+
+		createDescriptorPool(outContext.descriptorPool, outContext.device, types, counts);
 
 		createVkSemaphore(outContext.imageAvailableSemaphore, outContext.device);
 		createVkSemaphore(outContext.renderFinishedSemaphore, outContext.device);
@@ -670,17 +681,27 @@ namespace vkh
 		assert(res == VK_SUCCESS);
 	}
 
-	void createDescriptorPool(VkDescriptorPool& outPool, const VkDevice& device, VkDescriptorType descriptorType, uint32_t maxDescriptors)
+	void createDescriptorPool(VkDescriptorPool& outPool, const VkDevice& device, std::vector<VkDescriptorType>& descriptorTypes, std::vector<uint32_t>& maxDescriptors)
 	{
-		VkDescriptorPoolSize poolSize = {};
-		poolSize.type = descriptorType;
-		poolSize.descriptorCount = maxDescriptors;
+		std::vector<VkDescriptorPoolSize> poolSizes;
+		poolSizes.reserve(descriptorTypes.size());
+		uint32_t summedDescCount = 0;
+
+		for (uint32_t i = 0; i < descriptorTypes.size(); ++i)
+		{
+			VkDescriptorPoolSize poolSize = {};
+			poolSize.type = descriptorTypes[i];
+			poolSize.descriptorCount = maxDescriptors[i];
+			poolSizes.push_back(poolSize);
+
+			summedDescCount += poolSize.descriptorCount;
+		}
 
 		VkDescriptorPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
-		poolInfo.maxSets = maxDescriptors;
+		poolInfo.poolSizeCount = poolSizes.size();
+		poolInfo.pPoolSizes = &poolSizes[0];
+		poolInfo.maxSets = summedDescCount;
 
 		VkResult res = vkCreateDescriptorPool(device, &poolInfo, nullptr, &outPool);
 		assert(res == VK_SUCCESS);
