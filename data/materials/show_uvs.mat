@@ -1,35 +1,50 @@
 {
-"shaders":[
-	{
-		"stage": "vertex",
-		"shader": "vertex_uvs",
-		"uniforms": [{
-			"name":"INST_STATIC",
-			"members":[{
-			"name":"offset",
-			"value":[0.25,0.25,0.0]
-			}]
-		}]
-	},
-	{
-		"stage": "fragment",
-		"shader": "fragment_passthrough",
-		"uniforms": [{
-			"name": "INST_STATIC",
-			"members": [{
-				"name": "tint",
-				"value": [1.0, 0.0, 1.0, 1.0]
+	"shaders":
+	[
+		{
+			"stage":"vertex",
+			"shader":"vertex_uvs"
+		},
+		{
+			"stage":"fragment",
+			"shader":"fragment_passthrough"
+		}
+	]
+	"defaults":
+	[
+		{
+			"name":"material"
+			"values":[
+			{
+				"name":"albedo",
+				"value":"../data/textures/derpy_dog.jpg"
+			},
+			{
+				"name":"tint",
+				"value":[1.0,0.0,1.0,1.0]
 			},
 			{
 				"name":"tint2",
 				"value":[1.0,1.0,0.0]
 			}]
-		}],
-		"textures":[{
-			"name":"texSampler",
-			"texture":"../data/textures/derpy_dog.jpg"
-		}
-		]
-	}
+		},
+		{
+			"name":"instance"
+			"values":[
+			{
+				"name":"albedo",
+				"value":"../data/textures/derpy_dog.jpg"
+			},
+			{
+				"name":"tint",
+				"value":[1.0,0.0,1.0,1.0]
+			},
+			{
+				"name":"tint2",
+				"value":[1.0,1.0,0.0]
+			}]
+		},
+
+	]
 ]
-}
+
