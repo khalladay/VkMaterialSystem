@@ -13,9 +13,9 @@ void createUniformBlockForResource(UniformBlock* outBlock, spirv_cross::Resource
 {	
 	uint32_t id = res.id;
 	std::vector<spirv_cross::BufferRange> ranges = compiler.get_active_buffer_ranges(id);
+	const spirv_cross::SPIRType& ub_type = compiler.get_type(res.base_type_id);
 
 	outBlock->name = res.name;
-
 	uint32_t totalSize = 0;
 	for (auto& range : ranges)
 	{
@@ -35,7 +35,7 @@ void createUniformBlockForResource(UniformBlock* outBlock, spirv_cross::Resource
 		outBlock->members.push_back(mem);
 	}
 
-	outBlock->size = totalSize;
+	outBlock->size = compiler.get_declared_struct_size(ub_type);
 	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
 }
