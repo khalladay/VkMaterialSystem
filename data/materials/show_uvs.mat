@@ -2,49 +2,29 @@
 	"shaders":
 	[
 		{
-			"stage":"vertex",
-			"shader":"vertex_uvs"
+			"stage": "vertex",
+			"shader": "vertex_uvs"
 		},
 		{
-			"stage":"fragment",
-			"shader":"fragment_passthrough"
+			"stage": "fragment",
+			"shader": "fragment_passthrough",
+			"inputs": 
+			[
+				{
+					"name": "texSampler",
+					"value":"../data/textures/derpy_dog.jpg"
+				},
+				{
+					"name":"tinting",
+					"members": 
+					[
+						{
+							"name": "tint",
+							"value": [1.0, 0.0, 1.0, 1.0]
+						}
+					]
+				}
+			]
 		}
 	]
-	"defaults":
-	[
-		{
-			"name":"material"
-			"values":[
-			{
-				"name":"albedo",
-				"value":"../data/textures/derpy_dog.jpg"
-			},
-			{
-				"name":"tint",
-				"value":[1.0,0.0,1.0,1.0]
-			},
-			{
-				"name":"tint2",
-				"value":[1.0,1.0,0.0]
-			}]
-		},
-		{
-			"name":"instance"
-			"values":[
-			{
-				"name":"albedo",
-				"value":"../data/textures/derpy_dog.jpg"
-			},
-			{
-				"name":"tint",
-				"value":[1.0,0.0,1.0,1.0]
-			},
-			{
-				"name":"tint2",
-				"value":[1.0,1.0,0.0]
-			}]
-		},
-
-	]
-]
-
+}

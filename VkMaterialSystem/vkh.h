@@ -95,9 +95,7 @@ namespace vkh
 		VkSemaphore				imageAvailableSemaphore;
 		VkSemaphore				renderFinishedSemaphore;
 
-		VkDescriptorPool		uniformBufferDescPool;
 		VkDescriptorPool		descriptorPool;
-		VkDescriptorPool		samplerDescPool;
 
 		//hate this being here, but if material can create itself
 		//this is where it has to live, otherwise rendering has to return

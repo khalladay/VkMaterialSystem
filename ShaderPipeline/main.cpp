@@ -16,15 +16,12 @@ void createUniformBlockForResource(UniformBlock* outBlock, spirv_cross::Resource
 	const spirv_cross::SPIRType& ub_type = compiler.get_type(res.base_type_id);
 
 	outBlock->name = res.name;
-	uint32_t totalSize = 0;
 	for (auto& range : ranges)
 	{
 		BlockMember mem;
 		mem.name = compiler.get_member_name(res.base_type_id, range.index);
 		mem.size = range.range;
 		mem.offset = range.offset;
-
-		totalSize += mem.size;
 
 		auto type = compiler.get_type(res.type_id);
 

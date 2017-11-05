@@ -1,5 +1,7 @@
 #pragma once
 #include "stdafx.h"
+#include <map>
+#include <vector>
 
 #if 0
 Still remaining to do: 
@@ -22,14 +24,14 @@ Still remaining to do:
 struct MaterialAsset;
 struct MaterialRenderData;
 
-enum class ShaderStage : uint8_t
+typedef enum ShaderStage
 {
-	VERTEX,
-	FRAGMENT,
-	GEOMETRY,
-	COMPUTE,
-	MAX
-};
+	NONE = 0,
+	VERTEX = 0x00000001,
+	FRAGMENT = 0x00000010,
+	GEOMETRY = 0x00000008,
+	COMPUTE = 0x00000020
+}ShaderStage;
 
 enum class InputType : uint8_t
 {
@@ -48,15 +50,13 @@ struct BlockMember
 
 struct ShaderInput
 {
-	ShaderStage owningStage;
+	std::vector<ShaderStage> owningStages;
 	InputType type;
 	uint8_t set;
 	uint8_t binding;
-	uint8_t numBlockMembers;
 	uint32_t sizeBytes;
 
-	//null for sampler
-	BlockMember* blockMembers;
+	std::vector<BlockMember> blockMembers;
 
 	char name[32];
 	char defaultValue[64];
@@ -66,7 +66,6 @@ struct ShaderStageDefinition
 {
 	ShaderStage stage;
 	char shaderPath[256];
-	uint8_t numInputs;
 };
 
 struct MaterialDefinition
@@ -76,13 +75,8 @@ struct MaterialDefinition
 
 	ShaderInput pcBlock;
 
-	uint32_t numShaderStages;
-	ShaderStageDefinition* stages;
-
-	//in order based on set
-	ShaderInput* inputs;
-	uint32_t numInputs;
-
+	std::vector<ShaderStageDefinition> stages;
+	std::map<uint32_t, std::vector<ShaderInput>> inputs;
 };
 
 namespace Material

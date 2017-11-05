@@ -1,9 +1,14 @@
 {
-    "samplers": [
+    "push_constants": {
+        "size": 16,
+        "elements": []
+    },
+    "inputs": [
         {
             "name": "texSampler",
             "binding": 0,
-            "set": 0
+            "set": 2,
+            "type": "SAMPLER"
         }
     ]
 }

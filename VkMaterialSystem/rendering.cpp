@@ -116,7 +116,7 @@ namespace Rendering
 		vkCmdPushConstants(
 			commandBuffers[imageIndex],
 			mat.pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT,
+			Material::getRenderData().pushConstantStages,
 			0,
 			Material::getRenderData().pushConstantSize,
 			Material::getRenderData().pushConstantData);

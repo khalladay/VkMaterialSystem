@@ -70,9 +70,22 @@ std::string getReflectionString(ShaderData& data)
 
 	if (data.uniformBlocks.size() > 0)
 	{
-		writer.Key("uniforms");
+		writer.Key("inputs");
 		writer.StartArray();
 
+		for (auto& block : data.textureBlocks)
+		{
+			writer.StartObject();
+			writer.Key("name");
+			writer.String(block.name.c_str());
+			writer.Key("binding");
+			writer.Int(block.binding);
+			writer.Key("set");
+			writer.Int(block.set);
+			writer.Key("type");
+			writer.String("SAMPLER");
+			writer.EndObject();
+		}
 
 		for (auto& block : data.uniformBlocks)
 		{
@@ -87,6 +100,8 @@ std::string getReflectionString(ShaderData& data)
 				writer.Int(block.set);
 				writer.Key("binding");
 				writer.Int(block.binding);
+				writer.Key("type");
+				writer.String("UNIFORM");
 
 				writer.Key("elements");
 				writer.StartArray();
@@ -109,25 +124,6 @@ std::string getReflectionString(ShaderData& data)
 			}
 		}
 
-		writer.EndArray();
-	}
-
-	if (data.textureBlocks.size() > 0)
-	{
-		writer.Key("samplers");
-		writer.StartArray();
-
-		for (auto& block : data.textureBlocks)
-		{
-			writer.StartObject();
-			writer.Key("name");
-			writer.String(block.name.c_str());
-			writer.Key("binding");
-			writer.Int(block.binding);
-			writer.Key("set");
-			writer.Int(block.set);
-			writer.EndObject();
-		}
 		writer.EndArray();
 	}
 

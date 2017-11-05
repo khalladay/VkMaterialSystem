@@ -16,13 +16,22 @@ namespace Material
 
 	};
 
+	InputType stringToInputType(std::string str)
+	{
+		if (str == "UNIFORM") return InputType::UNIFORM;
+		if (str == "SAMPLER") return InputType::SAMPLER;
+		
+		checkf(0, "trying to convert an invalid string to input type");
+		return InputType::PUSH_CONSTANT;
+	}
+
 	ShaderStage stringToShaderStage(std::string str)
 	{
 		if (str == "vertex") return ShaderStage::VERTEX;
 		if (str == "fragment") return ShaderStage::FRAGMENT;
 
 		checkf(0, "Could not parse shader stage from input string when loading material");
-		return ShaderStage::MAX;
+		return ShaderStage::NONE;
 	}
 
 	std::string shaderExtensionForStage(ShaderStage stage)
@@ -92,31 +101,31 @@ namespace Material
 		const Value& shaders = materialDoc["shaders"];
 
 		MaterialDefinition def = {};
-		std::vector<ShaderStageDefinition> shaderStages;
-		shaderStages.resize(shaders.Size());
-
-		std::vector<ShaderInput> inputDefs;
+		def.stages.reserve(shaders.Size());
 
 		for (SizeType i = 0; i < shaders.Size(); i++)
 		{
 			const Value& matStage = shaders[i];
 
-			ShaderStageDefinition& stageDef = shaderStages[i];
+			ShaderStageDefinition stageDef = {};
 			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
-
+			
 			std::string shaderName = std::string(matStage["shader"].GetString());
 			std::string shaderPath = generatedShaderPath + shaderName + shaderExtensionForStage(stageDef.stage);
 			
 			copyCStrAndNullTerminate(stageDef.shaderPath, shaderPath.c_str());
+
 
 			//parse shader reflection file
 
 			std::string reflPath = generatedShaderPath + shaderName + shaderReflExtensionForStage(stageDef.stage);
 			const char* reflData = loadTextFile(reflPath.c_str());
 			size_t reflLen = strlen(reflData);
+			def.stages.push_back(stageDef);
 
 			Document reflDoc;
 			reflDoc.Parse(reflData, reflLen);
+
 			checkf(!reflDoc.HasParseError(), "Error parsing reflection file");
 
 			if (reflDoc.HasMember("push_constants"))
@@ -124,13 +133,15 @@ namespace Material
 				const Value& pushConstants = reflDoc["push_constants"];
 
 				def.pcBlock.binding = 0;
-				def.pcBlock.set = 0;
+
+				checkf(def.pcBlock.sizeBytes == 0 || def.pcBlock.sizeBytes == pushConstants["size"].GetInt(), "Error loading material: multiple stages use push constant block but expect block of different size");
+				
+				def.pcBlock.owningStages.push_back(stageDef.stage);				
 				def.pcBlock.sizeBytes = pushConstants["size"].GetInt();
 
 				const Value& elements = pushConstants["elements"];
 				assert(elements.IsArray());
 
-				std::vector<BlockMember> members;
 				for (SizeType elem = 0; elem < elements.Size(); elem++)
 				{
 					const Value& element = elements[elem];
@@ -141,19 +152,27 @@ namespace Material
 					copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
 					mem.offset = element["offset"].GetInt();
 					mem.size = element["size"].GetInt();
-					members.push_back(mem);
+
+					bool memberAlreadyExists = false;
+					for (uint32_t member = 0; member < def.pcBlock.blockMembers.size(); ++member)
+					{
+						BlockMember& existing = def.pcBlock.blockMembers[member];
+						if (existing.name == mem.name)
+						{
+							memberAlreadyExists = true;
+						}
+					}
+
+					if (!memberAlreadyExists)
+					{
+						def.pcBlock.blockMembers.push_back(mem);
+					}
 				}
-
-				def.pcBlock.numBlockMembers = static_cast<uint32_t>(members.size());
-
-				def.pcBlock.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * def.pcBlock.numBlockMembers);
-				memcpy(def.pcBlock.blockMembers, members.data(), sizeof(BlockMember) * def.pcBlock.numBlockMembers);
-				
 			}
 
-			if (reflDoc.HasMember("uniforms"))
+			if (reflDoc.HasMember("inputs"))
 			{
-				const Value& uniforms = reflDoc["uniforms"];				
+				const Value& uniforms = reflDoc["inputs"];				
 
 				std::vector<std::string> blocksWithDefaultsPresent;
 				const Value& defaultArray = matStage["uniforms"];
@@ -168,129 +187,90 @@ namespace Material
 					const Value& uniform = uniforms[uni];
 
 					ShaderInput blockDef	= {};
-					blockDef.owningStage	= stageDef.stage;
-					blockDef.type			= InputType::UNIFORM;
-					blockDef.binding		= uniform["binding"].GetInt();
-					blockDef.set			= uniform["set"].GetInt();
-					blockDef.sizeBytes		= uniform["size"].GetInt();
+					uint32_t set = uniform["set"].GetInt();
+					blockDef.binding = uniform["binding"].GetInt();
+					blockDef.set = set;
+					blockDef.sizeBytes = uniform["size"].GetInt();
+					blockDef.type = stringToInputType(uniform["type"].GetString()); 
 
-					checkf(uniform["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
-
-					copyCStrAndNullTerminate(&blockDef.name[0], uniform["name"].GetString());
-					const Value& elements = uniform["elements"];
-
-					int blockDefaultsIndex = -1;
-
-					for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
+					//if set already exists, just update this uniform if it already exists
+					if (def.inputs.find(set) != def.inputs.end())
 					{
-						if (!blocksWithDefaultsPresent[d].compare(uniform["name"].GetString()))
+						for (auto& uniform : def.inputs[set])
 						{
-							blockDefaultsIndex = d;
+							if (uniform.binding == blockDef.binding)
+							{
+								checkf(uniform.sizeBytes == blockDef.sizeBytes, "A DescriptorSet binding is shared between stages but each stage expects a different size");
+								checkf(uniform.type == blockDef.type, "A DescriptorSet binding is shared between stages but each stage expects a different type");
+								uniform.owningStages.push_back(stageDef.stage);
+							}
 						}
 					}
-
-					std::vector<BlockMember> members;
-					for (SizeType elem = 0; elem < elements.Size(); elem++)
+					else
 					{
-						const Value& element = elements[elem];
-						
-						BlockMember mem = {};
-						mem.offset		= element["offset"].GetInt();
-						mem.size		= element["size"].GetInt();
+						blockDef.owningStages.push_back(stageDef.stage);
 
-						checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
-						copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
+						checkf(uniform["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
+						copyCStrAndNullTerminate(&blockDef.name[0], uniform["name"].GetString());
 
-						if (blockDefaultsIndex > -1)
+						int blockDefaultsIndex = -1;
+						for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
 						{
-							bool memberHasDefault = false;
-							const Value& defaultItem = matStage["uniforms"][blockDefaultsIndex];
-							const Value& defaultMembers = defaultItem["members"];
-
-							size_t curSize = defaultMembers.Size();
-							memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
-
-
-							const Value& defaultValues = defaultMembers[elem]["value"];
-							for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+							if (!blocksWithDefaultsPresent[d].compare(uniform["name"].GetString()))
 							{
-								mem.defaultValue[dv] = defaultValues[dv].GetFloat();
+								blockDefaultsIndex = d;
 							}
 						}
 
-						members.push_back(mem);
-					}
-
-					blockDef.numBlockMembers = static_cast<uint32_t>(members.size());
-
-					blockDef.blockMembers = (BlockMember*)malloc(sizeof(BlockMember) * blockDef.numBlockMembers);
-					memcpy(blockDef.blockMembers, members.data(), sizeof(BlockMember) * blockDef.numBlockMembers);
-					inputDefs.push_back(blockDef);
-					stageDef.numInputs++;
-				}
-			}
-
-			if (reflDoc.HasMember("samplers"))
-			{
-				const Value& samplers = reflDoc["samplers"];
-
-				std::vector<std::string> samplersWithDefaultPresent;
-				const Value& defaultArray = matStage["textures"];
-				for (SizeType d = 0; d < defaultArray.Size(); ++d)
-				{
-					const Value& default = defaultArray[d];
-					samplersWithDefaultPresent.push_back(default["name"].GetString());
-				}
-
-				for (SizeType s = 0; s < samplers.Size(); ++s)
-				{
-					const Value& element = samplers[s];
-					ShaderInput samp	= {};
-					samp.owningStage	= stageDef.stage;
-					samp.type			= InputType::SAMPLER;
-					samp.binding		= element["binding"].GetInt();
-					samp.set			= element["set"].GetInt();
-
-					int sampDefaultIndex = -1;
-
-					for (uint32_t d = 0; d < samplersWithDefaultPresent.size(); ++d)
-					{
-						if (!samplersWithDefaultPresent[d].compare(element["name"].GetString()))
+						if (blockDefaultsIndex > -1 && blockDef.type == InputType::SAMPLER)
 						{
-							sampDefaultIndex = d;
+							const Value& defaultItem = matStage["inputs"][blockDefaultsIndex];
+							const Value& defaultName = defaultItem["value"];
+							copyCStrAndNullTerminate(&blockDef.defaultValue[0], defaultName.GetString());
 						}
+						else if (blockDef.type == InputType::UNIFORM)
+						{
+							const Value& elements = uniform["elements"];
+
+							for (SizeType elem = 0; elem < elements.Size(); elem++)
+							{
+								const Value& element = elements[elem];
+
+								BlockMember mem = {};
+								mem.offset = element["offset"].GetInt();
+								mem.size = element["size"].GetInt();
+
+								checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
+								copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
+
+								if (blockDefaultsIndex > -1 && blockDef.type == InputType::UNIFORM)
+								{
+									bool memberHasDefault = false;
+									const Value& defaultItem = matStage["inputs"][blockDefaultsIndex];
+									const Value& defaultMembers = defaultItem["members"];
+
+									size_t curSize = defaultMembers.Size();
+									memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
+
+
+									const Value& defaultValues = defaultMembers[elem]["value"];
+									for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+									{
+										mem.defaultValue[dv] = defaultValues[dv].GetFloat();
+									}
+								}
+
+
+								blockDef.blockMembers.push_back(mem);
+							}
+						}
+
+						def.inputs[blockDef.set].push_back(blockDef);
 					}
-
-					checkf(element["name"].GetStringLength() < 31, "sampler names must be less than 32 characters");
-					copyCStrAndNullTerminate(&samp.name[0], element["name"].GetString());
-
-
-					if (sampDefaultIndex > -1)
-					{
-						const Value& defaultItem = matStage["textures"][sampDefaultIndex];
-						const Value& defaultName = defaultItem["texture"];
-						copyCStrAndNullTerminate(&samp.defaultValue[0], defaultName.GetString());
-					}
-
-					inputDefs.push_back(samp);					
-					stageDef.numInputs++;
 				}
 			}
 		}
 
-
-		def.numShaderStages = static_cast<uint32_t>(shaderStages.size());
-		// sort using a lambda expression 
-		std::sort(inputDefs.begin(), inputDefs.end(), [](ShaderInput& a, ShaderInput& b) {
-			return b.set > a.set;
-		});
-
-		def.numInputs = inputDefs.size();
-		def.inputs = (ShaderInput*)malloc(sizeof(ShaderInput) * def.numInputs);
-		memcpy(def.inputs, inputDefs.data(), sizeof(ShaderInput) * def.numInputs);
-
-		def.stages = (ShaderStageDefinition*)malloc(sizeof(ShaderStageDefinition) * def.numShaderStages);
-		memcpy(def.stages, shaderStages.data(), sizeof(ShaderStageDefinition) * def.numShaderStages);
 		free((void*)materialString);
 
 		return def;

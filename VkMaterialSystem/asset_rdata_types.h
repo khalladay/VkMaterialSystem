@@ -14,6 +14,7 @@ struct MaterialRenderData
 	uint32_t* pushConstantLayout;
 	uint32_t pushConstantSize;
 	char* pushConstantData;
+	VkShaderStageFlags pushConstantStages;
 
 	uint32_t* staticBufferLayout;
 
