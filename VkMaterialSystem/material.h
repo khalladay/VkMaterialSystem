@@ -7,7 +7,6 @@
 Still remaining to do: 
 	* support for multiple uniform blocks at different bindings in same set
 	* support for multiple uniform blocks in different snets
-	* support for multiple unifomr blocks in same set but different binding
 	* support for multiple samplers
 	* support for setting images at runtime
 
@@ -37,6 +36,14 @@ enum class InputType : uint8_t
 	UNIFORM,
 	SAMPLER,
 	PUSH_CONSTANT
+};
+
+struct DefaultValue
+{
+	InputType type;
+	uint8_t set;
+	uint8_t binding;
+	char defaultValue[64];
 };
 
 struct BlockMember
