@@ -11,14 +11,14 @@
     },
     "inputs": [
         {
-            "name": "Globals",
-            "size": 32,
-            "set": 0,
+            "name": "Instance",
+            "size": 16,
+            "set": 2,
             "binding": 0,
             "type": "UNIFORM",
             "elements": [
                 {
-                    "name": "time",
+                    "name": "tint",
                     "size": 16,
                     "offset": 0
                 }

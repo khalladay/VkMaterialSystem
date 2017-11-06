@@ -175,7 +175,7 @@ namespace Material
 				const Value& uniforms = reflDoc["inputs"];				
 
 				std::vector<std::string> blocksWithDefaultsPresent;
-				const Value& defaultArray = matStage["uniforms"];
+				const Value& defaultArray = matStage["inputs"];
 				for (SizeType d = 0; d < defaultArray.Size(); ++d)
 				{
 					const Value& default = defaultArray[d];
@@ -194,6 +194,8 @@ namespace Material
 					blockDef.type = stringToInputType(uniform["type"].GetString()); 
 
 					//if set already exists, just update this uniform if it already exists
+
+					bool alreadyExists = false;
 					if (def.inputs.find(set) != def.inputs.end())
 					{
 						for (auto& uniform : def.inputs[set])
@@ -203,10 +205,12 @@ namespace Material
 								checkf(uniform.sizeBytes == blockDef.sizeBytes, "A DescriptorSet binding is shared between stages but each stage expects a different size");
 								checkf(uniform.type == blockDef.type, "A DescriptorSet binding is shared between stages but each stage expects a different type");
 								uniform.owningStages.push_back(stageDef.stage);
+								alreadyExists = true;
 							}
 						}
 					}
-					else
+					
+					if (!alreadyExists)
 					{
 						blockDef.owningStages.push_back(stageDef.stage);
 
@@ -220,6 +224,7 @@ namespace Material
 							{
 								blockDefaultsIndex = d;
 							}
+							
 						}
 
 						if (blockDefaultsIndex > -1 && blockDef.type == InputType::SAMPLER)

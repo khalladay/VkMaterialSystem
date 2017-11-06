@@ -6,7 +6,7 @@
     "inputs": [
         {
             "name": "texSampler",
-            "binding": 0,
+            "binding": 1,
             "set": 2,
             "type": "SAMPLER"
         }

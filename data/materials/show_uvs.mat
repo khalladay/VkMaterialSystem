@@ -3,7 +3,20 @@
 	[
 		{
 			"stage": "vertex",
-			"shader": "vertex_uvs"
+			"shader": "vertex_uvs",
+			"inputs":
+			[
+				{
+					"name":"Instance",
+					"members":
+					[
+						{
+							"name": "tint",
+							"value": [0.0, 0.0, 1.0, 1.0]
+						}
+					]
+				}
+			]
 		},
 		{
 			"stage": "fragment",
@@ -15,12 +28,12 @@
 					"value":"../data/textures/derpy_dog.jpg"
 				},
 				{
-					"name":"tinting",
+					"name":"Instance",
 					"members": 
 					[
 						{
 							"name": "tint",
-							"value": [1.0, 0.0, 1.0, 1.0]
+							"value": [0.0, 0.0, 1.0, 1.0]
 						}
 					]
 				}

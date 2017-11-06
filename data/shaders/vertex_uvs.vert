@@ -12,6 +12,11 @@ layout(binding = 0, set = 0) uniform Globals
 	vec4 mouse;
 }global;
 
+layout(binding = 0, set = 2) uniform Instance
+{
+	vec4 tint;
+}inst_data;
+
 
 layout(location = 0) in vec3 vertex;
 layout(location = 1) in vec2 uv;
@@ -19,7 +24,7 @@ layout(location = 1) in vec2 uv;
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 fragUV;
 
-out gl_PerVertex 
+out gl_PerVertex
 {
     vec4 gl_Position;
 };
@@ -29,8 +34,8 @@ out gl_PerVertex
 void main() 
 {
     gl_Position = vec4(vertex, 1.0);
-	float t = sin( mod(global.time, 1.0)) * 2.0;
-    fragColor = pc.col * t;
+//	float t = sin( mod(global.time, 1.0)) * 2.0;
+    fragColor = pc.col * inst_data.tint;
 	fragUV = uv;
 }
 

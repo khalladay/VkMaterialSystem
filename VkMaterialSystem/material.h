@@ -9,7 +9,6 @@ Still remaining to do:
 	* support for multiple uniform blocks in different snets
 	* support for multiple unifomr blocks in same set but different binding
 	* support for multiple samplers
-	* support for push constant in fragment and vertex shader
 	* support for setting images at runtime
 
 	* write a material validation step that ensures

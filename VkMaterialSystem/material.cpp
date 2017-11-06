@@ -355,7 +355,7 @@ namespace Material
 						{
 							VkDescriptorImageInfo imageInfo = {};
 
-							uint32_t tex = Texture::make("../data/textures/derpy_dog.jpg");
+							uint32_t tex = Texture::make(inputDef.defaultValue);
 
 							TextureRenderData* texData = Texture::getRenderData(tex);
 							imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -382,110 +382,9 @@ namespace Material
 					needsEmpty = false;
 				}
 			}
-			//if (needsEmpty)
-			//{
-			//	VkWriteDescriptorSet descriptorWrite = {};
-			//	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			//	descriptorWrite.dstSet = outMaterial.descSets[curSet];
-			//	descriptorWrite.dstBinding = 0;
-			//	descriptorWrite.dstArrayElement = 0;
-			//	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			//	descriptorWrite.descriptorCount = 0;
-			//	descriptorWrite.pBufferInfo = nullptr;
-			//	descriptorWrite.pImageInfo = nullptr; // Optional
-			//	descriptorWrite.pTexelBufferView = nullptr; // Optional
-			//	descSetWrites.push_back(descriptorWrite);
-			//}
+	
 			curSet++;
-			
-
 		}
-
-		//for (auto& input : def.inputs)
-		//{
-		//	std::vector<ShaderInput>& descSets = input.second;
-		//	for (uint32_t i = 0; i < descSets.size(); ++i)
-		//	{
-		//		ShaderInput& inputDef = descSets[i];
-		//		size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
-
-		//		VkDescriptorBufferInfo* bufferPtr = nullptr;
-		//		VkDescriptorImageInfo* imageInfoPtr = nullptr;
-		//	
-		//		if (inputDef.type == InputType::UNIFORM)
-		//		{
-		//			VkDescriptorBufferInfo uniformBufferInfo;
-
-		//			//for now, only allocate 1
-		//			vkh::createBuffer(matStorage.mat.rData.staticBuffer,
-		//				matStorage.mat.rData.staticMem,
-		//				dynamicAlignment,
-		//				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		//				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		//				GContext.gpu.device,
-		//				GContext.device);
-
-		//			uniformBufferInfo.buffer = matStorage.mat.rData.staticBuffer;
-		//			uniformBufferInfo.offset = lastSet == inputDef.set ? lastSize : 0;
-		//			uniformBufferInfo.range = dynamicAlignment;
-
-		//			lastSize += dynamicAlignment;
-		//			if (lastSet != inputDef.set)
-		//			{
-		//				lastSize = 0;
-		//			}
-		//			lastSet = inputDef.set;
-
-		//			uniformBufferInfos.push_back(uniformBufferInfo);
-		//			bufferPtr = &uniformBufferInfos[uniformBufferInfos.size() - 1];
-
-		//			void* mappedStagingBuffer;
-
-		//			vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
-
-		//			char* defaultData = (char*)malloc(inputDef.sizeBytes);
-
-		//			memset(defaultData, 0, inputDef.sizeBytes);
-
-		//			for (uint32_t k = 0; k < inputDef.blockMembers.size(); ++k)
-		//			{
-		//				memcpy(&defaultData[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
-		//			}
-
-		//			memcpy(mappedStagingBuffer, defaultData, inputDef.sizeBytes);
-
-		//			free(defaultData);
-		//		}
-		//		else if (inputDef.type == InputType::SAMPLER)
-		//		{
-		//			VkDescriptorImageInfo imageInfo = {};
-
-		//			uint32_t tex = Texture::make("../data/textures/derpy_dog.jpg");
-
-		//			TextureRenderData* texData = Texture::getRenderData(tex);
-		//			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		//			imageInfo.imageView = texData->view;
-		//			imageInfo.sampler = texData->sampler;
-
-		//			imageInfos.push_back(imageInfo);
-		//			imageInfoPtr = &imageInfos[imageInfos.size() - 1];
-		//		}
-
-		//		VkWriteDescriptorSet descriptorWrite = {};
-		//		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//		descriptorWrite.dstSet = outMaterial.descSets[curDescSet++];
-		//		descriptorWrite.dstBinding = inputDef.binding; //refers to binding in shader
-		//		descriptorWrite.dstArrayElement = 0;
-		//		descriptorWrite.descriptorType = inputTypeEnumToVkEnum(inputDef.type);
-		//		descriptorWrite.descriptorCount = 1;
-		//		descriptorWrite.pBufferInfo = bufferPtr;
-		//		descriptorWrite.pImageInfo = imageInfoPtr; // Optional
-		//		descriptorWrite.pTexelBufferView = nullptr; // Optional
-		//		descSetWrites.push_back(descriptorWrite);
-
-		//	}
-
-		//}
 
 		//it's kinda weird that the order of desc writes has to be the order of sets. 
 		vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
