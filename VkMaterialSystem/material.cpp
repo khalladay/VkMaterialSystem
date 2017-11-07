@@ -43,8 +43,8 @@ namespace Material
 	{
 		VkShaderStageFlagBits outBits = static_cast<VkShaderStageFlagBits>(0);
 
-		if ((stage & ShaderStage::VERTEX) == ShaderStage::VERTEX) outBits = static_cast<VkShaderStageFlagBits>(outBits | VK_SHADER_STAGE_VERTEX_BIT);
-		if ((stage & ShaderStage::FRAGMENT) == ShaderStage::FRAGMENT) outBits = static_cast<VkShaderStageFlagBits>(outBits | VK_SHADER_STAGE_FRAGMENT_BIT);
+		if (stage == ShaderStage::VERTEX) outBits = static_cast<VkShaderStageFlagBits>(outBits | VK_SHADER_STAGE_VERTEX_BIT);
+		if (stage == ShaderStage::FRAGMENT) outBits = static_cast<VkShaderStageFlagBits>(outBits | VK_SHADER_STAGE_FRAGMENT_BIT);
 		
 		checkf((int)outBits > 0, "Error converting ShaderStage to VK Enum");
 		return outBits;
@@ -94,9 +94,9 @@ namespace Material
 			{
 				if (input.first == curSet)
 				{
-					std::vector<ShaderInput>& setBindingCollection = input.second;
+					std::vector<DescriptorSetBinding>& setBindingCollection = input.second;
 
-					std::sort(setBindingCollection.begin(), setBindingCollection.end(), [](const ShaderInput& lhs, const ShaderInput& rhs)
+					std::sort(setBindingCollection.begin(), setBindingCollection.end(), [](const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs)
 					{
 						return lhs.binding < rhs.binding;
 					});
@@ -298,10 +298,10 @@ namespace Material
 			{
 				if (input.first == curSet)
 				{
-					std::vector<ShaderInput>& descSets = input.second;
+					std::vector<DescriptorSetBinding>& descSets = input.second;
 					for (uint32_t i = 0; i < descSets.size(); ++i)
 					{
-						ShaderInput& inputDef = descSets[i];
+						DescriptorSetBinding& inputDef = descSets[i];
 						size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
 
 						VkDescriptorBufferInfo* bufferPtr = nullptr;

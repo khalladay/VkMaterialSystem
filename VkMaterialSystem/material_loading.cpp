@@ -3,6 +3,7 @@
 #include "file_utils.h"
 #include "string_utils.h"
 #include <vector>
+#include <algorithm>
 
 #include <rapidjson\document.h>
 #include <rapidjson\filereadstream.h>
@@ -22,7 +23,7 @@ namespace Material
 		if (str == "SAMPLER") return InputType::SAMPLER;
 		
 		checkf(0, "trying to convert an invalid string to input type");
-		return InputType::PUSH_CONSTANT;
+		return InputType::MAX;
 	}
 
 	ShaderStage stringToShaderStage(std::string str)
@@ -31,7 +32,7 @@ namespace Material
 		if (str == "fragment") return ShaderStage::FRAGMENT;
 
 		checkf(0, "Could not parse shader stage from input string when loading material");
-		return ShaderStage::NONE;
+		return ShaderStage::MAX;
 	}
 
 	std::string shaderExtensionForStage(ShaderStage stage)
@@ -47,6 +48,7 @@ namespace Material
 	{
 		if (stage == ShaderStage::VERTEX) return ".vert.refl";
 		if (stage == ShaderStage::FRAGMENT) return ".frag.refl";
+
 		checkf(0, "Unsupported shader stage passed to function");
 		return "";
 	}
@@ -59,35 +61,11 @@ namespace Material
 		dst[len - 1] = '\0';
 	}
 
-	template <typename T>
-	bool getValueFromArray(rapidjson::Value& outValue, const rapidjson::Value& array, const char* targetKey, T& targetValue)
-	{
-		using namespace rapidjson;
-		
-		for (SizeType elem = 0; elem < array.Size(); elem++)
-		{
-			const Value& arrayItem = array[elem];
-			if (arrayItem.HasMember(targetKey))
-			{
-				if (arrayItem[targetKey].Is<T>())
-				{
-					if (arrayItem[targetKey].Get<T>() == targetValue)
-					{
-						outValue = arrayItem[targetKey];
-						return true;
-					}
-
-				}
-			}
-		}
-
-		return false;
-	}
-
-
 	MaterialDefinition load(const char* assetPath)
 	{
 		using namespace rapidjson;
+
+		MaterialDefinition materialDef = {};
 
 		const static std::string generatedShaderPath = "../data/_generated/builtshaders/";
 
@@ -99,29 +77,27 @@ namespace Material
 		checkf(!materialDoc.HasParseError(), "Error parsing material file");
 
 		const Value& shaders = materialDoc["shaders"];
-
-		MaterialDefinition def = {};
-		def.stages.reserve(shaders.Size());
+		materialDef.stages.reserve(shaders.Size());
 
 		for (SizeType i = 0; i < shaders.Size(); i++)
 		{
+			ShaderStageDefinition stageDef = {};
+
 			const Value& matStage = shaders[i];
 
-			ShaderStageDefinition stageDef = {};
 			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
 			
 			std::string shaderName = std::string(matStage["shader"].GetString());
 			std::string shaderPath = generatedShaderPath + shaderName + shaderExtensionForStage(stageDef.stage);
-			
 			copyCStrAndNullTerminate(stageDef.shaderPath, shaderPath.c_str());
 
 
 			//parse shader reflection file
-
 			std::string reflPath = generatedShaderPath + shaderName + shaderReflExtensionForStage(stageDef.stage);
 			const char* reflData = loadTextFile(reflPath.c_str());
+
 			size_t reflLen = strlen(reflData);
-			def.stages.push_back(stageDef);
+			materialDef.stages.push_back(stageDef);
 
 			Document reflDoc;
 			reflDoc.Parse(reflData, reflLen);
@@ -132,12 +108,10 @@ namespace Material
 			{
 				const Value& pushConstants = reflDoc["push_constants"];
 
-				def.pcBlock.binding = 0;
-
-				checkf(def.pcBlock.sizeBytes == 0 || def.pcBlock.sizeBytes == pushConstants["size"].GetInt(), "Error loading material: multiple stages use push constant block but expect block of different size");
+				checkf(materialDef.pcBlock.sizeBytes == 0 || materialDef.pcBlock.sizeBytes == pushConstants["size"].GetInt(), "Error loading material: multiple stages use push constant block but expect block of different size");
 				
-				def.pcBlock.owningStages.push_back(stageDef.stage);				
-				def.pcBlock.sizeBytes = pushConstants["size"].GetInt();
+				materialDef.pcBlock.owningStages.push_back(stageDef.stage);				
+				materialDef.pcBlock.sizeBytes = pushConstants["size"].GetInt();
 
 				const Value& elements = pushConstants["elements"];
 				assert(elements.IsArray());
@@ -154,9 +128,9 @@ namespace Material
 					mem.size = element["size"].GetInt();
 
 					bool memberAlreadyExists = false;
-					for (uint32_t member = 0; member < def.pcBlock.blockMembers.size(); ++member)
+					for (uint32_t member = 0; member < materialDef.pcBlock.blockMembers.size(); ++member)
 					{
-						BlockMember& existing = def.pcBlock.blockMembers[member];
+						BlockMember& existing = materialDef.pcBlock.blockMembers[member];
 						if (existing.name == mem.name)
 						{
 							memberAlreadyExists = true;
@@ -165,14 +139,14 @@ namespace Material
 
 					if (!memberAlreadyExists)
 					{
-						def.pcBlock.blockMembers.push_back(mem);
+						materialDef.pcBlock.blockMembers.push_back(mem);
 					}
 				}
 			}
 
 			if (reflDoc.HasMember("inputs"))
 			{
-				const Value& uniforms = reflDoc["inputs"];				
+				const Value& uniformInputsFromReflData = reflDoc["inputs"];				
 
 				std::vector<std::string> blocksWithDefaultsPresent;
 				const Value& defaultArray = matStage["inputs"];
@@ -182,23 +156,23 @@ namespace Material
 					blocksWithDefaultsPresent.push_back(default["name"].GetString());
 				}
 
-				for (SizeType uni = 0; uni < uniforms.Size(); uni++)
+				for (SizeType uni = 0; uni < uniformInputsFromReflData.Size(); uni++)
 				{
-					const Value& uniform = uniforms[uni];
+					const Value& currentInputFromReflData = uniformInputsFromReflData[uni];
 
-					ShaderInput blockDef	= {};
-					uint32_t set = uniform["set"].GetInt();
-					blockDef.binding = uniform["binding"].GetInt();
+					DescriptorSetBinding blockDef	= {};
+					uint32_t set = currentInputFromReflData["set"].GetInt();
+					blockDef.binding = currentInputFromReflData["binding"].GetInt();
 					blockDef.set = set;
-					blockDef.sizeBytes = uniform["size"].GetInt();
-					blockDef.type = stringToInputType(uniform["type"].GetString()); 
+					blockDef.sizeBytes = currentInputFromReflData["size"].GetInt();
+					blockDef.type = stringToInputType(currentInputFromReflData["type"].GetString()); 
 
 					//if set already exists, just update this uniform if it already exists
 
 					bool alreadyExists = false;
-					if (def.inputs.find(set) != def.inputs.end())
+					if (materialDef.inputs.find(set) != materialDef.inputs.end())
 					{
-						for (auto& uniform : def.inputs[set])
+						for (auto& uniform : materialDef.inputs[set])
 						{
 							if (uniform.binding == blockDef.binding)
 							{
@@ -214,63 +188,79 @@ namespace Material
 					{
 						blockDef.owningStages.push_back(stageDef.stage);
 
-						checkf(uniform["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
-						copyCStrAndNullTerminate(&blockDef.name[0], uniform["name"].GetString());
+						checkf(currentInputFromReflData["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
+						copyCStrAndNullTerminate(&blockDef.name[0], currentInputFromReflData["name"].GetString());
 
 						int blockDefaultsIndex = -1;
 						for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
 						{
-							if (!blocksWithDefaultsPresent[d].compare(uniform["name"].GetString()))
+							if (!blocksWithDefaultsPresent[d].compare(currentInputFromReflData["name"].GetString()))
 							{
 								blockDefaultsIndex = d;
 							}
-							
 						}
 
-						if (blockDefaultsIndex > -1 && blockDef.type == InputType::SAMPLER)
+						//add all members to block definition
+						const Value& reflBlockMembers = currentInputFromReflData["members"];
+						for (SizeType m = 0; m < reflBlockMembers.Size(); m++)
 						{
-							const Value& defaultItem = matStage["inputs"][blockDefaultsIndex];
-							const Value& defaultName = defaultItem["value"];
-							copyCStrAndNullTerminate(&blockDef.defaultValue[0], defaultName.GetString());
-						}
-						else if (blockDef.type == InputType::UNIFORM)
-						{
-							const Value& elements = uniform["elements"];
+							const Value& reflBlockMember = reflBlockMembers[m];
 
-							for (SizeType elem = 0; elem < elements.Size(); elem++)
+							BlockMember mem = {};
+							mem.offset = reflBlockMember["offset"].GetInt();
+							mem.size = reflBlockMember["size"].GetInt();
+
+							checkf(reflBlockMember["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
+							copyCStrAndNullTerminate(&mem.name[0], reflBlockMember["name"].GetString());
+							blockDef.blockMembers.push_back(mem);
+						}
+
+
+						if (blockDefaultsIndex > -1)
+						{
+							const Value& defaultItem = defaultArray[blockDefaultsIndex];
+
+							if (blockDef.type == InputType::SAMPLER)
 							{
-								const Value& element = elements[elem];
+								const Value& defaultValue = defaultItem["value"];
+								copyCStrAndNullTerminate(&blockDef.defaultValue[0], defaultValue.GetString());
+							}
+							else
+							{
+								const Value& defaultBlockMembers = defaultItem["members"];
 
-								BlockMember mem = {};
-								mem.offset = element["offset"].GetInt();
-								mem.size = element["size"].GetInt();
-
-								checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
-								copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
-
-								if (blockDefaultsIndex > -1 && blockDef.type == InputType::UNIFORM)
+								for (SizeType m = 0; m < blockDef.blockMembers.size(); m++)
 								{
-									bool memberHasDefault = false;
-									const Value& defaultItem = matStage["inputs"][blockDefaultsIndex];
-									const Value& defaultMembers = defaultItem["members"];
+									const Value& reflBlockMember = reflBlockMembers[m];
+									uint32_t offset = reflBlockMember["offset"].GetInt();
+									uint32_t size = reflBlockMember["size"].GetInt();
 
-									size_t curSize = defaultMembers.Size();
-									memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
+									auto iter = std::find_if(blockDef.blockMembers.begin(), blockDef.blockMembers.end(), [size, offset](BlockMember& mem) {
+										return mem.offset == offset && mem.size == size;
+									});
 
-
-									const Value& defaultValues = defaultMembers[elem]["value"];
-									for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+									if (iter._Ptr)
 									{
-										mem.defaultValue[dv] = defaultValues[dv].GetFloat();
+										BlockMember& mem = *iter;
+
+										memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
+
+										const Value& defaultValues = defaultBlockMembers[m]["value"];
+
+										float* defaultFloats = (float*)mem.defaultValue;
+
+										for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+										{
+
+											defaultFloats[dv] = defaultValues[dv].GetFloat();
+										}
 									}
 								}
 
-
-								blockDef.blockMembers.push_back(mem);
 							}
 						}
 
-						def.inputs[blockDef.set].push_back(blockDef);
+						materialDef.inputs[blockDef.set].push_back(blockDef);
 					}
 				}
 			}
@@ -278,6 +268,6 @@ namespace Material
 
 		free((void*)materialString);
 
-		return def;
+		return materialDef;
 	}
 }

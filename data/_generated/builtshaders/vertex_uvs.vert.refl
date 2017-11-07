@@ -16,7 +16,7 @@
             "set": 2,
             "binding": 0,
             "type": "UNIFORM",
-            "elements": [
+            "members": [
                 {
                     "name": "tint",
                     "size": 16,

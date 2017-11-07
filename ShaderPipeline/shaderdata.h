@@ -103,7 +103,7 @@ std::string getReflectionString(ShaderData& data)
 				writer.Key("type");
 				writer.String("UNIFORM");
 
-				writer.Key("elements");
+				writer.Key("members");
 				writer.StartArray();
 
 				for (uint32_t i = 0; i < block.members.size(); ++i)

@@ -22,28 +22,18 @@ Still remaining to do:
 struct MaterialAsset;
 struct MaterialRenderData;
 
-typedef enum ShaderStage
+enum class ShaderStage : uint8_t
 {
-	NONE = 0,
-	VERTEX = 0x00000001,
-	FRAGMENT = 0x00000010,
-	GEOMETRY = 0x00000008,
-	COMPUTE = 0x00000020
-}ShaderStage;
+	VERTEX,
+	FRAGMENT,
+	MAX
+};
 
 enum class InputType : uint8_t
 {
 	UNIFORM,
 	SAMPLER,
-	PUSH_CONSTANT
-};
-
-struct DefaultValue
-{
-	InputType type;
-	uint8_t set;
-	uint8_t binding;
-	char defaultValue[64];
+	MAX
 };
 
 struct BlockMember
@@ -51,21 +41,27 @@ struct BlockMember
 	char name[32];
 	uint32_t size;
 	uint32_t offset;
-	float defaultValue[16];
+	char defaultValue[64];
 };
 
-struct ShaderInput
+struct PushConstantBlock
 {
+	uint32_t sizeBytes;
 	std::vector<ShaderStage> owningStages;
+	std::vector<BlockMember> blockMembers;
+};
+
+struct DescriptorSetBinding
+{
 	InputType type;
 	uint8_t set;
 	uint8_t binding;
 	uint32_t sizeBytes;
-
-	std::vector<BlockMember> blockMembers;
-
 	char name[32];
 	char defaultValue[64];
+
+	std::vector<ShaderStage> owningStages;
+	std::vector<BlockMember> blockMembers;
 };
 
 struct ShaderStageDefinition
@@ -79,10 +75,10 @@ struct MaterialDefinition
 	bool depthTest;
 	bool depthWrite;
 
-	ShaderInput pcBlock;
+	PushConstantBlock pcBlock;
 
 	std::vector<ShaderStageDefinition> stages;
-	std::map<uint32_t, std::vector<ShaderInput>> inputs;
+	std::map<uint32_t, std::vector<DescriptorSetBinding>> inputs;
 };
 
 namespace Material
