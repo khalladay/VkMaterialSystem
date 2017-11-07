@@ -23,6 +23,20 @@
                     "offset": 0
                 }
             ]
+        },
+        {
+            "name": "Instance2",
+            "size": 16,
+            "set": 2,
+            "binding": 3,
+            "type": "UNIFORM",
+            "members": [
+                {
+                    "name": "tint2",
+                    "size": 16,
+                    "offset": 0
+                }
+            ]
         }
     ]
 }

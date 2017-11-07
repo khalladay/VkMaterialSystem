@@ -21,10 +21,8 @@ struct MaterialRenderData
 //	VkBuffer* staticBuffers;
 
 
-	VkBuffer staticBuffer;
-	VkDeviceMemory staticMem;
-
-
+//	VkBuffer staticBuffer;
+	VkDeviceMemory* staticMems;
 	VkBuffer* staticBuffers;
 	uint32_t numStaticBuffers;
 

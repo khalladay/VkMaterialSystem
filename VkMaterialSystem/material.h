@@ -5,10 +5,10 @@
 
 #if 0
 Still remaining to do: 
-	* support for multiple uniform blocks at different bindings in same set
-	* support for multiple uniform blocks in different snets
+	* support for multiple uniform blocks at different bindings in same set <--- CURRENTLY BROKEN TRYING TO DO THIS
 	* support for multiple samplers
 	* support for setting images at runtime
+	* support for setting uniforms at runtime. 
 
 	* write a material validation step that ensures
 		* push constants are the same in all stages if used

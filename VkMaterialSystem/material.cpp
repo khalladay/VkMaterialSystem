@@ -290,6 +290,14 @@ namespace Material
 
 		curSet = 0;
 		remainingInputs = def.inputs.size();
+		matStorage.mat.rData.staticBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * 2);
+		matStorage.mat.rData.staticMems = (VkDeviceMemory*)malloc(sizeof(VkDeviceMemory) * 2);
+		VkDescriptorBufferInfo* bufferPtr[2];
+		bufferPtr[0] = nullptr;
+		bufferPtr[1] = nullptr;
+
+		uniformBufferInfos.reserve(2);
+		uint32_t curBuffer = 0;
 
 		while (remainingInputs)
 		{
@@ -304,7 +312,7 @@ namespace Material
 						DescriptorSetBinding& inputDef = descSets[i];
 						size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
 
-						VkDescriptorBufferInfo* bufferPtr = nullptr;
+					//	VkDescriptorBufferInfo* bufferPtr = nullptr;
 						VkDescriptorImageInfo* imageInfoPtr = nullptr;
 
 						if (inputDef.type == InputType::UNIFORM)
@@ -312,15 +320,15 @@ namespace Material
 							VkDescriptorBufferInfo uniformBufferInfo;
 
 							//for now, only allocate 1
-							vkh::createBuffer(matStorage.mat.rData.staticBuffer,
-								matStorage.mat.rData.staticMem,
+							vkh::createBuffer(matStorage.mat.rData.staticBuffers[curBuffer],
+								matStorage.mat.rData.staticMems[curBuffer],
 								dynamicAlignment,
 								VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 								GContext.gpu.device,
 								GContext.device);
 
-							uniformBufferInfo.buffer = matStorage.mat.rData.staticBuffer;
+							uniformBufferInfo.buffer = matStorage.mat.rData.staticBuffers[curBuffer];
 							uniformBufferInfo.offset = lastSet == inputDef.set ? lastSize : 0;
 							uniformBufferInfo.range = dynamicAlignment;
 
@@ -332,11 +340,11 @@ namespace Material
 							lastSet = inputDef.set;
 
 							uniformBufferInfos.push_back(uniformBufferInfo);
-							bufferPtr = &uniformBufferInfos[uniformBufferInfos.size() - 1];
+							bufferPtr[curBuffer] = &uniformBufferInfos[uniformBufferInfos.size() - 1];
 
 							void* mappedStagingBuffer;
 
-							vkMapMemory(GContext.device, matStorage.mat.rData.staticMem, 0, dynamicAlignment, 0, &mappedStagingBuffer);
+							vkMapMemory(GContext.device, matStorage.mat.rData.staticMems[curBuffer], 0, dynamicAlignment, 0, &mappedStagingBuffer);
 
 							char* defaultData = (char*)malloc(inputDef.sizeBytes);
 
@@ -348,7 +356,7 @@ namespace Material
 							}
 
 							memcpy(mappedStagingBuffer, defaultData, inputDef.sizeBytes);
-
+							curBuffer++;
 							free(defaultData);
 						}
 						else if (inputDef.type == InputType::SAMPLER)
@@ -373,7 +381,7 @@ namespace Material
 						descriptorWrite.dstArrayElement = 0;
 						descriptorWrite.descriptorType = inputTypeEnumToVkEnum(inputDef.type);
 						descriptorWrite.descriptorCount = 1;
-						descriptorWrite.pBufferInfo = bufferPtr;
+						descriptorWrite.pBufferInfo = bufferPtr[curBuffer-1];
 						descriptorWrite.pImageInfo = imageInfoPtr; // Optional
 						descriptorWrite.pTexelBufferView = nullptr; // Optional
 						descSetWrites.push_back(descriptorWrite);
