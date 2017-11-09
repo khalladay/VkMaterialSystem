@@ -5,7 +5,6 @@
 
 #if 0
 Still remaining to do: 
-	* support for multiple uniform blocks at different bindings in same set <--- CURRENTLY BROKEN TRYING TO DO THIS
 	* support for multiple samplers
 	* support for setting images at runtime
 	* support for setting uniforms at runtime. 
@@ -79,6 +78,7 @@ struct MaterialDefinition
 
 	std::vector<ShaderStageDefinition> stages;
 	std::map<uint32_t, std::vector<DescriptorSetBinding>> inputs;
+	uint32_t inputCount;
 };
 
 namespace Material
@@ -87,9 +87,14 @@ namespace Material
 
 	MaterialRenderData getRenderData();
 	
-	void setPushConstantVector(const char*, glm::vec4& data);
-	void setPushConstantFloat(const char*, float data);
-	void setPushConstantMatrix(const char*, glm::mat4& data);
+	void setPushConstantVector(const char* name, glm::vec4& data);
+	void setPushConstantFloat(const char* name, float data);
+	void setPushConstantMatrix(const char* name, glm::mat4& data);
+
+	void setUniformVector4(const char* name, glm::vec4& data);
+	void setUniformVector2(const char* name, glm::vec2& data);
+	void setUniformFloat(const char* name, float data);
+	void setUniformMatrix(const char* name, glm::mat4& data);
 
 	void destroy();
 }

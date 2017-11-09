@@ -92,3 +92,5 @@ int getMouseDX();
 int getMouseDY();
 int getMouseX();
 int getMouseY();
+int getMouseLeftButton();
+int getMouseRightButton();

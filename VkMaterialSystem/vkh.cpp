@@ -799,6 +799,32 @@ namespace vkh
 		createBuffer(outBuffer, bufferMemory, size, usage, properties, GContext.gpu.device, GContext.device);
 	}
 
+	void createBuffer(VkBuffer& outBuffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+	{
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+
+		std::vector<uint32_t> queues;
+		queues.reserve(2);
+
+		queues.push_back(GContext.gpu.graphicsQueueFamilyIdx);
+
+		if (GContext.gpu.graphicsQueueFamilyIdx != GContext.gpu.transferQueueFamilyIdx)
+		{
+			queues.push_back(GContext.gpu.transferQueueFamilyIdx);
+			bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+		}
+		else bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		bufferInfo.pQueueFamilyIndices = &queues[0];
+		bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(queues.size());
+
+		VkResult res = vkCreateBuffer(GContext.device, &bufferInfo, nullptr, &outBuffer);
+		assert(res == VK_SUCCESS);
+	}
+
 	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, const VkPhysicalDevice& gpu, const VkDevice& device)
 	{
 		VkBufferCreateInfo bufferInfo = {};
@@ -950,6 +976,16 @@ namespace vkh
 		copyRegion.size = size;
 		vkCmdCopyBuffer(buffer.buffer, srcBuffer, dstBuffer, 1, &copyRegion);
 	}
+
+	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size, uint32_t srcOffset, uint32_t dstOffset, VkhCommandBuffer& buffer)
+	{
+		VkBufferCopy copyRegion = {};
+		copyRegion.srcOffset = srcOffset; // Optional
+		copyRegion.dstOffset = dstOffset; // Optional
+		copyRegion.size = size;
+		vkCmdCopyBuffer(buffer.buffer, srcBuffer, dstBuffer, 1, &copyRegion);
+	}
+
 
 	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size)
 	{

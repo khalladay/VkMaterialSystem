@@ -6,6 +6,14 @@ struct MeshRenderData
 	vkh::VkhMesh vkMesh;
 };
 
+struct GlobalMaterialInputs
+{
+	VkDeviceMemory* mem;
+	VkBuffer* data;
+	char* mapped;
+	uint32_t* dataLayout;
+};
+
 struct MaterialRenderData
 {
 	vkh::VkhMaterial vkMat;
@@ -16,23 +24,10 @@ struct MaterialRenderData
 	char* pushConstantData;
 	VkShaderStageFlags pushConstantStages;
 
-	uint32_t* staticBufferLayout;
-
-//	VkBuffer* staticBuffers;
-
-
-//	VkBuffer staticBuffer;
 	VkDeviceMemory* staticMems;
 	VkBuffer* staticBuffers;
-	uint32_t numStaticBuffers;
 
-	uint32_t* dynamicBufferLayout;
-	VkBuffer* dynamicBuffers;
-	VkBuffer* stagingBuffers;
-	VkDeviceMemory dynamicMem;
-
-	uint32_t* offsets;
-	uint32_t numOffsets;
+	VkDeviceMemory staticUniformMem;
 };
 
 struct TextureRenderData

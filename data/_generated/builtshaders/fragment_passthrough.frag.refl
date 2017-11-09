@@ -1,13 +1,7 @@
 {
     "push_constants": {
         "size": 16,
-        "elements": [
-            {
-                "name": "col",
-                "size": 16,
-                "offset": 0
-            }
-        ]
+        "elements": []
     },
     "inputs": [
         {

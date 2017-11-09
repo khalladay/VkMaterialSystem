@@ -22,5 +22,5 @@ void main()
 {
 	vec4 tex = texture(texSampler, fragUV);
 	//tex.rgb *= fragColor;
-    outColor = tex * fragColor * pc.col;
+    outColor = tex * fragColor;
 }

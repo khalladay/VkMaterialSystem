@@ -186,6 +186,9 @@ namespace Material
 					
 					if (!alreadyExists)
 					{
+						bool isGlobalData = (set == 0 && blockDef.binding == 0);
+						materialDef.inputCount++;
+
 						blockDef.owningStages.push_back(stageDef.stage);
 
 						checkf(currentInputFromReflData["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");

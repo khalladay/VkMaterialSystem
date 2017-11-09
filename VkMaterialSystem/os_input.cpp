@@ -176,3 +176,13 @@ int getMouseY()
 {
 	return GInputState.mouseY;
 }
+
+int getMouseLeftButton()
+{
+	return GInputState.mouseState.rgbButtons[0] > 0;
+}
+
+int getMouseRightButton()
+{
+	return GInputState.mouseState.rgbButtons[2] > 0;
+}

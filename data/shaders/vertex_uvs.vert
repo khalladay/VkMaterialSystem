@@ -9,6 +9,7 @@ layout(push_constant) uniform PER_OBJECT
 layout(binding = 0, set = 0) uniform Globals
 {
 	float time;
+	vec2 resolution;
 	vec4 mouse;
 }global;
 

@@ -157,6 +157,7 @@ namespace vkh
 	void createCommandBuffer(VkCommandBuffer& outBuffers, VkCommandPool& pool, const VkDevice& lDevice);
 	void createFrameBuffers(std::vector<VkFramebuffer>& outBuffers, const VkhSwapChain& swapChain, const VkImageView* depthBufferView, const VkRenderPass& renderPass, const VkDevice& device);
 
+	void createBuffer(VkBuffer& outBuffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, const VkPhysicalDevice& gpu, const VkDevice& device);
 
@@ -202,6 +203,8 @@ namespace vkh
 	void createTexSampler(VkSampler& outSampler);
 
 	size_t getUniformBufferAlignment();
+	uint32_t getMemoryType(const VkPhysicalDevice& device, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size, uint32_t srcOffset, uint32_t dstOffset, VkhCommandBuffer& buffer);
 }
 
 

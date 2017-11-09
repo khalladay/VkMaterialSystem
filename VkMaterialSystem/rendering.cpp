@@ -1,6 +1,7 @@
 #include "rendering.h"
 #include "vkh.h"
 #include "os_support.h"
+#include "os_input.h"
 #include "mesh.h"
 #include "asset_rdata_types.h"
 #include "material.h"
@@ -112,6 +113,13 @@ namespace Rendering
 
 		Material::setPushConstantVector("col", glm::vec4(1.0, 1.0, 1.0, 1.0));
 		Material::setPushConstantFloat("time", os_getMilliseconds() / 1000.0f);
+		glm::vec4 mouseData = glm::vec4(0, 0, 0, 0);
+		mouseData.x = getMouseX();
+		mouseData.y = getMouseY();
+		mouseData.z = getMouseLeftButton();
+		mouseData.w = getMouseRightButton();
+
+		Material::setUniformVector4("global.mouse", mouseData);
 
 		vkCmdPushConstants(
 			commandBuffers[imageIndex],
