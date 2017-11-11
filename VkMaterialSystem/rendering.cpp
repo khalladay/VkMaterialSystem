@@ -112,12 +112,12 @@ namespace Rendering
 		VkDeviceSize offsets[] = { 0 };
 
 		Material::setPushConstantVector("col", glm::vec4(1.0, 1.0, 1.0, 1.0));
-		Material::setPushConstantFloat("time", os_getMilliseconds() / 1000.0f);
+		Material::setPushConstantFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 		glm::vec4 mouseData = glm::vec4(0, 0, 0, 0);
-		mouseData.x = getMouseX();
-		mouseData.y = getMouseY();
-		mouseData.z = getMouseLeftButton();
-		mouseData.w = getMouseRightButton();
+		mouseData.x = (float)getMouseX();
+		mouseData.y = (float)getMouseY();
+		mouseData.z = (float)getMouseLeftButton();
+		mouseData.w = (float)getMouseRightButton();
 
 		Material::setUniformVector4("global.mouse", mouseData);
 

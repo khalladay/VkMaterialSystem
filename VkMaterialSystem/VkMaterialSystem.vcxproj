@@ -108,6 +108,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <AdditionalDependencies>vulkan-1.lib;dxguid.lib;Winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -154,7 +155,7 @@
     <ClCompile Include="hash.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="material.cpp" />
-    <ClCompile Include="material_loading.cpp" />
+    <ClCompile Include="material_creation.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="os_input.cpp" />
     <ClCompile Include="os_support.cpp" />
@@ -171,7 +172,7 @@
     <ClInclude Include="array.h" />
     <ClInclude Include="hash.h" />
     <ClInclude Include="material.h" />
-    <ClInclude Include="material_loading.h" />
+    <ClInclude Include="material_creation.h" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="os_input.h" />
     <ClInclude Include="os_support.h" />

@@ -5,13 +5,13 @@ uint64_t MurmurHash64A(const void * key, int len, unsigned int seed);
 
 uint32_t hash(const char* str)
 {
-	return MurmurHash2(str, strlen(str), 255);
+	return MurmurHash2(str, static_cast<int>(strlen(str)), 255);
 }
 
 
 uint64_t hash64(const char* str)
 {
-	return MurmurHash64A(str, strlen(str), 255);
+	return MurmurHash64A(str, static_cast<int>(strlen(str)), 255);
 }
 
 //-----------------------------------------------------------------------------

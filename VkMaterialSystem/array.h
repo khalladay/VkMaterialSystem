@@ -11,10 +11,43 @@ struct Array
 	T* data;
 	uint32_t num;
 	uint32_t capacity;
+
+	T &operator[](uint32_t i);
+	const T &operator[](uint32_t i) const;
+
+	Array &operator=(const Array &other);
 };
+
+
+template <typename T>Array<T> &Array<T>::operator=(const Array<T> &other)
+{
+	const uint32_t n = other._size;
+	array::resize(*this, n);
+	memcpy(_data, other._data, sizeof(T)*n);
+	return *this;
+}
+
+template <typename T> inline T & Array<T>::operator[](uint32_t i)
+{
+#if _DEBUG
+	static_assert(std::is_pod<T>::value);
+	checkf(i < num, "Attempting to read past end of array");
+#endif
+	return _data[i];
+}
+
+template <typename T> inline const T & Array<T>::operator[](uint32_t i) const
+{
+#if _DEBUG
+	static_assert(std::is_pod<T>::value);
+	checkf(i < num, "Attempting to read past end of array");
+#endif
+	return _data[i];
+}
 
 namespace array
 {
+
 	template<typename T> inline void resize(Array<T>& arr, uint32_t newCount)
 	{
 
@@ -51,6 +84,15 @@ namespace array
 		free(a.data);
 		a.data = newData;
 		a.capacity = newCapacity;
+	}
+
+	template <typename T> inline void reserve(Array<T> &a, uint32_t new_capacity)
+	{
+#if _DEBUG
+		static_assert(std::is_pod<T>::value);
+#endif
+		if (new_capacity > a._capacity)
+			set_capacity(a, new_capacity);
 	}
 
 	template<typename T> void grow(Array<T> &a, uint32_t minCapacity)

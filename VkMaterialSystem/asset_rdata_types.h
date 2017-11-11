@@ -24,9 +24,9 @@ struct MaterialRenderData
 	char* pushConstantData;
 	VkShaderStageFlags pushConstantStages;
 
-	VkDeviceMemory* staticMems;
+	//we don't need a layout for static data since it cannot be 
+	//changed after initialization
 	VkBuffer* staticBuffers;
-
 	VkDeviceMemory staticUniformMem;
 };
 

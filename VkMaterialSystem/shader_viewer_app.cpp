@@ -3,7 +3,7 @@
 #include "material.h"
 #include "mesh.h"
 #include "procedural_geo.h"
-#include "material_loading.h"
+#include "material_creation.h"
 #include "texture.h"
 
 namespace App
@@ -13,10 +13,9 @@ namespace App
 		Rendering::init();
 		//Texture::make("../data/textures/test_texture.jpg");
 
-		MaterialDefinition def = { 0 };		
+		Material::Definition def = { 0 };		
 		{
-			def = Material::load("../data/materials/show_uvs.mat");
-			Material::make(def);
+			Material::make("../data/materials/show_uvs.mat");
 		}
 
 
