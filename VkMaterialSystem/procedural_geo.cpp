@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "procedural_geo.h"
 #include "Mesh.h"
 #include <vector>

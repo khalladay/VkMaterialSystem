@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "mesh.h"
 #include "vkh.h"
 #include <map>

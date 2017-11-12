@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 
 //these map to directInput keycodes
 //but I didn't want to have to include directInput

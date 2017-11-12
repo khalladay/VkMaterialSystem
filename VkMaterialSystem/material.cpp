@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "material.h"
 #include "asset_rdata_types.h"
 #include "hash.h"

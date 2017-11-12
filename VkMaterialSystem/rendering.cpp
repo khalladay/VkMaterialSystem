@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "rendering.h"
 #include "vkh.h"
 #include "os_support.h"

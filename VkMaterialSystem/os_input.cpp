@@ -1,4 +1,6 @@
 #pragma once
+#include "stdafx.h"
+
 #include "os_input.h"
 #include "os_support.h"
 

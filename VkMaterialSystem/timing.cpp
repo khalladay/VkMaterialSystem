@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "timing.h"
 #include "os_support.h"
 

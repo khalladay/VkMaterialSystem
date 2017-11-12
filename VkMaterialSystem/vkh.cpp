@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "vkh.h"
 #include "file_utils.h"
 

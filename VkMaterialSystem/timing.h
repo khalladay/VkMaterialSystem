@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 
 #define FPS_DATA_FRAME_HISTORY_SIZE 1000
 
