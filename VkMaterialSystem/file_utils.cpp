@@ -1,7 +1,7 @@
 #include "file_utils.h"
 #include "stdafx.h"
 
-#include <string.h>
+#include <cstring>
 #include <stdio.h>
 
 BinaryBuffer* loadBinaryFile(const char* filepath)

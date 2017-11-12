@@ -1,7 +1,6 @@
 #include "material_creation.h"
 #include "material.h"
 #include "file_utils.h"
-#include "string_utils.h"
 #include "asset_rdata_types.h"
 #include "vkh_initializers.h"
 #include "vkh.h"

@@ -107,9 +107,6 @@
     <ClInclude Include="vkh_initializers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="string_utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="hash.h">
       <Filter>Header Files</Filter>
     </ClInclude>

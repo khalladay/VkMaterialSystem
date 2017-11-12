@@ -180,7 +180,6 @@
     <ClInclude Include="rendering.h" />
     <ClInclude Include="shader_viewer_app.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="string_utils.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="timing.h" />
     <ClInclude Include="vkh.h" />
