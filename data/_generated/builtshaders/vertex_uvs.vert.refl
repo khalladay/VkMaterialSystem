@@ -1,11 +1,16 @@
 {
     "push_constants": {
-        "size": 16,
+        "size": 32,
         "elements": [
+            {
+                "name": "time",
+                "size": 16,
+                "offset": 0
+            },
             {
                 "name": "col",
                 "size": 16,
-                "offset": 0
+                "offset": 16
             }
         ]
     },

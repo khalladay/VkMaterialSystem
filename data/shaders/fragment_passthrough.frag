@@ -9,11 +9,6 @@ layout(binding = 0, set = 0) uniform Globals
 	vec4 mouse;
 }global;
 
-layout(push_constant) uniform PER_OBJECT 
-{ 
-	vec4 col; 
-}pc;
-
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 fragUV;

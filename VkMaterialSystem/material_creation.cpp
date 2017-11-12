@@ -444,6 +444,7 @@ namespace Material
 
 			outAsset.rData->pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
 			outAsset.rData->pushConstantSize = def.pcBlock.sizeBytes;
+			outAsset.rData->pushConstantCount = def.pcBlock.blockMembers.size();
 
 			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
 
@@ -660,39 +661,39 @@ namespace Material
 		}
 
 
-		std::vector<VkDescriptorBufferInfo*> bufferPtrs;
-		bufferPtrs.reserve(staticSizes.size());
+	//	std::vector<VkDescriptorBufferInfo*> bufferPtrs;
+		//bufferPtrs.reserve(staticSizes.size());
 		uniformBufferInfos.reserve(staticSizes.size());
 		curBuffer = 0;
 		lastSize = 0;
 		//we only need to update descriptors that actually exist, and aren't empties
 		for (auto& input : def.inputs)
 		{
-			std::vector<DescriptorSetBinding>& descSets = input.second;
-			for (uint32_t i = 0; i < descSets.size(); ++i)
+			std::vector<DescriptorSetBinding>& bindings = input.second;
+			for (uint32_t i = 0; i < bindings.size(); ++i)
 			{
-				DescriptorSetBinding& inputDef = descSets[i];
+				DescriptorSetBinding& bindingDef = bindings[i];
 				VkDescriptorImageInfo* imageInfoPtr = nullptr;
 
-				if (inputDef.type == InputType::UNIFORM)
+				if (bindingDef.type == InputType::UNIFORM)
 				{
 					VkDescriptorBufferInfo uniformBufferInfo;
-					uniformBufferInfo.buffer = outAsset.rData->staticBuffers[bufferPtrs.size()];
+					uniformBufferInfo.buffer = outAsset.rData->staticBuffers[uniformBufferInfos.size()];
 					uniformBufferInfo.offset = 0;
-					uniformBufferInfo.range = staticSizes[bufferPtrs.size()];
+					uniformBufferInfo.range = staticSizes[uniformBufferInfos.size()];
 
 					lastSize += uniformBufferInfo.range;
 
 					uniformBufferInfos.push_back(uniformBufferInfo);
-					bufferPtrs.push_back(&uniformBufferInfos[uniformBufferInfos.size() - 1]);
+				//	bufferPtrs.push_back(&uniformBufferInfos[uniformBufferInfos.size() - 1]);
 
 					curBuffer++;
 				}
-				else if (inputDef.type == InputType::SAMPLER)
+				else if (bindingDef.type == InputType::SAMPLER)
 				{
 					VkDescriptorImageInfo imageInfo = {};
 
-					uint32_t tex = Texture::make(inputDef.defaultValue);
+					uint32_t tex = Texture::make(bindingDef.defaultValue);
 
 					TextureRenderData* texData = Texture::getRenderData(tex);
 					imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -706,12 +707,12 @@ namespace Material
 				VkWriteDescriptorSet descriptorWrite = {};
 				descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				descriptorWrite.dstSet = outMaterial.descSets[input.first];
-				descriptorWrite.dstBinding = inputDef.binding; //refers to binding in shader
+				descriptorWrite.dstBinding = bindingDef.binding; //refers to binding in shader
 				descriptorWrite.dstArrayElement = 0;
-				descriptorWrite.descriptorType = inputTypeEnumToVkEnum(inputDef.type);
+				descriptorWrite.descriptorType = inputTypeEnumToVkEnum(bindingDef.type);
 				descriptorWrite.descriptorCount = 1;
-				descriptorWrite.pBufferInfo = inputDef.type == InputType::SAMPLER ? 0 : bufferPtrs[curBuffer - 1];
-				descriptorWrite.pImageInfo = inputDef.type == InputType::UNIFORM ? 0 : imageInfoPtr; // Optional
+				descriptorWrite.pBufferInfo = bindingDef.type == InputType::SAMPLER ? 0 : &uniformBufferInfos[curBuffer - 1];
+				descriptorWrite.pImageInfo = bindingDef.type == InputType::UNIFORM ? 0 : imageInfoPtr; // Optional
 				descriptorWrite.pTexelBufferView = nullptr; // Optional
 				descSetWrites.push_back(descriptorWrite);
 			}

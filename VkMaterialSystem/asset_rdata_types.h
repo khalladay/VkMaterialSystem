@@ -21,6 +21,7 @@ struct MaterialRenderData
 	//every odd entry is a hashed string name, every even entry is a value
 	uint32_t* pushConstantLayout;
 	uint32_t pushConstantSize;
+	uint32_t pushConstantCount;
 	char* pushConstantData;
 	VkShaderStageFlags pushConstantStages;
 

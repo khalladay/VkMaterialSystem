@@ -3,6 +3,8 @@
 
 layout(push_constant) uniform PER_OBJECT 
 { 
+	float time;
+
 	vec4 col; 
 }pc;
 
@@ -40,8 +42,8 @@ out gl_PerVertex
 void main() 
 {
     gl_Position = vec4(vertex, 1.0);
-//	float t = sin( mod(global.time, 1.0)) * 2.0;
-    fragColor = pc.col * inst_data.tint * inst_data2.tint2;
+	float t = sin( mod(pc.time, 1.0));
+    fragColor = pc.col * inst_data.tint * inst_data2.tint2 * t;
 	fragUV = uv;
 }
 

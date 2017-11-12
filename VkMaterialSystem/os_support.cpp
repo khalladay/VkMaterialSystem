@@ -9,6 +9,7 @@
 #include <atlstr.h>
 
 struct AppInfo GAppInfo;
+static double initialMS = 0.0;
 
 void(*resizeCallback)(int, int) = nullptr;
 
@@ -84,6 +85,7 @@ HWND os_makeWindow(HINSTANCE Instance, const char* title, unsigned int width, un
 	GAppInfo.wndHdl = wndHdl;
 	GAppInfo.curH = height;
 	GAppInfo.curW = width;
+	initialMS = os_getMilliseconds();
 
 	return wndHdl;
 }
@@ -106,9 +108,9 @@ double os_getMilliseconds()
 	if (s_use_qpc) {
 		LARGE_INTEGER now;
 		QueryPerformanceCounter(&now);
-		return (1000LL * now.QuadPart) / (double)s_frequency.QuadPart;
+		return (1000LL * now.QuadPart) / (double)s_frequency.QuadPart - initialMS;
 	}
 	else {
-		return GetTickCount();
+		return GetTickCount() - initialMS;
 	}
 }
