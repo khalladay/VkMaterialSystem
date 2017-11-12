@@ -5,6 +5,12 @@
             "binding": 1,
             "set": 2,
             "type": "SAMPLER"
+        },
+        {
+            "name": "testSampler",
+            "binding": 0,
+            "set": 1,
+            "type": "SAMPLER"
         }
     ]
 }

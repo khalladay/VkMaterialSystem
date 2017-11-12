@@ -8,13 +8,6 @@ layout(push_constant) uniform PER_OBJECT
 	vec4 col; 
 }pc;
 
-layout(binding = 0, set = 0) uniform Globals
-{
-	float time;
-	vec2 resolution;
-	vec4 mouse;
-}global;
-
 layout(binding = 0, set = 2) uniform Instance
 {
 	vec4 tint;

@@ -36,7 +36,12 @@
 				{
 					"name": "texSampler",
 					"value":"../data/textures/derpy_dog.jpg"
+				},
+				{
+					"name": "testSampler",
+					"value":"../data/textures/test_texture.jpg"
 				}
+
 			]
 		}
 	]

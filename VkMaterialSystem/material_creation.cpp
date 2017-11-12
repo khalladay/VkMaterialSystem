@@ -660,12 +660,10 @@ namespace Material
 			}
 		}
 
-
-	//	std::vector<VkDescriptorBufferInfo*> bufferPtrs;
-		//bufferPtrs.reserve(staticSizes.size());
+		
 		uniformBufferInfos.reserve(staticSizes.size());
-		curBuffer = 0;
-		lastSize = 0;
+		imageInfos.reserve(staticSizes.size());
+
 		//we only need to update descriptors that actually exist, and aren't empties
 		for (auto& input : def.inputs)
 		{
@@ -682,12 +680,8 @@ namespace Material
 					uniformBufferInfo.offset = 0;
 					uniformBufferInfo.range = staticSizes[uniformBufferInfos.size()];
 
-					lastSize += uniformBufferInfo.range;
-
 					uniformBufferInfos.push_back(uniformBufferInfo);
-				//	bufferPtrs.push_back(&uniformBufferInfos[uniformBufferInfos.size() - 1]);
 
-					curBuffer++;
 				}
 				else if (bindingDef.type == InputType::SAMPLER)
 				{
@@ -701,7 +695,6 @@ namespace Material
 					imageInfo.sampler = texData->sampler;
 
 					imageInfos.push_back(imageInfo);
-					imageInfoPtr = &imageInfos[imageInfos.size() - 1];
 				}
 
 				VkWriteDescriptorSet descriptorWrite = {};
@@ -711,8 +704,8 @@ namespace Material
 				descriptorWrite.dstArrayElement = 0;
 				descriptorWrite.descriptorType = inputTypeEnumToVkEnum(bindingDef.type);
 				descriptorWrite.descriptorCount = 1;
-				descriptorWrite.pBufferInfo = bindingDef.type == InputType::SAMPLER ? 0 : &uniformBufferInfos[curBuffer - 1];
-				descriptorWrite.pImageInfo = bindingDef.type == InputType::UNIFORM ? 0 : imageInfoPtr; // Optional
+				descriptorWrite.pBufferInfo = bindingDef.type == InputType::SAMPLER ? 0 : &uniformBufferInfos[uniformBufferInfos.size() - 1];
+				descriptorWrite.pImageInfo = bindingDef.type == InputType::UNIFORM ? 0 : &imageInfos[imageInfos.size() - 1]; // Optional
 				descriptorWrite.pTexelBufferView = nullptr; // Optional
 				descSetWrites.push_back(descriptorWrite);
 			}
