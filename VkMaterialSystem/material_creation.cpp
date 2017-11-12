@@ -17,25 +17,33 @@
 
 namespace Material
 {
-	InputType stringToInputType(std::string str)
+	InputType stringToInputType(const char* str);
+	ShaderStage stringToShaderStage(const char* str);
+	const char* shaderExtensionForStage(ShaderStage stage);
+	const char* shaderReflExtensionForStage(ShaderStage stage);
+	VkShaderStageFlags shaderStageVectorToVkEnum(std::vector<ShaderStage>& vec);
+	VkShaderStageFlagBits shaderStageEnumToVkEnum(ShaderStage stage);
+	VkDescriptorType inputTypeEnumToVkEnum(InputType type);
+
+	InputType stringToInputType(const char* str)
 	{
-		if (str == "UNIFORM") return InputType::UNIFORM;
-		if (str == "SAMPLER") return InputType::SAMPLER;
+		if (!strcmp(str,"UNIFORM")) return InputType::UNIFORM;
+		if (!strcmp(str,"SAMPLER")) return InputType::SAMPLER;
 		 
 		checkf(0, "trying to convert an invalid string to input type");
 		return InputType::MAX;
 	}
 
-	ShaderStage stringToShaderStage(std::string str)
+	ShaderStage stringToShaderStage(const char* str)
 	{
-		if (str == "vertex") return ShaderStage::VERTEX;
-		if (str == "fragment") return ShaderStage::FRAGMENT;
+		if (!strcmp(str,"vertex")) return ShaderStage::VERTEX;
+		if (!strcmp(str,"fragment")) return ShaderStage::FRAGMENT;
 
 		checkf(0, "Could not parse shader stage from input string when loading material");
 		return ShaderStage::MAX;
 	}
 
-	std::string shaderExtensionForStage(ShaderStage stage)
+	const char* shaderExtensionForStage(ShaderStage stage)
 	{
 		if (stage == ShaderStage::VERTEX) return ".vert.spv";
 		if (stage == ShaderStage::FRAGMENT) return ".frag.spv";
@@ -44,7 +52,7 @@ namespace Material
 		return "";
 	}
 
-	std::string shaderReflExtensionForStage(ShaderStage stage)
+	const char* shaderReflExtensionForStage(ShaderStage stage)
 	{
 		if (stage == ShaderStage::VERTEX) return ".vert.refl";
 		if (stage == ShaderStage::FRAGMENT) return ".frag.refl";
@@ -52,18 +60,6 @@ namespace Material
 		checkf(0, "Unsupported shader stage passed to function");
 		return "";
 	}
-
-	void copyCStrAndNullTerminate(char* dst, const char* src)
-	{
-		uint32_t len = static_cast<uint32_t>(strlen(src)) + 1;
-		checkf(len < 256, "Material loading is trying to create a string of length > 256, which is larger than the path array in the shaderstagedefinition struct");
-		memcpy(dst, src, len);
-		dst[len - 1] = '\0';
-	}
-
-	VkShaderStageFlagBits shaderStageEnumToVkEnum(ShaderStage stage);
-	VkShaderStageFlags shaderStageVectorToVkEnum(std::vector<ShaderStage>& vec);
-	VkDescriptorType inputTypeEnumToVkEnum(InputType type);
 
 	VkShaderStageFlags shaderStageVectorToVkEnum(std::vector<ShaderStage>& vec)
 	{
@@ -103,7 +99,7 @@ namespace Material
 
 		Material::Definition materialDef = {};
 
-		const static std::string generatedShaderPath = "../data/_generated/builtshaders/";
+		const static char* generatedShaderPath = "../data/_generated/builtshaders/";
 
 		const char* materialString = loadTextFile(assetPath);
 		size_t len = strlen(materialString);
@@ -120,17 +116,14 @@ namespace Material
 			ShaderStageDefinition stageDef = {};
 
 			const Value& matStage = shaders[i];
-
 			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
 			
-			std::string shaderName = std::string(matStage["shader"].GetString());
-			std::string shaderPath = generatedShaderPath + shaderName + shaderExtensionForStage(stageDef.stage);
-			copyCStrAndNullTerminate(stageDef.shaderPath, shaderPath.c_str());
+			snprintf(stageDef.shaderPath, sizeof(stageDef.shaderPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderExtensionForStage(stageDef.stage));
 
+			char reflPath[256];
+			snprintf(reflPath, sizeof(reflPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderReflExtensionForStage(stageDef.stage));
 
-			//parse shader reflection file
-			std::string reflPath = generatedShaderPath + shaderName + shaderReflExtensionForStage(stageDef.stage);
-			const char* reflData = loadTextFile(reflPath.c_str());
+			const char* reflData = loadTextFile(reflPath);
 
 			size_t reflLen = strlen(reflData);
 			materialDef.stages.push_back(stageDef);
@@ -150,16 +143,15 @@ namespace Material
 				materialDef.pcBlock.sizeBytes = pushConstants["size"].GetInt();
 				 
 				const Value& elements = pushConstants["elements"];
-				assert(elements.IsArray());
+				checkf(elements.IsArray(), "push constant block in reflection file does not contain a member array");
 
 				for (SizeType elem = 0; elem < elements.Size(); elem++)
 				{
 					const Value& element = elements[elem];
-					BlockMember mem;
-
 					checkf(element["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
-					 
-					copyCStrAndNullTerminate(&mem.name[0], element["name"].GetString());
+
+					BlockMember mem;
+					snprintf(mem.name, sizeof(mem.name), "%s", element["name"].GetString());
 					mem.offset = element["offset"].GetInt();
 					mem.size = element["size"].GetInt();
 
@@ -184,12 +176,13 @@ namespace Material
 			{
 				const Value& uniformInputsFromReflData = reflDoc["inputs"];				
 
-				std::vector<std::string> blocksWithDefaultsPresent;
+				std::vector<uint32_t> blocksWithDefaultsPresent;
 				const Value& defaultArray = matStage["inputs"];
+
 				for (SizeType d = 0; d < defaultArray.Size(); ++d)
 				{
 					const Value& default = defaultArray[d];
-					blocksWithDefaultsPresent.push_back(default["name"].GetString());
+					blocksWithDefaultsPresent.push_back(hash(default["name"].GetString()));
 				}
 
 				for (SizeType uni = 0; uni < uniformInputsFromReflData.Size(); uni++)
@@ -227,12 +220,12 @@ namespace Material
 						blockDef.owningStages.push_back(stageDef.stage);
 
 						checkf(currentInputFromReflData["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
-						copyCStrAndNullTerminate(&blockDef.name[0], currentInputFromReflData["name"].GetString());
+						snprintf(blockDef.name, sizeof(blockDef.name), "%s", currentInputFromReflData["name"].GetString());
 
 						int blockDefaultsIndex = -1;
 						for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
 						{
-							if (!blocksWithDefaultsPresent[d].compare(currentInputFromReflData["name"].GetString()))
+							if (blocksWithDefaultsPresent[d] == hash(currentInputFromReflData["name"].GetString()))
 							{
 								blockDefaultsIndex = d;
 							}
@@ -249,7 +242,7 @@ namespace Material
 							mem.size = reflBlockMember["size"].GetInt();
 
 							checkf(reflBlockMember["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
-							copyCStrAndNullTerminate(&mem.name[0], reflBlockMember["name"].GetString());
+							snprintf(mem.name, sizeof(mem.name), "%s", reflBlockMember["name"].GetString());
 							blockDef.blockMembers.push_back(mem);
 						}
 
@@ -261,7 +254,7 @@ namespace Material
 							if (blockDef.type == InputType::SAMPLER)
 							{
 								const Value& defaultValue = defaultItem["value"];
-								copyCStrAndNullTerminate(&blockDef.defaultValue[0], defaultValue.GetString());
+								snprintf(blockDef.defaultValue, sizeof(blockDef.defaultValue), "%s", defaultValue.GetString());
 							}
 							else
 							{
