@@ -68,7 +68,7 @@ std::string getReflectionString(ShaderData& data)
 		writer.EndObject();
 	}
 
-	if (data.uniformBlocks.size() > 0)
+	if (data.uniformBlocks.size() > 0 || data.textureBlocks.size() > 0)
 	{
 		writer.Key("inputs");
 		writer.StartArray();
