@@ -1,10 +1,17 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(push_constant) uniform PER_OBJECT 
-{ 
+layout(binding = 0, set = 0)uniform GLOBAL_DATA
+{
 	float time;
 
+	vec4 mouse;
+	mat4 viewMatrix;
+	vec4 worldSpaceCameraPos;
+}global;
+
+layout(push_constant) uniform PER_OBJECT 
+{ 
 	vec4 col; 
 }pc;
 
@@ -35,7 +42,7 @@ out gl_PerVertex
 void main() 
 {
     gl_Position = vec4(vertex, 1.0);
-	float t = sin( mod(pc.time, 1.0));
+	float t = sin( mod(global.time, 1.0));
     fragColor = pc.col * inst_data.tint * inst_data2.tint2 * t;
 	fragUV = uv;
 }

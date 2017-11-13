@@ -1,20 +1,29 @@
 {
     "push_constants": {
-        "size": 32,
+        "size": 16,
         "elements": [
-            {
-                "name": "time",
-                "size": 16,
-                "offset": 0
-            },
             {
                 "name": "col",
                 "size": 16,
-                "offset": 16
+                "offset": 0
             }
         ]
     },
     "inputs": [
+        {
+            "name": "GLOBAL_DATA",
+            "size": 112,
+            "set": 0,
+            "binding": 0,
+            "type": "UNIFORM",
+            "members": [
+                {
+                    "name": "time",
+                    "size": 16,
+                    "offset": 0
+                }
+            ]
+        },
         {
             "name": "Instance",
             "size": 16,

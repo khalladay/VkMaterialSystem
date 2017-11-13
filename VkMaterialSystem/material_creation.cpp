@@ -568,22 +568,29 @@ namespace Material
 				size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
 				if (inputDef.type == InputType::UNIFORM)
 				{
-					vkh::createBuffer(outAsset.rData->staticBuffers[curBuffer++],
-						dynamicAlignment,
-						VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-						memFlags);
-
-
-					char* data = (char*)malloc(dynamicAlignment);
-
-					for (uint32_t k = 0; k < inputDef.blockMembers.size(); ++k)
+					if (inputDef.set == 0 && inputDef.binding == 0)
 					{
-						memcpy(&data[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
+						Material::initGlobalShaderData();
 					}
-					staticData.push_back(data);
-					staticSizes.push_back(dynamicAlignment);
+					else
+					{
+						vkh::createBuffer(outAsset.rData->staticBuffers[curBuffer++],
+							dynamicAlignment,
+							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							memFlags);
 
-					staticUniformSize += dynamicAlignment;
+
+						char* data = (char*)malloc(dynamicAlignment);
+
+						for (uint32_t k = 0; k < inputDef.blockMembers.size(); ++k)
+						{
+							memcpy(&data[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
+						}
+						staticData.push_back(data);
+						staticSizes.push_back(dynamicAlignment);
+
+						staticUniformSize += dynamicAlignment;
+					}
 				}
 			}
 		}
@@ -661,8 +668,9 @@ namespace Material
 		}
 
 		
-		uniformBufferInfos.reserve(staticSizes.size());
+		uniformBufferInfos.reserve(staticSizes.size() +1);
 		imageInfos.reserve(staticSizes.size());
+		bool usingGlobalData = false;
 
 		//we only need to update descriptors that actually exist, and aren't empties
 		for (auto& input : def.inputs)
@@ -676,10 +684,23 @@ namespace Material
 				if (bindingDef.type == InputType::UNIFORM)
 				{
 					VkDescriptorBufferInfo uniformBufferInfo;
-					uniformBufferInfo.buffer = outAsset.rData->staticBuffers[uniformBufferInfos.size()];
 					uniformBufferInfo.offset = 0;
-					uniformBufferInfo.range = staticSizes[uniformBufferInfos.size()];
 
+					if (bindingDef.set == 0 && bindingDef.binding == 0)
+					{
+						extern VkBuffer globalBuffer;
+						extern uint32_t globalSize;
+						uniformBufferInfo.buffer = globalBuffer;
+						uniformBufferInfo.range = globalSize;
+						usingGlobalData = true;
+
+					}
+					else
+					{
+						uint32_t idx = usingGlobalData ? uniformBufferInfos.size() - 1 : uniformBufferInfos.size();
+						uniformBufferInfo.buffer = outAsset.rData->staticBuffers[idx];
+						uniformBufferInfo.range = staticSizes[idx];
+					}
 					uniformBufferInfos.push_back(uniformBufferInfo);
 
 				}

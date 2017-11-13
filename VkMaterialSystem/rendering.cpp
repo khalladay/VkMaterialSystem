@@ -120,6 +120,9 @@ namespace Rendering
 		mouseData.z = (float)getMouseLeftButton();
 		mouseData.w = (float)getMouseRightButton();
 
+		Material::setGlobalVector4("mouse", mouseData);
+		Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
+
 		Material::setUniformVector4("global.mouse", mouseData);
 
 		vkCmdPushConstants(

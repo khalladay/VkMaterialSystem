@@ -1,8 +1,18 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+layout(binding = 0, set = 0)uniform GLOBAL_DATA
+{
+	float time;
+
+	vec4 mouse;
+
+	mat4 viewMatrix;
+	vec4 worldSpaceCameraPos;
+}global;
+
 layout(binding = 1, set = 2) uniform sampler2D texSampler;
-layout(binding = 0, set = 1) uniform sampler2D testSampler;
+layout(binding = 4, set = 3) uniform sampler2D testSampler;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec4 fragColor;
@@ -12,5 +22,5 @@ void main()
 {
 	vec4 tex = texture(texSampler, fragUV);
 	vec4 tex2 = texture(testSampler, fragUV);
-    outColor = mix(tex,tex2,fragColor.g);
+    outColor = mix(tex,tex2,fragColor.g) * global.mouse.z;
 }

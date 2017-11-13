@@ -471,11 +471,11 @@ namespace vkh
 
 		std::vector<const char*> validationLayers;
 
-#ifdef NDEBUG
+#ifndef _DEBUG
 		const bool enableValidationLayers = false;
 #else
 		const bool enableValidationLayers = true;
-		array::push_back<const char*>(validationLayers, "VK_LAYER_LUNARG_standard_validation");
+		validationLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 
 		//don't do anything else here because we already know the validation layer is available, 
 		//else we would have asserted earlier

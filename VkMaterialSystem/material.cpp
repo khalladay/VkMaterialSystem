@@ -3,6 +3,7 @@
 #include "material.h"
 #include "asset_rdata_types.h"
 #include "hash.h"
+#include "vkh.h"
 
 struct MaterialStorage
 {
@@ -11,9 +12,43 @@ struct MaterialStorage
 
 MaterialStorage matStorage;
 
+
+__declspec(align(16)) struct GlobalShaderData
+{
+	glm::float32 time;
+	glm::vec4 mouse;
+	glm::mat4 viewMatrix;
+	glm::vec4 worldSpaceCameraPos;
+};
 //
 namespace Material
 {
+	VkDeviceMemory globalMem;
+	VkBuffer globalBuffer;
+	GlobalShaderData globalShaderData;
+	void* mappedMemory;
+	uint32_t globalSize;
+
+	void initGlobalShaderData()
+	{
+		static bool isInitialized = false;
+		if (!isInitialized)
+		{
+			uint32_t structSize = sizeof(GlobalShaderData);
+			size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
+			globalSize = structSize;// (structSize / uboAlignment) * uboAlignment + ((structSize % uboAlignment) > 0 ? uboAlignment : 0);
+			
+			vkh::createBuffer(globalBuffer, 
+				globalMem,
+				globalSize,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			vkMapMemory(vkh::GContext.device, globalMem, 0, globalSize,0, &mappedMemory);
+			isInitialized = true;
+		}
+	}
+
 	void setPushConstantVector(const char* var, glm::vec4& data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
@@ -78,6 +113,21 @@ namespace Material
 
 	void setUniformMatrix(const char* name, glm::mat4& data)
 	{
+
+	}
+
+	void setGlobalFloat(const char* name, float data)
+	{
+		initGlobalShaderData();
+		globalShaderData.time = data;
+		memcpy(mappedMemory, &globalShaderData, globalSize);
+	}
+
+	void setGlobalVector4(const char* name, glm::vec4& data)
+	{
+		initGlobalShaderData();
+		globalShaderData.mouse = data;
+		memcpy(mappedMemory, &globalShaderData, globalSize);
 
 	}
 
