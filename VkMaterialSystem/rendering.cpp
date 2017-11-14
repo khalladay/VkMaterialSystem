@@ -120,20 +120,28 @@ namespace Rendering
 		mouseData.z = (float)getMouseLeftButton();
 		mouseData.w = (float)getMouseRightButton();
 
+		glm::vec2 resolution = glm::vec2(100,100);
+
+
+		Material::setGlobalVector2("resolution", resolution);
 		Material::setGlobalVector4("mouse", mouseData);
 		Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
 		Material::setUniformVector4("global.mouse", mouseData);
 
-		vkCmdPushConstants(
-			commandBuffers[imageIndex],
-			mat.pipelineLayout,
-			Material::getRenderData().pushConstantStages,
-			0,
-			Material::getRenderData().pushConstantSize,
-			Material::getRenderData().pushConstantData);
+		if (Material::getRenderData().pushConstantSize > 0)
+		{
+			vkCmdPushConstants(
+				commandBuffers[imageIndex],
+				mat.pipelineLayout,
+				Material::getRenderData().pushConstantStages,
+				0,
+				Material::getRenderData().pushConstantSize,
+				Material::getRenderData().pushConstantData);
+		}
 
-		vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.numDescSets, mat.descSets, 0, 0);
+		if (mat.numDescSets > 0)
+			vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.numDescSets, mat.descSets, 0, 0);
 
 		vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.iBuffer, 0, VK_INDEX_TYPE_UINT32);

@@ -16,8 +16,8 @@ MaterialStorage matStorage;
 struct GlobalShaderData
 {
 	__declspec(align(16)) glm::float32 time;
-	//char padding[12];
 	__declspec(align(16)) glm::vec4 mouse;
+	__declspec(align(16)) glm::vec2 resolution;
 	__declspec(align(16)) glm::mat4 viewMatrix;
 	__declspec(align(16)) glm::vec4 worldSpaceCameraPos;
 };
@@ -43,6 +43,7 @@ namespace Material
 
 			float* t = (&globalShaderData.time);
 			glm::vec4* mp = (&globalShaderData.mouse);
+			glm::vec2* res = (&globalShaderData.resolution);
 
 			globalSize = (structSize / uboAlignment) * uboAlignment + ((structSize % uboAlignment) > 0 ? uboAlignment : 0);
 			
@@ -135,6 +136,13 @@ namespace Material
 	{
 		initGlobalShaderData();
 		globalShaderData.mouse = data;
+		memcpy(mappedMemory, &globalShaderData, globalSize);
+	}
+
+	void setGlobalVector2(const char* name, glm::vec2& data)
+	{
+		initGlobalShaderData();
+		globalShaderData.resolution = data;
 		memcpy(mappedMemory, &globalShaderData, globalSize);
 
 	}

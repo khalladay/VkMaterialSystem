@@ -12,7 +12,7 @@
     "inputs": [
         {
             "name": "GLOBAL_DATA",
-            "size": 112,
+            "size": 128,
             "set": 0,
             "binding": 0,
             "type": "UNIFORM",

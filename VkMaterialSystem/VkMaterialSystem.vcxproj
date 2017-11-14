@@ -187,9 +187,12 @@
     <ClInclude Include="vkh_initializers.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\data\materials\raymarch_primitives.mat" />
     <None Include="..\data\materials\show_uvs.mat" />
     <None Include="..\data\shaders\fragment_passthrough.frag" />
+    <None Include="..\data\shaders\raymarching_primitives.frag" />
     <None Include="..\data\shaders\vertex_uvs.vert" />
+    <None Include="..\data\shaders\shadertoy_vert.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

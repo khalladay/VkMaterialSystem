@@ -1,18 +1,6 @@
 {
     "inputs": [
         {
-            "name": "texSampler",
-            "binding": 1,
-            "set": 2,
-            "type": "SAMPLER"
-        },
-        {
-            "name": "testSampler",
-            "binding": 4,
-            "set": 3,
-            "type": "SAMPLER"
-        },
-        {
             "name": "GLOBAL_DATA",
             "size": 128,
             "set": 0,
@@ -23,6 +11,16 @@
                     "name": "mouse",
                     "size": 16,
                     "offset": 16
+                },
+                {
+                    "name": "resolution",
+                    "size": 16,
+                    "offset": 32
+                },
+                {
+                    "name": "time",
+                    "size": 16,
+                    "offset": 0
                 }
             ]
         }

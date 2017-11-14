@@ -1,0 +1,13 @@
+{
+	"shaders":
+	[
+		{
+			"stage": "vertex",
+			"shader": "shadertoy_vert"
+		},
+		{
+			"stage": "fragment",
+			"shader": "raymarching_primitives"
+		}
+	]
+}

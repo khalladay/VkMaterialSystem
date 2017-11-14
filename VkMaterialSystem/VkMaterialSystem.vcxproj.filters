@@ -130,5 +130,14 @@
     <None Include="..\data\materials\show_uvs.mat">
       <Filter>data\materials</Filter>
     </None>
+    <None Include="..\data\shaders\raymarching_primitives.frag">
+      <Filter>data\shaders</Filter>
+    </None>
+    <None Include="..\data\materials\raymarch_primitives.mat">
+      <Filter>data\materials</Filter>
+    </None>
+    <None Include="..\data\shaders\shadertoy_vert.vert">
+      <Filter>data\shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

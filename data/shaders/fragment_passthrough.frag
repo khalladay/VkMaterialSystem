@@ -4,9 +4,8 @@
 layout(binding = 0, set = 0)uniform GLOBAL_DATA
 {
 	float time;
-
 	vec4 mouse;
-
+	vec2 resolution;
 	mat4 viewMatrix;
 	vec4 worldSpaceCameraPos;
 }global;
