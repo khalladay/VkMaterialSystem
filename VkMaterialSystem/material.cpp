@@ -13,12 +13,13 @@ struct MaterialStorage
 MaterialStorage matStorage;
 
 
-__declspec(align(16)) struct GlobalShaderData
+struct GlobalShaderData
 {
-	glm::float32 time;
-	glm::vec4 mouse;
-	glm::mat4 viewMatrix;
-	glm::vec4 worldSpaceCameraPos;
+	__declspec(align(16)) glm::float32 time;
+	//char padding[12];
+	__declspec(align(16)) glm::vec4 mouse;
+	__declspec(align(16)) glm::mat4 viewMatrix;
+	__declspec(align(16)) glm::vec4 worldSpaceCameraPos;
 };
 //
 namespace Material
@@ -36,7 +37,14 @@ namespace Material
 		{
 			uint32_t structSize = sizeof(GlobalShaderData);
 			size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
-			globalSize = structSize;// (structSize / uboAlignment) * uboAlignment + ((structSize % uboAlignment) > 0 ? uboAlignment : 0);
+			size_t s = sizeof(glm::float32);
+			size_t s2 = sizeof(glm::vec4);
+			size_t s3 = sizeof(glm::mat4);
+
+			float* t = (&globalShaderData.time);
+			glm::vec4* mp = (&globalShaderData.mouse);
+
+			globalSize = (structSize / uboAlignment) * uboAlignment + ((structSize % uboAlignment) > 0 ? uboAlignment : 0);
 			
 			vkh::createBuffer(globalBuffer, 
 				globalMem,
