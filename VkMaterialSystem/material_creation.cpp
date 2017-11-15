@@ -108,6 +108,7 @@ namespace Material
 		Document materialDoc;
 		materialDoc.Parse(materialString, len);
 		checkf(!materialDoc.HasParseError(), "Error parsing material file");
+		free((void*)materialString);
 
 		const Value& shaders = materialDoc["shaders"];
 		materialDef.stages.reserve(shaders.Size());
@@ -150,6 +151,7 @@ namespace Material
 			reflDoc.Parse(reflData, reflLen);
 
 			checkf(!reflDoc.HasParseError(), "Error parsing reflection file");
+			free((void*)reflData);
 
 
 			//reflection files optionally start with a push constant block: 
@@ -379,8 +381,6 @@ namespace Material
 			}
 		}
 
-		free((void*)materialString);
-
 		return materialDef;
 	}
 
@@ -397,7 +397,6 @@ namespace Material
 		outAsset.rData = (MaterialRenderData*)calloc(1,sizeof(MaterialRenderData));
 
 		vkh::VkhMaterial& outMaterial = outAsset.rData->vkMat;
-
 
 		VkResult res;
 
