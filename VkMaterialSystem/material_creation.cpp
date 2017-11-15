@@ -112,6 +112,20 @@ namespace Material
 		const Value& shaders = materialDoc["shaders"];
 		materialDef.stages.reserve(shaders.Size());
 
+		/*
+		this will iterate over each shader in a material file
+		each shader is laid out in json like so: 
+		
+		{
+			"stage": "fragment",
+			"shader" : "fragment_passthrough",
+			"inputs" :
+			[
+				... defined in later comment ... 
+			]
+		}
+		*/
+
 		for (SizeType i = 0; i < shaders.Size(); i++)
 		{
 			ShaderStageDefinition stageDef = {};
@@ -120,19 +134,39 @@ namespace Material
 			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
 			
 			snprintf(stageDef.shaderPath, sizeof(stageDef.shaderPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderExtensionForStage(stageDef.stage));
+			materialDef.stages.push_back(stageDef);
+
+			//now we need to get information about the layout of the shader inputs
+			//this isn't necessarily known when writing a material file, so we have to 
+			//grab it from a reflection file
 
 			char reflPath[256];
 			snprintf(reflPath, sizeof(reflPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderReflExtensionForStage(stageDef.stage));
-
+			
 			const char* reflData = loadTextFile(reflPath);
-
 			size_t reflLen = strlen(reflData);
-			materialDef.stages.push_back(stageDef);
 
 			Document reflDoc;
 			reflDoc.Parse(reflData, reflLen);
 
 			checkf(!reflDoc.HasParseError(), "Error parsing reflection file");
+
+
+			//reflection files optionally start with a push constant block: 
+			/*
+			push_constants": 
+			{
+				"size": 16,
+				"elements" : 
+				[
+					{
+						"name": "col",
+						"size" : 16,
+						"offset" : 0
+					}
+				]
+			},
+			*/
 
 			if (reflDoc.HasMember("push_constants"))
 			{
@@ -165,7 +199,9 @@ namespace Material
 							memberAlreadyExists = true;
 						}
 					}
-
+					
+					//if we've already created the push constant block from an earlier stage's shader
+					//we might already have info about this block member. 
 					if (!memberAlreadyExists)
 					{
 						materialDef.pcBlock.blockMembers.push_back(mem);
@@ -173,12 +209,20 @@ namespace Material
 				}
 			}
 
+			//reflection files also contain information about any uniform or sampler inputs
+			//this array is called the "inputs" array in the json file
 			if (reflDoc.HasMember("inputs"))
 			{
-				const Value& uniformInputsFromReflData = reflDoc["inputs"];				
-
-				std::vector<uint32_t> blocksWithDefaultsPresent;
+				//a material file may optionally specify default values for any 
+				//shader input that has an input block in a reflection file. In the material file
+				//the array of objects representing an inputs' default value is (sorta confusingly) the
+				//"inputs" array
+				
+				//if we do have defaults, store a list of all the block members that
+				//have a value from the material. This array does not store individual
+				//block members, just the name of the block that contains a default value
 				const Value& defaultArray = matStage["inputs"];
+				std::vector<uint32_t> blocksWithDefaultsPresent;
 
 				for (SizeType d = 0; d < defaultArray.Size(); ++d)
 				{
@@ -186,28 +230,50 @@ namespace Material
 					blocksWithDefaultsPresent.push_back(hash(default["name"].GetString()));
 				}
 
+				//Now we need to go through all the inputs we have and build a representation of them
+				//for our material definition
+
+				/* in a reflection file, the inputs array might look like this:
+				inputs":
+				[
+					{
+						"name": "GLOBAL_DATA",
+						"size" : 128,
+						"set" : 0,
+						"binding" : 0,
+						"type" : "UNIFORM",
+						"members" :
+						[
+							{
+								"name": "time",
+								"size" : 16,
+								"offset" : 0
+							}
+						]
+					}
+				]*/
+				const Value& uniformInputsFromReflData = reflDoc["inputs"];
 				for (SizeType uni = 0; uni < uniformInputsFromReflData.Size(); uni++)
 				{
 					const Value& currentInputFromReflData = uniformInputsFromReflData[uni];
 
-					DescriptorSetBinding blockDef	= {};
-					uint32_t set = currentInputFromReflData["set"].GetInt();
-					blockDef.binding = currentInputFromReflData["binding"].GetInt();
-					blockDef.set = set;
-					blockDef.sizeBytes = currentInputFromReflData["size"].GetInt();
-					blockDef.type = stringToInputType(currentInputFromReflData["type"].GetString()); 
+					DescriptorSetBinding descSetBindingDef	= {};
+					descSetBindingDef.sizeBytes = currentInputFromReflData["size"].GetInt();
+					descSetBindingDef.set		= currentInputFromReflData["set"].GetInt();
+					descSetBindingDef.binding	= currentInputFromReflData["binding"].GetInt();
+					descSetBindingDef.type		= stringToInputType(currentInputFromReflData["type"].GetString()); 
 
-					//if set already exists, just update this uniform if it already exists
-
+					//we might already know about this descriptor set binding if it was also in a previous stage,
+					//in that case, all we need to do is add the current shader's stage to the set binding's stages array
 					bool alreadyExists = false;
-					if (materialDef.inputs.find(set) != materialDef.inputs.end())
+					if (materialDef.inputs.find(descSetBindingDef.set) != materialDef.inputs.end())
 					{
-						for (auto& uniform : materialDef.inputs[set])
+						for (auto& uniform : materialDef.inputs[descSetBindingDef.set])
 						{
-							if (uniform.binding == blockDef.binding)
+							if (uniform.binding == descSetBindingDef.binding)
 							{
-								checkf(uniform.sizeBytes == blockDef.sizeBytes, "A DescriptorSet binding is shared between stages but each stage expects a different size");
-								checkf(uniform.type == blockDef.type, "A DescriptorSet binding is shared between stages but each stage expects a different type");
+								checkf(uniform.sizeBytes == descSetBindingDef.sizeBytes, "A DescriptorSet binding is shared between stages but each stage expects a different size");
+								checkf(uniform.type == descSetBindingDef.type, "A DescriptorSet binding is shared between stages but each stage expects a different type");
 								uniform.owningStages.push_back(stageDef.stage);
 								alreadyExists = true;
 							}
@@ -218,10 +284,10 @@ namespace Material
 					{
 						materialDef.inputCount++;
 
-						blockDef.owningStages.push_back(stageDef.stage);
+						descSetBindingDef.owningStages.push_back(stageDef.stage);
 
 						checkf(currentInputFromReflData["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
-						snprintf(blockDef.name, sizeof(blockDef.name), "%s", currentInputFromReflData["name"].GetString());
+						snprintf(descSetBindingDef.name, sizeof(descSetBindingDef.name), "%s", currentInputFromReflData["name"].GetString());
 
 						int blockDefaultsIndex = -1;
 						for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
@@ -244,55 +310,70 @@ namespace Material
 
 							checkf(reflBlockMember["name"].GetStringLength() < 31, "opaque block member names must be less than 32 characters");
 							snprintf(mem.name, sizeof(mem.name), "%s", reflBlockMember["name"].GetString());
-							blockDef.blockMembers.push_back(mem);
+							descSetBindingDef.blockMembers.push_back(mem);
 						}
 
-
+						//if the block member has a default defined in the material
+						//we want to grab it. For samplers, this is the path of their texture, 
+						//for uniform blocks, this is an array of floats for each member. 
 						if (blockDefaultsIndex > -1)
 						{
 							const Value& defaultItem = defaultArray[blockDefaultsIndex];
 
-							if (blockDef.type == InputType::SAMPLER)
+							if (descSetBindingDef.type == InputType::SAMPLER)
 							{
 								const Value& defaultValue = defaultItem["value"];
-								snprintf(blockDef.defaultValue, sizeof(blockDef.defaultValue), "%s", defaultValue.GetString());
+								snprintf(descSetBindingDef.defaultValue, sizeof(descSetBindingDef.defaultValue), "%s", defaultValue.GetString());
 							}
 							else
 							{
 								const Value& defaultBlockMembers = defaultItem["members"];
 
-								for (SizeType m = 0; m < blockDef.blockMembers.size(); m++)
+								//remmeber, we dont' know which members have default values specified yet,
+								for (SizeType m = 0; m < descSetBindingDef.blockMembers.size(); m++)
 								{
-									const Value& reflBlockMember = reflBlockMembers[m];
-									uint32_t offset = reflBlockMember["offset"].GetInt();
-									uint32_t size = reflBlockMember["size"].GetInt();
+									BlockMember& mem = descSetBindingDef.blockMembers[m];
+									memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
 
-									auto iter = std::find_if(blockDef.blockMembers.begin(), blockDef.blockMembers.end(), [size, offset](BlockMember& mem) {
-										return mem.offset == offset && mem.size == size;
-									});
-
-									if (iter._Ptr)
+									//since we might not have default values for each block member, 
+									//we need to make sure we're grabbing data for our current member
+									for (uint32_t defaultMemIdx = 0; defaultMemIdx < defaultBlockMembers.Size(); ++defaultMemIdx)
 									{
-										BlockMember& mem = *iter;
-
-										memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
-
-										const Value& defaultValues = defaultBlockMembers[m]["value"];
-
-										float* defaultFloats = (float*)mem.defaultValue;
-
-										for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+										if (hash(defaultBlockMembers[defaultMemIdx]["name"].GetString()) == hash(mem.name))
 										{
+											//a default entry in a material file (for a uniform value) looks like this: 
+											/*"
+											inputs":
+											[
+												{
+													"name":"Instance",
+													"members" :
+													[
+														{
+														"name": "tint",
+														"value" : [0.0, 1.0, 1.0, 1.0]
+														}
+													]
+												}
+											]
+											*/
+											const Value& defaultValues = defaultBlockMembers[defaultMemIdx]["value"];
+											float* defaultFloats = (float*)mem.defaultValue;
 
-											defaultFloats[dv] = defaultValues[dv].GetFloat();
+											for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
+											{
+												defaultFloats[dv] = defaultValues[dv].GetFloat();
+											}
+
+											break;
 										}
 									}
 								}
-
 							}
 						}
 
-						materialDef.inputs[blockDef.set].push_back(blockDef);
+						//finally, add our bindingDef to the material, and continue to the next input in the reflection file 
+						materialDef.inputs[descSetBindingDef.set].push_back(descSetBindingDef);
 					}
 				}
 			}

@@ -6,14 +6,6 @@ struct MeshRenderData
 	vkh::VkhMesh vkMesh;
 };
 
-struct GlobalMaterialInputs
-{
-	VkDeviceMemory* mem;
-	VkBuffer* data;
-	char* mapped;
-	uint32_t* dataLayout;
-};
-
 struct MaterialRenderData
 {
 	vkh::VkhMaterial vkMat;

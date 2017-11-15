@@ -16,7 +16,7 @@ namespace App
 
 		Material::Definition def = { 0 };		
 		{
-			Material::make("../data/materials/raymarch_primitives.mat");
+			Material::make("../data/materials/show_uvs.mat");
 		}
 
 
