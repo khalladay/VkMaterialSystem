@@ -217,13 +217,12 @@ namespace Material
 			{
 				//a material file may optionally specify default values for any 
 				//shader input that has an input block in a reflection file. In the material file
-				//the array of objects representing an inputs' default value is (sorta confusingly) the
-				//"inputs" array
+				//the array of objects representing an inputs' default value is the "defaults" array
 				
 				//if we do have defaults, store a list of all the block members that
 				//have a value from the material. This array does not store individual
 				//block members, just the name of the block that contains a default value
-				const Value& defaultArray = matStage["inputs"];
+				const Value& defaultArray = matStage["defaults"];
 				std::vector<uint32_t> blocksWithDefaultsPresent;
 
 				for (SizeType d = 0; d < defaultArray.Size(); ++d)
@@ -345,7 +344,7 @@ namespace Material
 										{
 											//a default entry in a material file (for a uniform value) looks like this: 
 											/*"
-											inputs":
+											defaults":
 											[
 												{
 													"name":"Instance",
@@ -395,9 +394,7 @@ namespace Material
 
 		MaterialAsset& outAsset = Material::getMaterialAsset();
 		outAsset.rData = (MaterialRenderData*)calloc(1,sizeof(MaterialRenderData));
-
-		vkh::VkhMaterial& outMaterial = outAsset.rData->vkMat;
-
+		MaterialRenderData& outMaterial = *outAsset.rData;
 		VkResult res;
 
 		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
@@ -418,7 +415,7 @@ namespace Material
 
 
 		uint32_t curSet = 0;
-		uint32_t remainingInputs = def.inputs.size();
+		uint32_t remainingInputs = static_cast<uint32_t>(def.inputs.size());
 
 		while (remainingInputs)
 		{
@@ -461,7 +458,7 @@ namespace Material
 		//each key is a set
 
 		curSet = 0;
-		uint32_t bindingsLeft = uniformSetBindings.size();
+		uint32_t bindingsLeft = static_cast<uint32_t>(uniformSetBindings.size());
 
 		while (bindingsLeft)
 		{
@@ -483,7 +480,6 @@ namespace Material
 
 			curSet++;
 		}
-
 
 		outMaterial.layoutCount = static_cast<uint32_t>(uniformLayouts.size());
 
@@ -517,25 +513,23 @@ namespace Material
 			pushConstantRange.size = def.pcBlock.sizeBytes;
 			pushConstantRange.stageFlags = shaderStageVectorToVkEnum(def.pcBlock.owningStages);
 
-			outAsset.rData->pushConstantStages = pushConstantRange.stageFlags;
+			outAsset.rData->pushConstantBlockDef.visibleStages = pushConstantRange.stageFlags;
 
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 
-			outAsset.rData->pushConstantLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
-			outAsset.rData->pushConstantSize = def.pcBlock.sizeBytes;
-			outAsset.rData->pushConstantCount = def.pcBlock.blockMembers.size();
-
+			outAsset.rData->pushConstantBlockDef.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
+			outAsset.rData->pushConstantBlockDef.blockSize = def.pcBlock.sizeBytes;
+			outAsset.rData->pushConstantBlockDef.memberCount = def.pcBlock.blockMembers.size();
+			outAsset.rData->pushConstantData = (char*)malloc(def.pcBlock.sizeBytes);
 			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
-
-			outAsset.rData->pushConstantData = (char*)malloc(Material::getRenderData().pushConstantSize);
 
 			for (uint32_t i = 0; i < def.pcBlock.blockMembers.size(); ++i)
 			{
 				BlockMember& mem = def.pcBlock.blockMembers[i];
 
-				outAsset.rData->pushConstantLayout[i * 2] = hash(&mem.name[0]);
-				outAsset.rData->pushConstantLayout[i * 2 + 1] = mem.offset;
+				outAsset.rData->pushConstantBlockDef.layout[i * 2] = hash(&mem.name[0]);
+				outAsset.rData->pushConstantBlockDef.layout[i * 2 + 1] = mem.offset;
 			}
 		}
 
@@ -822,7 +816,5 @@ namespace Material
 		{
 			vkDestroyShaderModule(GContext.device, shaderStages[i].module, nullptr);
 		}
-
-
 	}
 }

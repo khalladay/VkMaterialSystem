@@ -6,16 +6,28 @@ struct MeshRenderData
 	vkh::VkhMesh vkMesh;
 };
 
+struct UniformBlockDef
+{
+	//every odd element is a hashed member name, every even element is that member's offset
+	uint32_t* layout;
+	uint32_t blockSize;
+	uint32_t memberCount;
+	VkShaderStageFlags visibleStages;
+};
+
 struct MaterialRenderData
 {
-	vkh::VkhMaterial vkMat;
-	
-	//every odd entry is a hashed string name, every even entry is a value
-	uint32_t* pushConstantLayout;
-	uint32_t pushConstantSize;
-	uint32_t pushConstantCount;
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+
+	uint32_t layoutCount;
+	VkDescriptorSetLayout* descriptorSetLayouts;
+
+	VkDescriptorSet* descSets;
+	uint32_t numDescSets;
+
+	UniformBlockDef pushConstantBlockDef;
 	char* pushConstantData;
-	VkShaderStageFlags pushConstantStages;
 
 	//we don't need a layout for static data since it cannot be 
 	//changed after initialization

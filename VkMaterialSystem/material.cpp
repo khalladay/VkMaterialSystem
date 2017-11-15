@@ -4,9 +4,11 @@
 #include "asset_rdata_types.h"
 #include "hash.h"
 #include "vkh.h"
+#include <vector>
 
 struct MaterialStorage
 {
+	std::vector<MaterialAsset> data;
 	MaterialAsset mat;
 };
 
@@ -64,11 +66,12 @@ namespace Material
 
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantCount*2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantBlockDef.memberCount*2; i += 2)
 		{
-			if (rData.pushConstantLayout[i] == varHash)
+			if (rData.pushConstantBlockDef.layout[i] == varHash)
 			{
-				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(glm::vec4));
+				uint32_t offset = rData.pushConstantBlockDef.layout[i + 1];
+				memcpy(rData.pushConstantData + rData.pushConstantBlockDef.layout[i + 1], &data, sizeof(glm::vec4));
 				break;
 			}
 		}
@@ -80,11 +83,11 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantCount*2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantBlockDef.memberCount * 2; i += 2)
 		{
-			if (rData.pushConstantLayout[i] == varHash)
+			if (rData.pushConstantBlockDef.layout[i] == varHash)
 			{
-				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(glm::mat4));
+				memcpy(rData.pushConstantData + rData.pushConstantBlockDef.layout[i + 1], &data, sizeof(glm::mat4));
 				break;
 			}
 		}
@@ -95,11 +98,11 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantCount*2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantBlockDef.memberCount * 2; i += 2)
 		{
-			if (rData.pushConstantLayout[i] == varHash)
+			if (rData.pushConstantBlockDef.layout[i] == varHash)
 			{
-				memcpy(rData.pushConstantData + rData.pushConstantLayout[i + 1], &data, sizeof(float));
+				memcpy(rData.pushConstantData + rData.pushConstantBlockDef.layout[i + 1], &data, sizeof(float));
 				break;
 			}
 		}

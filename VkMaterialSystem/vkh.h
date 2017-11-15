@@ -116,21 +116,6 @@ namespace vkh
 		uint32_t numElements;
 	};
 
-	struct VkhMaterial
-	{
-		VkPipeline pipeline;
-		VkPipelineLayout pipelineLayout;
-
-		uint32_t layoutCount;
-		VkDescriptorSetLayout* descriptorSetLayouts;
-
-		//since we're using dynamic uniform buffers, 
-		//only the parent material needs a descriptor set 
-		VkDescriptorSet* descSets;
-		uint32_t numDescSets;
-
-	};
-
 	struct VkhMesh
 	{
 		VkBuffer vBuffer;
