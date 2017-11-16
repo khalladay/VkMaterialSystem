@@ -94,6 +94,11 @@ namespace Material
 		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 	}
 
+	bool IsDynamicInput(DescriptorSetBinding binding)
+	{
+		return binding.set == 3;
+	}
+
 	Definition load(const char* assetPath)
 	{
 		using namespace rapidjson;
@@ -513,14 +518,14 @@ namespace Material
 			pushConstantRange.size = def.pcBlock.sizeBytes;
 			pushConstantRange.stageFlags = shaderStageVectorToVkEnum(def.pcBlock.owningStages);
 
-			outAsset.rData->pushConstantBlockDef.visibleStages = pushConstantRange.stageFlags;
+			outAsset.rData->pushConstantLayout.visibleStages = pushConstantRange.stageFlags;
 
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 
-			outAsset.rData->pushConstantBlockDef.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
-			outAsset.rData->pushConstantBlockDef.blockSize = def.pcBlock.sizeBytes;
-			outAsset.rData->pushConstantBlockDef.memberCount = def.pcBlock.blockMembers.size();
+			outAsset.rData->pushConstantLayout.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
+			outAsset.rData->pushConstantLayout.blockSize = def.pcBlock.sizeBytes;
+			outAsset.rData->pushConstantLayout.memberCount = def.pcBlock.blockMembers.size();
 			outAsset.rData->pushConstantData = (char*)malloc(def.pcBlock.sizeBytes);
 			
 			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
@@ -529,8 +534,8 @@ namespace Material
 			{
 				BlockMember& mem = def.pcBlock.blockMembers[i];
 
-				outAsset.rData->pushConstantBlockDef.layout[i * 2] = hash(&mem.name[0]);
-				outAsset.rData->pushConstantBlockDef.layout[i * 2 + 1] = mem.offset;
+				outAsset.rData->pushConstantLayout.layout[i * 2] = hash(&mem.name[0]);
+				outAsset.rData->pushConstantLayout.layout[i * 2 + 1] = mem.offset;
 			}
 		}
 
@@ -620,20 +625,46 @@ namespace Material
 		uint32_t lastSize = 0;
 		uint32_t lastSet = 0;
 
-		curSet = 0;
-		outAsset.rData->staticBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * def.inputCount);
-		//matStorage.mat.rData.staticMems = (VkDeviceMemory*)malloc(sizeof(VkDeviceMemory) * def.inputCount);
+
+		uint32_t numStaticInputs = 0;
+		uint32_t numDynamicInputs = 0;
+		
+		for (auto& input : def.inputs)
+		{
+			std::vector<DescriptorSetBinding>& descSets = input.second;
+			for (uint32_t i = 0; i < descSets.size(); ++i)
+			{
+				DescriptorSetBinding& inputDef = descSets[i];
+				if (IsDynamicInput(inputDef)) numDynamicInputs++;
+				else numStaticInputs++;
+			}
+		}
+
+
+		outAsset.rData->staticBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * numStaticInputs);
+
+		outAsset.rData->dynamic.buffers = (VkBuffer*)malloc(sizeof(VkBuffer) * numDynamicInputs);
+		outAsset.rData->dynamic.layout = (uint32_t*)malloc(sizeof(uint32_t) * numDynamicInputs * 3);
+		outAsset.rData->dynamic.numInputs = numDynamicInputs;
 
 
 		//create the buffers needed for uniform data, but don't allocate any mem yet, since we're going to
 		//allocate the mem for all of them in one chunk
 		uint32_t staticUniformSize = 0;
+		uint32_t dynamicUniformSize = 0;
+		
 		uint32_t curBuffer = 0;
+		uint32_t curDynamicBuffer = 0;
 
 		VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 		std::vector<char*> staticData;
+		std::vector<char*> dynamicData;
+		curSet = 0;
+
 		std::vector<uint32_t> staticSizes;
+		std::vector<uint32_t> dynamicSizes;
+
 		for (auto& input : def.inputs)
 		{
 			std::vector<DescriptorSetBinding>& descSets = input.second;
@@ -641,13 +672,31 @@ namespace Material
 			{
 				DescriptorSetBinding& inputDef = descSets[i];
 				size_t dynamicAlignment = (inputDef.sizeBytes / uboAlignment) * uboAlignment + ((inputDef.sizeBytes % uboAlignment) > 0 ? uboAlignment : 0);
-				if (inputDef.type == InputType::UNIFORM)
+				if (inputDef.type == InputType::UNIFORM && inputDef.set != 3)
 				{
 					if (inputDef.set == 0 && inputDef.binding == 0)
 					{
 						Material::initGlobalShaderData();
 					}
-					else
+					else if (IsDynamicInput(inputDef))
+					{
+						vkh::createBuffer(outAsset.rData->dynamic.buffers[curDynamicBuffer++],
+							dynamicAlignment,
+							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+							memFlags);
+
+						char* data = (char*)malloc(dynamicAlignment);
+						for (uint32_t k = 0; k < inputDef.blockMembers.size(); ++k)
+						{
+							memcpy(&data[0] + inputDef.blockMembers[k].offset, inputDef.blockMembers[k].defaultValue, inputDef.blockMembers[k].size);
+						}
+
+						dynamicData.push_back(data);
+						dynamicSizes.push_back(dynamicAlignment);
+
+						dynamicUniformSize += dynamicAlignment;
+					}
+					else 
 					{
 						vkh::createBuffer(outAsset.rData->staticBuffers[curBuffer++],
 							dynamicAlignment,

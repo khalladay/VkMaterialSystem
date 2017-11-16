@@ -66,12 +66,12 @@ namespace Material
 
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantBlockDef.memberCount*2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount*2; i += 2)
 		{
-			if (rData.pushConstantBlockDef.layout[i] == varHash)
+			if (rData.pushConstantLayout.layout[i] == varHash)
 			{
-				uint32_t offset = rData.pushConstantBlockDef.layout[i + 1];
-				memcpy(rData.pushConstantData + rData.pushConstantBlockDef.layout[i + 1], &data, sizeof(glm::vec4));
+				uint32_t offset = rData.pushConstantLayout.layout[i + 1];
+				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], &data, sizeof(glm::vec4));
 				break;
 			}
 		}
@@ -83,11 +83,11 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantBlockDef.memberCount * 2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount * 2; i += 2)
 		{
-			if (rData.pushConstantBlockDef.layout[i] == varHash)
+			if (rData.pushConstantLayout.layout[i] == varHash)
 			{
-				memcpy(rData.pushConstantData + rData.pushConstantBlockDef.layout[i + 1], &data, sizeof(glm::mat4));
+				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], &data, sizeof(glm::mat4));
 				break;
 			}
 		}
@@ -98,11 +98,11 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData();
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantBlockDef.memberCount * 2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount * 2; i += 2)
 		{
-			if (rData.pushConstantBlockDef.layout[i] == varHash)
+			if (rData.pushConstantLayout.layout[i] == varHash)
 			{
-				memcpy(rData.pushConstantData + rData.pushConstantBlockDef.layout[i + 1], &data, sizeof(float));
+				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], &data, sizeof(float));
 				break;
 			}
 		}

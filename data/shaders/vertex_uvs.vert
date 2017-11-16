@@ -25,6 +25,11 @@ layout(binding = 3, set = 2) uniform Instance2
 	vec4 tint2;
 }inst_data2;
 
+layout(binding = 0, set = 3) uniform Dynamic
+{
+	float test;
+	vec2 test2;
+}dyn_data;
 
 layout(location = 0) in vec3 vertex;
 layout(location = 1) in vec2 uv;
@@ -43,7 +48,7 @@ void main()
 {
     gl_Position = vec4(vertex, 1.0);
 	float t = sin( mod(global.time, 1.0));
-    fragColor = pc.col * inst_data.tint * inst_data2.tint2 * t;
+    fragColor = pc.col * inst_data.tint * inst_data2.tint2 * dyn_data.test * t;
 	fragUV = uv;
 }
 

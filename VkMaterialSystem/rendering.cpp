@@ -130,7 +130,7 @@ namespace Rendering
 
 			Material::setUniformVector4("global.mouse", mouseData);
 
-			if (Material::getRenderData().pushConstantBlockDef.blockSize > 0)
+			if (Material::getRenderData().pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
 				Material::setPushConstantVector("col", glm::vec4(1.0, 1.0, 1.0, 1.0));
@@ -139,9 +139,9 @@ namespace Rendering
 				vkCmdPushConstants(
 					commandBuffers[imageIndex],
 					mat.pipelineLayout,
-					mat.pushConstantBlockDef.visibleStages,
+					mat.pushConstantLayout.visibleStages,
 					0,
-					mat.pushConstantBlockDef.blockSize,
+					mat.pushConstantLayout.blockSize,
 					mat.pushConstantData);
 			}
 

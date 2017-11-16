@@ -51,6 +51,20 @@
                     "offset": 0
                 }
             ]
+        },
+        {
+            "name": "Dynamic",
+            "size": 16,
+            "set": 3,
+            "binding": 0,
+            "type": "UNIFORM",
+            "members": [
+                {
+                    "name": "test",
+                    "size": 8,
+                    "offset": 0
+                }
+            ]
         }
     ]
 }
