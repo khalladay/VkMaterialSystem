@@ -169,7 +169,7 @@ namespace Material
 				]
 			},
 			*/
-
+			
 			if (reflDoc.HasMember("push_constants"))
 			{
 				const Value& pushConstants = reflDoc["push_constants"];
@@ -522,6 +522,7 @@ namespace Material
 			outAsset.rData->pushConstantBlockDef.blockSize = def.pcBlock.sizeBytes;
 			outAsset.rData->pushConstantBlockDef.memberCount = def.pcBlock.blockMembers.size();
 			outAsset.rData->pushConstantData = (char*)malloc(def.pcBlock.sizeBytes);
+			
 			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
 
 			for (uint32_t i = 0; i < def.pcBlock.blockMembers.size(); ++i)

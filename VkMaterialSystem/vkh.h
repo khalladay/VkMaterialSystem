@@ -109,30 +109,6 @@ namespace vkh
 		VkAttachmentStoreOp store;
 	};
 
-	struct VkhUniformBuffer
-	{
-		VkBuffer* buffer;
-		uint32_t* bufferLayout;
-		uint32_t numElements;
-	};
-
-	struct VkhMesh
-	{
-		VkBuffer vBuffer;
-		VkBuffer iBuffer;
-		VkDeviceMemory vBufferMemory;
-		VkDeviceMemory iBufferMemory;
-
-		uint32_t vCount;
-		uint32_t iCount;
-	};
-
-	struct VkhTexture
-	{
-		VkImage image;
-		VkDeviceMemory deviceMemory;
-	};
-
 	VkFormat depthFormat();
 
 	void createWin32Context(VkhContext& outContext, uint32_t width, uint32_t height, HINSTANCE Instance, HWND wndHdl, const char* applicationName);

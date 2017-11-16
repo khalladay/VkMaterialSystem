@@ -28,7 +28,7 @@ namespace Mesh
 		size_t vBufferSize = sizeof(Vertex) * vertexCount + sizeof(uint32_t) * indexCount;
 		size_t iBufferSize = sizeof(uint32_t) * indexCount;
 
-		vkh::VkhMesh m;
+		MeshRenderData m;
 
 		m.iCount = indexCount;
 		m.vCount = vertexCount;
@@ -98,7 +98,7 @@ namespace Mesh
 		vkFreeMemory(GContext.device, stagingMemory, nullptr);
 		vkDestroyBuffer(GContext.device, stagingBuffer, nullptr);
 
-		meshStorage.fullScreenMesh.rData.vkMesh = m;
+		meshStorage.fullScreenMesh.rData = m;
 	}
 	
 	const VertexRenderData* vertexRenderData()

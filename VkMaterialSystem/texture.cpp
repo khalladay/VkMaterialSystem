@@ -73,22 +73,22 @@ namespace Texture
 		t.rData.format = VK_FORMAT_R8G8B8A8_UNORM;
 
 		//VK image format must match buffer
-		vkh::createImage(t.rData.vulkanTexture.image,
+		vkh::createImage(t.rData.image,
 			t.width, t.height,
 			VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-		vkh::allocBindImageToMem(t.rData.vulkanTexture.deviceMemory,
-			t.rData.vulkanTexture.image,
+		vkh::allocBindImageToMem(t.rData.deviceMemory,
+			t.rData.image,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		vkh::transitionImageLayout(t.rData.vulkanTexture.image, t.rData.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		vkh::copyBufferToImage(stagingBuffer, t.rData.vulkanTexture.image, t.width, t.height);
+		vkh::transitionImageLayout(t.rData.image, t.rData.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		vkh::copyBufferToImage(stagingBuffer, t.rData.image, t.width, t.height);
 
-		vkh::transitionImageLayout(t.rData.vulkanTexture.image, t.rData.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		vkh::transitionImageLayout(t.rData.image, t.rData.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-		vkh::createImageView(t.rData.view, 1, t.rData.vulkanTexture.image, t.rData.format);
+		vkh::createImageView(t.rData.view, 1, t.rData.image, t.rData.format);
 		vkh::createTexSampler(t.rData.sampler);
 
 		vkDestroyBuffer(vkh::GContext.device, stagingBuffer, nullptr);

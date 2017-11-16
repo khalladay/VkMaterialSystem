@@ -107,7 +107,7 @@ namespace Rendering
 		//eventually this will have to iterate over multiple objects/materials
 		{
 
-			const vkh::VkhMesh& mesh = Mesh::getRenderData().vkMesh;
+			const MeshRenderData& mesh = Mesh::getRenderData();
 			const MaterialRenderData& mat = Material::getRenderData();
 
 

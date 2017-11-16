@@ -3,7 +3,13 @@
 
 struct MeshRenderData
 {
-	vkh::VkhMesh vkMesh;
+	VkBuffer vBuffer;
+	VkBuffer iBuffer;
+	VkDeviceMemory vBufferMemory;
+	VkDeviceMemory iBufferMemory;
+
+	uint32_t vCount;
+	uint32_t iCount;
 };
 
 struct UniformBlockDef
@@ -37,7 +43,8 @@ struct MaterialRenderData
 
 struct TextureRenderData
 {
-	vkh::VkhTexture vulkanTexture;
+	VkImage image;
+	VkDeviceMemory deviceMemory;
 	VkImageView view;
 	VkFormat format;
 	VkSampler sampler;
