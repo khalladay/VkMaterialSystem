@@ -25,7 +25,7 @@ struct MaterialDynamicData
 {
 	uint32_t numInputs;
 
-	// stride: 3 - hashed name / index of binding / offet
+	// stride: 3 - hashed name / buffer index / buffer + member offet
 	uint32_t* layout;
 	VkBuffer* buffers;
 	VkDeviceMemory uniformMem;
