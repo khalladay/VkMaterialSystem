@@ -9,12 +9,12 @@
             }
         ]
     },
-    "inputs": [
+    "descriptor_sets": [
         {
-            "name": "GLOBAL_DATA",
-            "size": 128,
             "set": 0,
             "binding": 0,
+            "name": "GLOBAL_DATA",
+            "size": 128,
             "type": "UNIFORM",
             "members": [
                 {
@@ -25,10 +25,10 @@
             ]
         },
         {
-            "name": "Instance",
-            "size": 16,
             "set": 2,
             "binding": 0,
+            "name": "Instance",
+            "size": 16,
             "type": "UNIFORM",
             "members": [
                 {
@@ -39,10 +39,10 @@
             ]
         },
         {
-            "name": "Instance2",
-            "size": 16,
             "set": 2,
             "binding": 3,
+            "name": "Instance2",
+            "size": 16,
             "type": "UNIFORM",
             "members": [
                 {
@@ -51,20 +51,19 @@
                     "offset": 0
                 }
             ]
-        },
-        {
-            "name": "Dynamic",
-            "size": 16,
-            "set": 3,
-            "binding": 0,
-            "type": "UNIFORM",
-            "members": [
-                {
-                    "name": "test",
-                    "size": 8,
-                    "offset": 0
-                }
-            ]
         }
-    ]
+    ],
+    "global_sets": [
+        0
+    ],
+    "static_sets": [
+        2
+    ],
+    "dynamic_sets": [],
+    "static_set_size": 32,
+    "dynamic_set_size": 0,
+    "num_static_uniforms": 2,
+    "num_static_textures": 0,
+    "num_dynamic_uniforms": 0,
+    "num_dynamic_textures": 0
 }

@@ -11,28 +11,73 @@ struct BlockMember
 	uint32_t offset;
 };
 
-struct UniformBlock
+struct InputBlock
 {
 	std::string name;
 	uint32_t size;
 	std::vector<BlockMember> members;
 	uint32_t set;
 	uint32_t binding;
-};
-
-struct TextureBlock
-{
-	std::string name;
-	uint32_t binding;
-	uint32_t set;
+	bool isTextureBlock;
 };
 
 struct ShaderData
 {
-	UniformBlock pushConstants;
-	std::vector<UniformBlock> uniformBlocks;
-	std::vector<TextureBlock> textureBlocks;
+	InputBlock pushConstants;
+	std::vector<InputBlock> descriptorSets;
+
+	std::vector<uint32_t> dynamicSets;
+	std::vector<uint32_t> globalSets;
+	std::vector<uint32_t> staticSets;
+
+	uint32_t dynamicSetSize;
+	uint32_t staticSetSize;
+	uint32_t numDynamicUniforms;
+	uint32_t numDynamicTextures;
+	uint32_t numStaticUniforms;
+	uint32_t numStaticTextures;
 };
+
+
+void writeInputGroup(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, std::vector<InputBlock>& descSet, std::string inputGroupName)
+{
+	writer.Key(inputGroupName.c_str());
+	writer.StartArray();
+	
+	for (InputBlock& block : descSet)
+	{
+		writer.StartObject();
+		writer.Key("set");
+		writer.Int(block.set);
+		writer.Key("binding");
+		writer.Int(block.binding);
+		writer.Key("name");
+		writer.String(block.name.c_str());
+		writer.Key("size");
+		writer.Int(block.size);
+		writer.Key("type");
+		writer.String(block.isTextureBlock ? "SAMPLER" : "UNIFORM");
+
+		writer.Key("members");
+		writer.StartArray();
+		for (uint32_t i = 0; i < block.members.size(); ++i)
+		{
+			writer.StartObject();
+			writer.Key("name");
+			writer.String(block.members[i].name.c_str());
+			writer.Key("size");
+			writer.Int(block.members[i].size);
+			writer.Key("offset");
+			writer.Int(block.members[i].offset);
+			writer.EndObject();
+
+		}
+		writer.EndArray();
+		writer.EndObject();
+	}
+
+	writer.EndArray();
+}
 
 std::string getReflectionString(ShaderData& data)
 {
@@ -68,64 +113,36 @@ std::string getReflectionString(ShaderData& data)
 		writer.EndObject();
 	}
 
-	if (data.uniformBlocks.size() > 0 || data.textureBlocks.size() > 0)
-	{
-		writer.Key("inputs");
-		writer.StartArray();
+	writeInputGroup(writer, data.descriptorSets, "descriptor_sets");
 
-		for (auto& block : data.textureBlocks)
-		{
-			writer.StartObject();
-			writer.Key("name");
-			writer.String(block.name.c_str());
-			writer.Key("binding");
-			writer.Int(block.binding);
-			writer.Key("set");
-			writer.Int(block.set);
-			writer.Key("type");
-			writer.String("SAMPLER");
-			writer.EndObject();
-		}
+	writer.Key("global_sets");
+	writer.StartArray();
+	for (uint32_t i : data.globalSets) writer.Int(i);
+	writer.EndArray();
 
-		for (auto& block : data.uniformBlocks)
-		{
-			if (block.members.size() > 0)
-			{
-				writer.StartObject();
-				writer.Key("name");
-				writer.String(block.name.c_str());
-				writer.Key("size");
-				writer.Int(block.size);
-				writer.Key("set");
-				writer.Int(block.set);
-				writer.Key("binding");
-				writer.Int(block.binding);
-				writer.Key("type");
-				writer.String("UNIFORM");
+	writer.Key("static_sets");
+	writer.StartArray();
+	for (uint32_t i : data.staticSets) writer.Int(i);
+	writer.EndArray();
 
-				writer.Key("members");
-				writer.StartArray();
+	writer.Key("dynamic_sets");
+	writer.StartArray();
+	for (uint32_t i : data.dynamicSets) writer.Int(i);
+	writer.EndArray();
 
-				for (uint32_t i = 0; i < block.members.size(); ++i)
-				{
-					writer.StartObject();
-					writer.Key("name");
-					writer.String(block.members[i].name.c_str());
-					writer.Key("size");
-					writer.Int(block.members[i].size);
-					writer.Key("offset");
-					writer.Int(block.members[i].offset);
-					writer.EndObject();
+	writer.Key("static_set_size");
+	writer.Int(data.staticSetSize);
+	writer.Key("dynamic_set_size");
+	writer.Int(data.dynamicSetSize);
+	writer.Key("num_static_uniforms");
+	writer.Int(data.numStaticUniforms);
+	writer.Key("num_static_textures");
+	writer.Int(data.numStaticTextures);
 
-				}
-
-				writer.EndArray();
-				writer.EndObject();
-			}
-		}
-
-		writer.EndArray();
-	}
+	writer.Key("num_dynamic_uniforms");
+	writer.Int(data.numDynamicUniforms);
+	writer.Key("num_dynamic_textures");
+	writer.Int(data.numDynamicTextures);
 
 	writer.EndObject();
 	return s.GetString();

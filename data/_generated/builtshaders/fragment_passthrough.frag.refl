@@ -1,22 +1,10 @@
 {
-    "inputs": [
+    "descriptor_sets": [
         {
-            "name": "texSampler",
-            "binding": 1,
-            "set": 2,
-            "type": "SAMPLER"
-        },
-        {
-            "name": "testSampler",
-            "binding": 4,
-            "set": 3,
-            "type": "SAMPLER"
-        },
-        {
-            "name": "GLOBAL_DATA",
-            "size": 128,
             "set": 0,
             "binding": 0,
+            "name": "GLOBAL_DATA",
+            "size": 128,
             "type": "UNIFORM",
             "members": [
                 {
@@ -25,6 +13,35 @@
                     "offset": 16
                 }
             ]
+        },
+        {
+            "set": 2,
+            "binding": 1,
+            "name": "texSampler",
+            "size": 0,
+            "type": "SAMPLER",
+            "members": []
+        },
+        {
+            "set": 2,
+            "binding": 4,
+            "name": "testSampler",
+            "size": 0,
+            "type": "SAMPLER",
+            "members": []
         }
-    ]
+    ],
+    "global_sets": [
+        0
+    ],
+    "static_sets": [
+        2
+    ],
+    "dynamic_sets": [],
+    "static_set_size": 0,
+    "dynamic_set_size": 0,
+    "num_static_uniforms": 0,
+    "num_static_textures": 2,
+    "num_dynamic_uniforms": 0,
+    "num_dynamic_textures": 0
 }

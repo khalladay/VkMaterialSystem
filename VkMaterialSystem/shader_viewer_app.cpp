@@ -13,6 +13,7 @@ namespace App
 	{
 		Rendering::init();
 		//Texture::make("../data/textures/test_texture.jpg");
+		Material::initGlobalShaderData();
 
 		Material::Definition def = { 0 };		
 		{

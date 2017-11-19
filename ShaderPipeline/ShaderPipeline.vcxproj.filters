@@ -32,5 +32,8 @@
     <ClInclude Include="shaderdata.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -55,14 +55,29 @@ namespace Material
 
 	struct Definition
 	{
-		bool depthTest;
-		bool depthWrite;
-
 		PushConstantBlock pcBlock;
-
 		std::vector<ShaderStageDefinition> stages;
-		std::map<uint32_t, std::vector<DescriptorSetBinding>> inputs;
-		uint32_t inputCount;
+
+		std::map<uint32_t, std::vector<DescriptorSetBinding>> descSets;
+
+		std::vector<uint32_t> dynamicSets;
+		std::vector<uint32_t> staticSets;
+		std::vector<uint32_t> globalSets;
+
+		uint32_t numStaticUniforms;
+		uint32_t numStaticTextures;
+		uint32_t numDynamicUniforms;
+		uint32_t numDynamicTextures;
+		uint32_t staticSetsSize;
+		uint32_t dynamicSetsSize;
+/*
+		std::map<uint32_t, std::vector<DescriptorSetBinding>> staticInputs;
+		
+		std::vector<DescriptorSetBinding> staticInputs;
+		std::vector<DescriptorSetBinding> dynamicInputs;
+		std::vector<DescriptorSetBinding> globalInputs;
+
+		uint32_t inputCount;*/
 	};
 
 	void make(Material::Definition def);

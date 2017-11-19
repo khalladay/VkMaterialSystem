@@ -128,6 +128,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
     <ClInclude Include="filesystem_utils.h" />
     <ClInclude Include="shaderdata.h" />
     <ClInclude Include="refl_info.h" />
