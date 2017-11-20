@@ -25,6 +25,16 @@
 							"value": [1.0, 1.0, 0.0, 1.0]
 						}
 					]
+				},
+				{
+					"name":"Dynamic",
+					"members":
+					[
+						{
+							"name":"test",
+							"value":[0.5]
+						}
+					]
 				}
 			]
 		},

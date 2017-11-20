@@ -51,6 +51,20 @@
                     "offset": 0
                 }
             ]
+        },
+        {
+            "set": 3,
+            "binding": 0,
+            "name": "Dynamic",
+            "size": 4,
+            "type": "UNIFORM",
+            "members": [
+                {
+                    "name": "test",
+                    "size": 4,
+                    "offset": 0
+                }
+            ]
         }
     ],
     "global_sets": [
@@ -59,11 +73,13 @@
     "static_sets": [
         2
     ],
-    "dynamic_sets": [],
+    "dynamic_sets": [
+        3
+    ],
     "static_set_size": 32,
-    "dynamic_set_size": 0,
+    "dynamic_set_size": 4,
     "num_static_uniforms": 2,
     "num_static_textures": 0,
-    "num_dynamic_uniforms": 0,
+    "num_dynamic_uniforms": 1,
     "num_dynamic_textures": 0
 }

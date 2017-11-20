@@ -785,6 +785,7 @@ namespace Material
 			createBuffersForDescriptorSetBindingArray(dynamicBindings, &outAsset.rData->dynamic.buffers[0], memFlags);
 			allocateDeviceMemoryForBuffers(outAsset.rData->dynamic.uniformMem, def.dynamicSetsSize, &outAsset.rData->dynamic.buffers[0], memFlags);
 			bindBuffersToMemory(outAsset.rData->dynamic.uniformMem, outAsset.rData->dynamic.buffers, dynamicBindings);
+			fillBuffersWithDefaultValues(outAsset.rData->dynamic.buffers, def.dynamicSetsSize, dynamicDefaultData, dynamicBindings);
 		}
 
 		
@@ -862,7 +863,7 @@ namespace Material
 
 			VkWriteDescriptorSet descriptorWrite = {};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = outMaterial.descSets[setIdx];
+			descriptorWrite.dstSet = outMaterial.descSets[binding.set];
 			descriptorWrite.dstBinding = binding.binding; //refers to binding in shader
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
@@ -875,6 +876,50 @@ namespace Material
 				VkDescriptorBufferInfo uniformBufferInfo;
 				uniformBufferInfo.offset = 0;
 				uniformBufferInfo.buffer = outAsset.rData->staticBuffers[uniformBufferInfos.size()];
+				uniformBufferInfo.range = binding.sizeBytes;
+
+				uniformBufferInfos.push_back(uniformBufferInfo);
+				descriptorWrite.pBufferInfo = &uniformBufferInfos[uniformBufferInfos.size() - 1];
+			}
+			else if (binding.type == InputType::SAMPLER)
+			{
+				VkDescriptorImageInfo imageInfo = {};
+				uint32_t tex = Texture::make(binding.defaultValue);
+
+				TextureRenderData* texData = Texture::getRenderData(tex);
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = texData->sampler;
+
+				imageInfos.push_back(imageInfo);
+				descriptorWrite.pImageInfo = &imageInfos[imageInfos.size() - 1];
+
+			}
+
+			descriptorWrite.pTexelBufferView = nullptr; // Optional
+			descSetWrites.push_back(descriptorWrite);
+		}
+
+		uint32_t dynamicBufferTotal = 0;
+		for (DescriptorSetBinding* bindingPtr : dynamicBindings)
+		{
+			DescriptorSetBinding& binding = *bindingPtr;
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = outMaterial.descSets[binding.set];
+			descriptorWrite.dstBinding = binding.binding; //refers to binding in shader
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = 0;
+			descriptorWrite.pImageInfo = 0;
+
+			if (binding.type == InputType::UNIFORM)
+			{
+				VkDescriptorBufferInfo uniformBufferInfo;
+				uniformBufferInfo.offset = 0;
+				uniformBufferInfo.buffer = outAsset.rData->dynamic.buffers[dynamicBufferTotal++];
 				uniformBufferInfo.range = binding.sizeBytes;
 
 				uniformBufferInfos.push_back(uniformBufferInfo);
