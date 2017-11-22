@@ -129,11 +129,11 @@ namespace Rendering
 			Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
 			Material::setUniformVector4("global.mouse", mouseData);
-
+			Material::setUniformFloat("test", 1.0f);
 			if (Material::getRenderData().pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector("col", glm::vec4(1.0, 1.0, 1.0, 1.0));
+				Material::setPushConstantVector("col", glm::vec4(0.0, 0.1, 1.0, 1.0));
 				Material::setPushConstantFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
 				vkCmdPushConstants(

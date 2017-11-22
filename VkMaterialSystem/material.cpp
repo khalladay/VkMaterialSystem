@@ -60,72 +60,78 @@ namespace Material
 		}
 	}
 
-	void setPushConstantVector(const char* var, glm::vec4& data)
+	void setPushConstantData(const char* var, void* data, uint32_t size)
 	{
 		MaterialRenderData& rData = Material::getRenderData();
 
 		uint32_t varHash = hash(var);
 
-		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount*2; i += 2)
+		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount * 2; i += 2)
 		{
 			if (rData.pushConstantLayout.layout[i] == varHash)
 			{
 				uint32_t offset = rData.pushConstantLayout.layout[i + 1];
-				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], &data, sizeof(glm::vec4));
+				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], data, size);
 				break;
 			}
 		}
+	}
+
+	void setUniformData(const char* name, void* data)
+	{
+		MaterialRenderData& rData = Material::getRenderData();
+		uint32_t varHash = hash(name);
+
+		for (uint32_t i = 0; i < rData.dynamic.numInputs * 4; i += 4)
+		{
+			if (rData.dynamic.layout[i] == varHash)
+			{
+				VkBuffer& targetBuffer = rData.dynamic.buffers[rData.dynamic.layout[i + 1]];
+				uint32_t size = rData.dynamic.layout[i + 2];
+				uint32_t offset = rData.dynamic.layout[i + 3];
+
+				vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
+				vkCmdUpdateBuffer(scratch.buffer, targetBuffer, offset, size, data);
+				vkh::submitScratchCommandBuffer(scratch);
+				break;
+			}
+		}
+	}
+
+	void setPushConstantVector(const char* var, glm::vec4& data)
+	{
+		setPushConstantData(var, &data, sizeof(glm::vec4));
 	}
 
 
 	void setPushConstantMatrix(const char* var, glm::mat4& data)
 	{
-		MaterialRenderData& rData = Material::getRenderData();
-		uint32_t varHash = hash(var);
-
-		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount * 2; i += 2)
-		{
-			if (rData.pushConstantLayout.layout[i] == varHash)
-			{
-				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], &data, sizeof(glm::mat4));
-				break;
-			}
-		}
+		setPushConstantData(var, &data, sizeof(glm::mat4));
 	}
 
 	void setPushConstantFloat(const char* var, float data)
 	{
-		MaterialRenderData& rData = Material::getRenderData();
-		uint32_t varHash = hash(var);
-
-		for (uint32_t i = 0; i < rData.pushConstantLayout.memberCount * 2; i += 2)
-		{
-			if (rData.pushConstantLayout.layout[i] == varHash)
-			{
-				memcpy(rData.pushConstantData + rData.pushConstantLayout.layout[i + 1], &data, sizeof(float));
-				break;
-			}
-		}
+		setPushConstantData(var, &data, sizeof(float));
 	}
 
 	void setUniformVector4(const char* name, glm::vec4& data)
 	{
-
+		setUniformData(name, &data);
 	}
 
 	void setUniformVector2(const char* name, glm::vec2& data)
 	{
-
+		setUniformData(name, &data);
 	}
 
 	void setUniformFloat(const char* name, float data)
 	{
-
+		setUniformData(name, &data);
 	}
 
 	void setUniformMatrix(const char* name, glm::mat4& data)
 	{
-
+		setUniformData(name, &data);
 	}
 
 	void setGlobalFloat(const char* name, float data)
@@ -147,7 +153,6 @@ namespace Material
 		initGlobalShaderData();
 		globalShaderData.resolution = data;
 		memcpy(mappedMemory, &globalShaderData, globalSize);
-
 	}
 
 

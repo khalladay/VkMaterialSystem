@@ -426,6 +426,8 @@ namespace Material
 
 	void fillBuffersWithDefaultValues(VkBuffer* buffers, uint32_t dataSize, char* defaultData, std::vector<DescriptorSetBinding*> bindings)
 	{
+		if (dataSize <= 0) return;
+
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingMemory;
 
@@ -462,7 +464,8 @@ namespace Material
 	void collectDefaultValuesIntoBufferAndBuildLayout(char* outBuffer, std::vector<DescriptorSetBinding*> bindings, std::vector<uint32_t>* optionalOutLayout = nullptr)
 	{
 		uint32_t bufferOffset = 0;
-		uint32_t curBuffer = 0;
+		uint32_t curBuffer = 0; //need this number to know the index into our VkBuffer array that a uniform block will be
+		uint32_t total = 0; //eed this number to know the index into the descriptor set write array our image will be
 		for (DescriptorSetBinding* binding : bindings)
 		{
 			if (binding->type == InputType::UNIFORM)
@@ -474,12 +477,23 @@ namespace Material
 					{
 						optionalOutLayout->push_back(hash(binding->blockMembers[k].name));
 						optionalOutLayout->push_back(curBuffer);
-						optionalOutLayout->push_back(bufferOffset + binding->blockMembers[k].offset);
+						optionalOutLayout->push_back(binding->blockMembers[k].size);
+						optionalOutLayout->push_back(binding->blockMembers[k].offset);
 					}
 					memcpy(&outBuffer[0] + bufferOffset + binding->blockMembers[k].offset, binding->blockMembers[k].defaultValue, binding->blockMembers[k].size);
 				}
 				bufferOffset += binding->sizeBytes;
+				curBuffer++;
 			}
+			else if (optionalOutLayout)
+			{
+				optionalOutLayout->push_back(hash(binding->name));
+				optionalOutLayout->push_back(total);
+				optionalOutLayout->push_back(0);
+				optionalOutLayout->push_back(0);
+			}
+			total++;
+
 		}
 	}
 
@@ -532,6 +546,7 @@ namespace Material
 			}
 		}
 
+		outMaterial.dynamic.numInputs = def.dynamicSets.size();
 
 		VkResult res;
 
@@ -901,6 +916,7 @@ namespace Material
 		}
 
 		uint32_t dynamicBufferTotal = 0;
+		uint32_t firstDynamicWriteIdx = 0;
 		for (DescriptorSetBinding* bindingPtr : dynamicBindings)
 		{
 			DescriptorSetBinding& binding = *bindingPtr;
@@ -941,24 +957,24 @@ namespace Material
 			}
 
 			descriptorWrite.pTexelBufferView = nullptr; // Optional
+			
+			//this is a bit gross if we only have dynamic inputs, 
+			//but it will still work. 
+			if (firstDynamicWriteIdx == 0)
+			{
+				firstDynamicWriteIdx = descSetWrites.size();
+			}
+
 			descSetWrites.push_back(descriptorWrite);
 		}
 
-		//dynamic data is handled the same way, except that we want to keep the VkWriteDescriptorSet
-		//structs around for updating later. 
-		std::vector<VkWriteDescriptorSet> dynamicSetWrites;
-		if (def.dynamicSets.size() > 0)
-		{
-			for (uint32_t setIdx : def.dynamicSets)
-			{
-				for (DescriptorSetBinding& binding : def.descSets[setIdx])
-				{
-				}
-			}
-		}
 		//it's kinda weird that the order of desc writes has to be the order of sets. 
 		vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
-		
+
+		//save the write descriptor set structs out for later in case we want to update them? 
+		outMaterial.dynamic.descriptorSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * dynamicBufferTotal);
+		memcpy(outMaterial.dynamic.descriptorSetWrites, &descSetWrites.data()[firstDynamicWriteIdx], sizeof(VkWriteDescriptorSet) * dynamicBufferTotal);
+
 		///////////////////////////////////////////////////////////////////////////////
 		//cleanup
 		///////////////////////////////////////////////////////////////////////////////
