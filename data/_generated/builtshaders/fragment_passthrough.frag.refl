@@ -23,7 +23,7 @@
             "members": []
         },
         {
-            "set": 2,
+            "set": 3,
             "binding": 4,
             "name": "testSampler",
             "size": 0,
@@ -37,11 +37,13 @@
     "static_sets": [
         2
     ],
-    "dynamic_sets": [],
+    "dynamic_sets": [
+        3
+    ],
     "static_set_size": 0,
     "dynamic_set_size": 0,
     "num_static_uniforms": 0,
-    "num_static_textures": 2,
+    "num_static_textures": 1,
     "num_dynamic_uniforms": 0,
-    "num_dynamic_textures": 0
+    "num_dynamic_textures": 1
 }

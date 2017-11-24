@@ -11,7 +11,7 @@ layout(binding = 0, set = 0)uniform GLOBAL_DATA
 }global;
 
 layout(binding = 1, set = 2) uniform sampler2D texSampler;
-layout(binding = 4, set = 2) uniform sampler2D testSampler;
+layout(binding = 4, set = 3) uniform sampler2D testSampler;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec4 fragColor;

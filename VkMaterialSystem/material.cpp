@@ -5,6 +5,7 @@
 #include "hash.h"
 #include "vkh.h"
 #include <vector>
+#include "texture.h"
 
 struct MaterialStorage
 {
@@ -77,6 +78,35 @@ namespace Material
 		}
 	}
 
+	//note: this cannot be done from within a command buffer
+	void setTexture(const char* var, uint32_t texId)
+	{
+		MaterialRenderData& rData = Material::getRenderData();
+
+		uint32_t varHash = hash(var);
+		for (uint32_t i = 0; i < rData.dynamic.numInputs * 4; i += 4)
+		{
+			if (rData.dynamic.layout[i] == varHash)
+			{
+				TextureRenderData* texData = Texture::getRenderData(texId);
+				uint32_t index = rData.dynamic.layout[i + 1];
+				uint32_t setWriteIdx = rData.dynamic.layout[i + 2];
+				rData.dynamic.textureViews[index] = &texData->view;
+				rData.dynamic.samplers[index] = &texData->sampler;
+
+				VkWriteDescriptorSet& setWrite = rData.dynamic.descriptorSetWrites[setWriteIdx];
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = *rData.dynamic.textureViews[index];
+				imageInfo.sampler = *rData.dynamic.samplers[index];
+
+				setWrite.pImageInfo = &imageInfo;
+
+				vkUpdateDescriptorSets(vkh::GContext.device, 1, &setWrite, 0, nullptr);
+			}
+		}
+	}
+	
 	void setUniformData(const char* name, void* data)
 	{
 		MaterialRenderData& rData = Material::getRenderData();

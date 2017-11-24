@@ -36,6 +36,8 @@ namespace Material
 	void setUniformFloat(const char* name, float data);
 	void setUniformMatrix(const char* name, glm::mat4& data);
 
+	void setTexture(const char* name, uint32_t texId);
+
 	void setGlobalFloat(const char* name, float data);
 	void setGlobalVector4(const char* name, glm::vec4& data);
 	void setGlobalVector2(const char* name, glm::vec2& data);

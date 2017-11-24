@@ -465,6 +465,7 @@ namespace Material
 	{
 		uint32_t bufferOffset = 0;
 		uint32_t curBuffer = 0; //need this number to know the index into our VkBuffer array that a uniform block will be
+		uint32_t curImage = 0;
 		uint32_t total = 0; //eed this number to know the index into the descriptor set write array our image will be
 		for (DescriptorSetBinding* binding : bindings)
 		{
@@ -488,8 +489,8 @@ namespace Material
 			else if (optionalOutLayout)
 			{
 				optionalOutLayout->push_back(hash(binding->name));
+				optionalOutLayout->push_back(curImage++);
 				optionalOutLayout->push_back(total);
-				optionalOutLayout->push_back(0);
 				optionalOutLayout->push_back(0);
 			}
 			total++;
@@ -760,7 +761,7 @@ namespace Material
 			//dynamic buffers are a pain in the ass and we need to track a lot of information about them. 
 			outAsset.rData->dynamic.buffers = (VkBuffer*)malloc(sizeof(VkBuffer) * def.numDynamicUniforms);
 			outAsset.rData->dynamic.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.numDynamicUniforms * 3);
-			outAsset.rData->dynamic.numInputs = def.numDynamicUniforms;
+			outAsset.rData->dynamic.numInputs = def.numDynamicUniforms + def.numDynamicTextures;
 
 			//all material mem should be device local, for perf
 			VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -842,6 +843,11 @@ namespace Material
 		std::vector<VkDescriptorImageInfo> imageInfos;
 		imageInfos.reserve(def.numDynamicTextures + def.numStaticTextures);
 
+		//to make sure textures can be swapped out, we need to allocate an array of texture and sampler ptrs
+		//in dynamic data that we will use later
+		outMaterial.dynamic.textureViews = (VkImageView**)malloc(sizeof(VkImageView**)*def.numDynamicTextures);
+		outMaterial.dynamic.samplers = (VkSampler**)malloc(sizeof(VkSampler**)*def.numDynamicTextures);
+
 		//if we're using global data, we pull the data from wherever our global data has been initialized
 		VkDescriptorBufferInfo globalBufferInfo;
 		if (def.globalSets.size() > 0)
@@ -917,6 +923,8 @@ namespace Material
 
 		uint32_t dynamicBufferTotal = 0;
 		uint32_t firstDynamicWriteIdx = 0;
+		uint32_t dynamicTextureTotal = 0;
+
 		for (DescriptorSetBinding* bindingPtr : dynamicBindings)
 		{
 			DescriptorSetBinding& binding = *bindingPtr;
@@ -948,8 +956,12 @@ namespace Material
 
 				TextureRenderData* texData = Texture::getRenderData(tex);
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageInfo.imageView = texData->view;
-				imageInfo.sampler = texData->sampler;
+
+				outMaterial.dynamic.textureViews[dynamicTextureTotal] = &texData->view;
+				outMaterial.dynamic.samplers[dynamicTextureTotal] = &texData->sampler;
+				//these have to be pointers to the material, not to a specific tex data? 
+				imageInfo.imageView = *outMaterial.dynamic.textureViews[dynamicTextureTotal];
+				imageInfo.sampler = *outMaterial.dynamic.samplers[dynamicTextureTotal++];
 
 				imageInfos.push_back(imageInfo);
 				descriptorWrite.pImageInfo = &imageInfos[imageInfos.size() - 1];
@@ -968,12 +980,17 @@ namespace Material
 			descSetWrites.push_back(descriptorWrite);
 		}
 
+		//save off the descriptor set writes for dynamic data for easier updating later
+		uint32_t numDynamicSetWrites = def.numDynamicTextures + def.numDynamicUniforms;
+		uint32_t numStaticSetWrites = def.numStaticTextures + def.numStaticUniforms;
+
+		uint32_t indexOfFirstDynamicSetWrite = def.globalSets.size() + numStaticSetWrites;
+
+		outAsset.rData->dynamic.descriptorSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
+		memcpy(outAsset.rData->dynamic.descriptorSetWrites, &descSetWrites.data()[indexOfFirstDynamicSetWrite], sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
+
 		//it's kinda weird that the order of desc writes has to be the order of sets. 
 		vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
-
-		//save the write descriptor set structs out for later in case we want to update them? 
-		outMaterial.dynamic.descriptorSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * dynamicBufferTotal);
-		memcpy(outMaterial.dynamic.descriptorSetWrites, &descSetWrites.data()[firstDynamicWriteIdx], sizeof(VkWriteDescriptorSet) * dynamicBufferTotal);
 
 		///////////////////////////////////////////////////////////////////////////////
 		//cleanup

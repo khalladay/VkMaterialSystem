@@ -25,13 +25,16 @@ struct MaterialDynamicData
 {
 	uint32_t numInputs;
 
-	// stride: 3 - hashed name / buffer index / buffer + member offet
-	// for images- hasehd name / descriptor set write idx / padding 
+	// stride: 4 - hashed name / buffer index / member size / member offset
+	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
 	uint32_t* layout;
 	VkBuffer* buffers;
 	VkDeviceMemory uniformMem;
 
 	VkWriteDescriptorSet* descriptorSetWrites;
+
+	VkImageView** textureViews;
+	VkSampler** samplers;
 };
 
 struct MaterialRenderData
