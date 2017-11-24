@@ -65,7 +65,7 @@ namespace Rendering
 	}
 
 
-	void draw()
+	void draw(uint32_t materialId)
 	{
 		//acquire an image from the swap chain
 		uint32_t imageIndex;
@@ -108,7 +108,7 @@ namespace Rendering
 		{
 
 			const MeshRenderData& mesh = Mesh::getRenderData();
-			const MaterialRenderData& mat = Material::getRenderData();
+			const MaterialRenderData& mat = Material::getRenderData(materialId);
 
 
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
@@ -128,13 +128,13 @@ namespace Rendering
 			Material::setGlobalVector4("mouse", mouseData);
 			Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
-			Material::setUniformVector4("global.mouse", mouseData);
-			Material::setUniformFloat("test", 1.0f);
-			if (Material::getRenderData().pushConstantLayout.blockSize > 0)
+			Material::setUniformVector4(materialId, "global.mouse", mouseData);
+			Material::setUniformFloat(materialId, "test", 1.0f);
+			if (Material::getRenderData(materialId).pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector("col", glm::vec4(0.0, 1.0, 1.0, 1.0));
-				Material::setPushConstantFloat("time", (float)(os_getMilliseconds() / 1000.0f));
+				Material::setPushConstantVector(materialId, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
+				Material::setPushConstantFloat(materialId, "time", (float)(os_getMilliseconds() / 1000.0f));
 
 				vkCmdPushConstants(
 					commandBuffers[imageIndex],

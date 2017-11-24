@@ -2,8 +2,10 @@
 #include "stdafx.h"
 #include <vector>
 #include <map>
-struct MaterialDefinition;
 
+//this is in it's own file so that unless you want to manually 
+//create a Material Definition, you don't need to know about any of 
+//the enums / structs required to load a material. 
 namespace Material
 {
 	enum class ShaderStage : uint8_t
@@ -57,7 +59,6 @@ namespace Material
 	{
 		PushConstantBlock pcBlock;
 		std::vector<ShaderStageDefinition> stages;
-
 		std::map<uint32_t, std::vector<DescriptorSetBinding>> descSets;
 
 		std::vector<uint32_t> dynamicSets;
@@ -70,16 +71,13 @@ namespace Material
 		uint32_t numDynamicTextures;
 		uint32_t staticSetsSize;
 		uint32_t dynamicSetsSize;
-/*
-		std::map<uint32_t, std::vector<DescriptorSetBinding>> staticInputs;
-		
-		std::vector<DescriptorSetBinding> staticInputs;
-		std::vector<DescriptorSetBinding> dynamicInputs;
-		std::vector<DescriptorSetBinding> globalInputs;
-
-		uint32_t inputCount;*/
 	};
 
-	void make(Material::Definition def);
-	void make(const char* assetPath);
+
+	//if you're manually specifying a material definition instead of loading it, 
+	//you need to manually request a key from Material Storage with reserve()
+	//since we don't have a path to hash to use as the (potential) map key
+	void make(uint32_t matId, Material::Definition def);
+
+	Definition load(const char* assetPath);
 }

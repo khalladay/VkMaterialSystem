@@ -3,5 +3,5 @@
 namespace Rendering
 {
 	void init();
-	void draw();
+	void draw(uint32_t materialId);
 }

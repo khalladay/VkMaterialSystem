@@ -6,10 +6,13 @@
 #include "vkh.h"
 #include <vector>
 #include "texture.h"
+#include <map>
+#include "material_creation.h"
 
 struct MaterialStorage
 {
-	std::vector<MaterialAsset> data;
+	//std::vector<MaterialAsset> data;
+	std::map<uint32_t, MaterialAsset> data;
 	MaterialAsset mat;
 };
 
@@ -61,9 +64,30 @@ namespace Material
 		}
 	}
 
-	void setPushConstantData(const char* var, void* data, uint32_t size)
+	uint32_t make(const char* materialPath)
 	{
-		MaterialRenderData& rData = Material::getRenderData();
+		uint32_t newId = reserve(materialPath);
+		make(newId, load(materialPath));
+		return newId;
+	}
+
+	uint32_t reserve(const char* reserveName)
+	{
+		uint32_t hashedName = hash(reserveName);
+		
+		//if there is any collision, increment the hashed value until we find an empty slot
+		while (matStorage.data.count(hashedName) > 0)
+		{
+			hashedName++;
+		}
+
+		matStorage.data[hashedName] = {};
+		return hashedName;
+	}
+
+	void setPushConstantData(uint32_t matId, const char* var, void* data, uint32_t size)
+	{
+		MaterialRenderData& rData = Material::getRenderData(matId);
 
 		uint32_t varHash = hash(var);
 
@@ -79,9 +103,9 @@ namespace Material
 	}
 
 	//note: this cannot be done from within a command buffer
-	void setTexture(const char* var, uint32_t texId)
+	void setTexture(uint32_t matId, const char* var, uint32_t texId)
 	{
-		MaterialRenderData& rData = Material::getRenderData();
+		MaterialRenderData& rData = Material::getRenderData(matId);
 
 		uint32_t varHash = hash(var);
 		for (uint32_t i = 0; i < rData.dynamic.numInputs * 4; i += 4)
@@ -107,9 +131,9 @@ namespace Material
 		}
 	}
 	
-	void setUniformData(const char* name, void* data)
+	void setUniformData(uint32_t matId, const char* name, void* data)
 	{
-		MaterialRenderData& rData = Material::getRenderData();
+		MaterialRenderData& rData = Material::getRenderData(matId);
 		uint32_t varHash = hash(name);
 
 		for (uint32_t i = 0; i < rData.dynamic.numInputs * 4; i += 4)
@@ -128,40 +152,39 @@ namespace Material
 		}
 	}
 
-	void setPushConstantVector(const char* var, glm::vec4& data)
+	void setPushConstantVector(uint32_t matId, const char* var, glm::vec4& data)
 	{
-		setPushConstantData(var, &data, sizeof(glm::vec4));
+		setPushConstantData(matId, var, &data, sizeof(glm::vec4));
 	}
 
-
-	void setPushConstantMatrix(const char* var, glm::mat4& data)
+	void setPushConstantMatrix(uint32_t matId, const char* var, glm::mat4& data)
 	{
-		setPushConstantData(var, &data, sizeof(glm::mat4));
+		setPushConstantData(matId, var, &data, sizeof(glm::mat4));
 	}
 
-	void setPushConstantFloat(const char* var, float data)
+	void setPushConstantFloat(uint32_t matId, const char* var, float data)
 	{
-		setPushConstantData(var, &data, sizeof(float));
+		setPushConstantData(matId, var, &data, sizeof(float));
 	}
 
-	void setUniformVector4(const char* name, glm::vec4& data)
+	void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data)
 	{
-		setUniformData(name, &data);
+		setUniformData(matId, name, &data);
 	}
 
-	void setUniformVector2(const char* name, glm::vec2& data)
+	void setUniformVector2(uint32_t matId, const char* name, glm::vec2& data)
 	{
-		setUniformData(name, &data);
+		setUniformData(matId, name, &data);
 	}
 
-	void setUniformFloat(const char* name, float data)
+	void setUniformFloat(uint32_t matId, const char* name, float data)
 	{
-		setUniformData(name, &data);
+		setUniformData(matId, name, &data);
 	}
 
-	void setUniformMatrix(const char* name, glm::mat4& data)
+	void setUniformMatrix(uint32_t matId, const char* name, glm::mat4& data)
 	{
-		setUniformData(name, &data);
+		setUniformData(matId, name, &data);
 	}
 
 	void setGlobalFloat(const char* name, float data)
@@ -186,9 +209,9 @@ namespace Material
 	}
 
 
-	MaterialRenderData getRenderData()
+	MaterialRenderData& getRenderData(uint32_t matId)
 	{
-		return *matStorage.mat.rData;
+		return *matStorage.data[matId].rData;
 	}
 
 	void destroy()
@@ -196,10 +219,9 @@ namespace Material
 		assert(0); //unimeplemented
 	}
 
-	//temporary - only support 1 material until our import system is bullet proof
-	MaterialAsset& getMaterialAsset()
+	MaterialAsset& getMaterialAsset(uint32_t matId)
 	{
-		return matStorage.mat;
+		return matStorage.data[matId];
 	}
 
 }

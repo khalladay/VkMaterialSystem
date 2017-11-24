@@ -512,15 +512,10 @@ namespace Material
 		}
 	}
 
-	void make(const char* materialPath)
-	{
-		make(load(materialPath));
-	}
-
-	void make(Definition def)
+	void make(uint32_t id, Definition def)
 	{
 		using vkh::GContext;
-		MaterialAsset& outAsset = Material::getMaterialAsset();
+		MaterialAsset& outAsset = Material::getMaterialAsset(id);
 		outAsset.rData = (MaterialRenderData*)calloc(1,sizeof(MaterialRenderData));
 		MaterialRenderData& outMaterial = *outAsset.rData;
 
