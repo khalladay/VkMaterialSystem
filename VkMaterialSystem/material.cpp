@@ -41,7 +41,7 @@ namespace Material
 		static bool isInitialized = false;
 		if (!isInitialized)
 		{
-			uint32_t structSize = sizeof(GlobalShaderData);
+			uint32_t structSize = static_cast<uint32_t>(sizeof(GlobalShaderData));
 			size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
 			size_t s = sizeof(glm::float32);
 			size_t s2 = sizeof(glm::vec4);

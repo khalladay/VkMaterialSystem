@@ -97,7 +97,7 @@ namespace Material
 	uint32_t getGPUAlignedSize(uint32_t unalignedSize)
 	{
 		size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
-		return (unalignedSize / uboAlignment) * uboAlignment + ((unalignedSize % uboAlignment) > 0 ? uboAlignment : 0);
+		return static_cast<uint32_t>((unalignedSize / uboAlignment) * uboAlignment + ((unalignedSize % uboAlignment) > 0 ? uboAlignment : 0));
 
 	}
 
@@ -147,7 +147,10 @@ namespace Material
 			const Value& matStage = shaders[i];
 			stageDef.stage = stringToShaderStage(matStage["stage"].GetString());
 
-			snprintf(stageDef.shaderPath, sizeof(stageDef.shaderPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderExtensionForStage(stageDef.stage));
+			int printfErr = 0;
+			printfErr = snprintf(stageDef.shaderPath, sizeof(stageDef.shaderPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderExtensionForStage(stageDef.stage));
+			checkf(printfErr > -1, "");
+
 			materialDef.stages.push_back(stageDef);
 
 			//now we need to get information about the layout of the shader inputs
@@ -155,7 +158,8 @@ namespace Material
 			//grab it from a reflection file
 
 			char reflPath[256];
-			snprintf(reflPath, sizeof(reflPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderReflExtensionForStage(stageDef.stage));
+			printfErr = snprintf(reflPath, sizeof(reflPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderReflExtensionForStage(stageDef.stage));
+			checkf(printfErr > -1, "");
 
 			const char* reflData = loadTextFile(reflPath);
 			size_t reflLen = strlen(reflData);
@@ -163,13 +167,17 @@ namespace Material
 			//if we do have defaults in the material, store a list of all the block members that
 			//have a value from the material. This array does not store individual
 			//block members, just the name of the block that contains a default value
-			const Value& arrayOfDefaultValuesFromMaterial = matStage["defaults"];
 			std::vector<uint32_t> blocksWithDefaultsPresent;
 
-			for (SizeType d = 0; d < arrayOfDefaultValuesFromMaterial.Size(); ++d)
+			if (matStage.HasMember("defaults"))
 			{
-				const Value& default = arrayOfDefaultValuesFromMaterial[d];
-				blocksWithDefaultsPresent.push_back(hash(default["name"].GetString()));
+				const Value& arrayOfDefaultValuesFromMaterial = matStage["defaults"];
+
+				for (SizeType d = 0; d < arrayOfDefaultValuesFromMaterial.Size(); ++d)
+				{
+					const Value& default = arrayOfDefaultValuesFromMaterial[d];
+					blocksWithDefaultsPresent.push_back(hash(default["name"].GetString()));
+				}
 			}
 
 
@@ -337,6 +345,7 @@ namespace Material
 						//for uniform blocks, this is an array of floats for each member. 
 						if (blockDefaultsIndex > -1)
 						{
+							const Value& arrayOfDefaultValuesFromMaterial = matStage["defaults"];
 							const Value& defaultItem = arrayOfDefaultValuesFromMaterial[blockDefaultsIndex];
 
 							if (descSetBindingDef.type == InputType::SAMPLER)
@@ -542,7 +551,7 @@ namespace Material
 			}
 		}
 
-		outMaterial.dynamic.numInputs = def.dynamicSets.size();
+		outMaterial.dynamic.numInputs = static_cast<uint32_t>(def.dynamicSets.size());
 
 		VkResult res;
 
@@ -570,7 +579,7 @@ namespace Material
 		std::vector<VkDescriptorSetLayout> uniformLayouts;
 
 		//it's important to note that this array has to have no gaps in set number, so if a set
-		//isn't used by the shaders, we have to add an empty VkDescriptorSetLayout
+		//isn't used by the shaders, we have to add an empty VkDescriptorSetLayout. 
 
 		//VkDescriptorSetLayouts are created from arrays of VkDescriptorSetLayoutBindings, one for each
 		//binding in the set, so first we use the descSets array on our material definition to give us a 
@@ -633,7 +642,7 @@ namespace Material
 			//for sanity in storage, we want to keep MaterialAssets and MaterialRenderDatas POD structs, so we need to convert our lovely
 			//containers to arrays. This might change later, if I decide to start using POD arrays. In any case, in a real application you'd
 			//almost certainly want these allocations done with any allocator other than malloc
-			outMaterial.layoutCount = uniformLayouts.size();
+			outMaterial.layoutCount = static_cast<uint32_t>(uniformLayouts.size());
 
 			outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.layoutCount);
 			memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * outMaterial.layoutCount);
@@ -661,7 +670,7 @@ namespace Material
 
 				outAsset.rData->pushConstantLayout.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
 				outAsset.rData->pushConstantLayout.blockSize = def.pcBlock.sizeBytes;
-				outAsset.rData->pushConstantLayout.memberCount = def.pcBlock.blockMembers.size();
+				outAsset.rData->pushConstantLayout.memberCount = static_cast<uint32_t>(def.pcBlock.blockMembers.size());
 				outAsset.rData->pushConstantData = (char*)malloc(def.pcBlock.sizeBytes);
 
 				checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
@@ -752,6 +761,7 @@ namespace Material
 
 			//static buffers never change, so we don't need to keep any information around about them
 			outAsset.rData->staticBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * def.numStaticUniforms);
+			outAsset.rData->numStaticBuffers = def.numStaticTextures + def.numStaticUniforms;
 
 			//dynamic buffers are a pain in the ass and we need to track a lot of information about them. 
 			outAsset.rData->dynamic.buffers = (VkBuffer*)malloc(sizeof(VkBuffer) * def.numDynamicUniforms);

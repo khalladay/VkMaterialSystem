@@ -57,7 +57,7 @@ HWND os_makeWindow(HINSTANCE Instance, const char* title, unsigned int width, un
 	freopen_s(&pCout, "conout$", "w", stdout);
 	freopen_s(&pCout, "conin$", "w", stdin);
 	freopen_s(&pCout, "conout$", "w", stderr);
-
+	
 	fclose(pCout);
 	//#endif
 
@@ -111,6 +111,6 @@ double os_getMilliseconds()
 		return (1000LL * now.QuadPart) / (double)s_frequency.QuadPart - initialMS;
 	}
 	else {
-		return GetTickCount() - initialMS;
+		return GetTickCount64() - initialMS;
 	}
 }

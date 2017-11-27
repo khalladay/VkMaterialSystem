@@ -16,7 +16,7 @@ namespace App
 		Rendering::init();
 		//Texture::make("../data/textures/test_texture.jpg");
 		Material::initGlobalShaderData();
-		uint32_t happy = Texture::make("../data/textures/happy_dog.jpg");
+		uint32_t happy = Texture::make("../data/textures/fruits.png");
 		matId = Material::make("../data/materials/show_uvs.mat");
 
 		Material::setTexture(matId, "testSampler", happy);

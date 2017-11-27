@@ -1,7 +1,7 @@
 #pragma once
 #include "stdafx.h"
 
-#if 0
+/*
 TODO: 
 	- support a global dynamic uniform buffer - set once per frame
 		- have shaderpipeline add that block to each shader before compilation
@@ -9,9 +9,10 @@ TODO:
 	- support changing uniforms on a material (only ones on the right set of course)
 
 	- set 0 == global
+	- set 1 == reserved, since i have an idea about mvp matrices I want to try
 	- set 2 == static
 	- set 3 == dynamic
-#endif 
+*/
 
 struct MaterialRenderData;
 

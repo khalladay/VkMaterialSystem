@@ -17,6 +17,8 @@ BinaryBuffer* loadBinaryFile(const char* filepath)
 	rewind(inFile);
 
 	outBuf->data = (char *)calloc(1,(outBuf->size + 1)); // Enough memory for file + \0
+
+	checkf(outBuf->data, "Allocation failed in LoadBinaryFile, calloc returned null");
 	fread(outBuf->data, outBuf->size, 1, inFile); // Read in the entire file
 	fclose(inFile); // Close the file
 
@@ -27,7 +29,7 @@ const char* loadTextFile(const char* filepath)
 {
 	FILE* inFile;
 	fopen_s(&inFile, filepath, "r");
-	assert(inFile);
+	checkf(inFile, "Trying to load text file: %s, file not found", filepath);
 
 	fseek(inFile, 0, SEEK_END);
 	long size = ftell(inFile);

@@ -49,7 +49,6 @@ struct MaterialRenderData
 	VkDescriptorSet* descSets;
 	uint32_t numDescSets;
 
-	//input data
 	UniformBlockDef pushConstantLayout;
 	char* pushConstantData;
 
@@ -57,6 +56,7 @@ struct MaterialRenderData
 	//changed after initialization
 	VkBuffer* staticBuffers;
 	VkDeviceMemory staticUniformMem;
+	uint32_t numStaticBuffers;
 
 	//for now, just add buffers here to modify. when this
 	//is modified to support material instances, we'll change it 

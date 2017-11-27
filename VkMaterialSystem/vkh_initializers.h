@@ -28,7 +28,7 @@ namespace vkh
 		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutInfo.bindingCount = bindingCount;
-		layoutInfo.pBindings = bindings;
+		layoutInfo.pBindings = bindingCount > 0 ? bindings : nullptr;
 		return layoutInfo;
 	}
 	

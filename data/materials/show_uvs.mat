@@ -45,7 +45,7 @@
 			[
 				{
 					"name": "texSampler",
-					"value":"../data/textures/derpy_dog.jpg"
+					"value":"../data/textures/airplane.png"
 				},
 				{
 					"name": "testSampler",
