@@ -16,10 +16,10 @@ namespace App
 		Rendering::init();
 		//Texture::make("../data/textures/test_texture.jpg");
 		Material::initGlobalShaderData();
-		uint32_t happy = Texture::make("../data/textures/fruits.png");
+		uint32_t fruits = Texture::make("../data/textures/fruits.png");
 		matId = Material::make("../data/materials/show_uvs.mat");
 
-		Material::setTexture(matId, "testSampler", happy);
+		Material::setTexture(matId, "testSampler", fruits);
 
 		Mesh::quad();
 

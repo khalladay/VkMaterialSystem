@@ -115,14 +115,12 @@ namespace Material
 				TextureRenderData* texData = Texture::getRenderData(texId);
 				uint32_t index = rData.dynamic.layout[i + 1];
 				uint32_t setWriteIdx = rData.dynamic.layout[i + 2];
-				rData.dynamic.textureViews[index] = &texData->view;
-				rData.dynamic.samplers[index] = &texData->sampler;
 
 				VkWriteDescriptorSet& setWrite = rData.dynamic.descriptorSetWrites[setWriteIdx];
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageInfo.imageView = *rData.dynamic.textureViews[index];
-				imageInfo.sampler = *rData.dynamic.samplers[index];
+				imageInfo.imageView = texData->view; 
+				imageInfo.sampler = texData->sampler;
 
 				setWrite.pImageInfo = &imageInfo;
 

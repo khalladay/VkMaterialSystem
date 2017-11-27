@@ -848,11 +848,6 @@ namespace Material
 		std::vector<VkDescriptorImageInfo> imageInfos;
 		imageInfos.reserve(def.numDynamicTextures + def.numStaticTextures);
 
-		//to make sure textures can be swapped out, we need to allocate an array of texture and sampler ptrs
-		//in dynamic data that we will use later
-		outMaterial.dynamic.textureViews = (VkImageView**)malloc(sizeof(VkImageView**)*def.numDynamicTextures);
-		outMaterial.dynamic.samplers = (VkSampler**)malloc(sizeof(VkSampler**)*def.numDynamicTextures);
-
 		//if we're using global data, we pull the data from wherever our global data has been initialized
 		VkDescriptorBufferInfo globalBufferInfo;
 		if (def.globalSets.size() > 0)
@@ -962,11 +957,9 @@ namespace Material
 				TextureRenderData* texData = Texture::getRenderData(tex);
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-				outMaterial.dynamic.textureViews[dynamicTextureTotal] = &texData->view;
-				outMaterial.dynamic.samplers[dynamicTextureTotal] = &texData->sampler;
 				//these have to be pointers to the material, not to a specific tex data? 
-				imageInfo.imageView = *outMaterial.dynamic.textureViews[dynamicTextureTotal];
-				imageInfo.sampler = *outMaterial.dynamic.samplers[dynamicTextureTotal++];
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = texData->sampler;
 
 				imageInfos.push_back(imageInfo);
 				descriptorWrite.pImageInfo = &imageInfos[imageInfos.size() - 1];

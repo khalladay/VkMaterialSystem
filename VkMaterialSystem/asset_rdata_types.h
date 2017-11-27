@@ -32,9 +32,6 @@ struct MaterialDynamicData
 	VkDeviceMemory uniformMem;
 
 	VkWriteDescriptorSet* descriptorSetWrites;
-
-	VkImageView** textureViews;
-	VkSampler** samplers;
 };
 
 struct MaterialRenderData
