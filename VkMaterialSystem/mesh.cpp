@@ -58,7 +58,7 @@ namespace Mesh
 		//transfer data to the above buffers
 
 		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingMemory;
+		vkh::Allocation stagingMemory;
 
 		vkh::createBuffer(stagingBuffer,
 			stagingMemory,
@@ -70,13 +70,13 @@ namespace Mesh
 		);
 
 		void* data;
-		vkMapMemory(GContext.device, stagingMemory, 0, vBufferSize, 0, &data);
+		vkMapMemory(GContext.device, stagingMemory.handle, 0, vBufferSize, 0, &data);
 		memcpy(data, vertices, (size_t)vBufferSize);
-		vkUnmapMemory(GContext.device, stagingMemory);
+		vkUnmapMemory(GContext.device, stagingMemory.handle);
 
 		//copy to device local here
 		vkh::copyBuffer(stagingBuffer, m.vBuffer, vBufferSize);
-		vkFreeMemory(GContext.device, stagingMemory, nullptr);
+		vkh::freeDeviceMemory(stagingMemory);
 		vkDestroyBuffer(GContext.device, stagingBuffer, nullptr);
 
 		vkh::createBuffer(stagingBuffer,
@@ -88,14 +88,14 @@ namespace Mesh
 			GContext.device
 		);
 
-		vkMapMemory(GContext.device, stagingMemory, 0, iBufferSize, 0, &data);
+		vkMapMemory(GContext.device, stagingMemory.handle, 0, iBufferSize, 0, &data);
 		memcpy(data, indices, (size_t)iBufferSize);
-		vkUnmapMemory(GContext.device, stagingMemory);
+		vkUnmapMemory(GContext.device, stagingMemory.handle);
 
 
 
 		vkh::copyBuffer(stagingBuffer, m.iBuffer, iBufferSize);
-		vkFreeMemory(GContext.device, stagingMemory, nullptr);
+		vkh::freeDeviceMemory(stagingMemory);
 		vkDestroyBuffer(GContext.device, stagingBuffer, nullptr);
 
 		meshStorage.fullScreenMesh.rData = m;

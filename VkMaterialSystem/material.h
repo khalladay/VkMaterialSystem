@@ -1,19 +1,6 @@
 #pragma once
 #include "stdafx.h"
 
-/*
-TODO: 
-	- support a global dynamic uniform buffer - set once per frame
-		- have shaderpipeline add that block to each shader before compilation
-		- pass in time, resolution, mouse, etc to that uniform block
-	- support changing uniforms on a material (only ones on the right set of course)
-
-	- set 0 == global
-	- set 1 == reserved, since i have an idea about mvp matrices I want to try
-	- set 2 == static
-	- set 3 == dynamic
-*/
-
 struct MaterialRenderData;
 
 struct MaterialAsset
@@ -33,6 +20,7 @@ namespace Material
 
 	void initGlobalShaderData();
 	uint32_t make(const char* assetPath);
+	uint32_t makeInstance(uint32_t parentId);
 
 	//used to create an empty material in material storage, 
 	//only needed if you're creating a material in a way other than

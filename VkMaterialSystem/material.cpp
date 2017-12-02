@@ -30,7 +30,7 @@ struct GlobalShaderData
 //
 namespace Material
 {
-	VkDeviceMemory globalMem;
+	vkh::Allocation globalMem;
 	VkBuffer globalBuffer;
 	GlobalShaderData globalShaderData;
 	void* mappedMemory;
@@ -59,7 +59,7 @@ namespace Material
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			vkMapMemory(vkh::GContext.device, globalMem, 0, globalSize,0, &mappedMemory);
+			vkMapMemory(vkh::GContext.device, globalMem.handle, 0, globalSize,0, &mappedMemory);
 			isInitialized = true;
 		}
 	}
@@ -69,6 +69,11 @@ namespace Material
 		uint32_t newId = reserve(materialPath);
 		make(newId, load(materialPath));
 		return newId;
+	}
+
+	uint32_t makeInstance(uint32_t parentId)
+	{
+		return 0;
 	}
 
 	uint32_t reserve(const char* reserveName)

@@ -52,7 +52,7 @@ namespace Texture
 		VkDeviceSize imageSize = texWidth * texHeight * 4;
 
 		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
+		vkh::Allocation stagingBufferMemory;
 
 		vkh::createBuffer(stagingBuffer,
 			stagingBufferMemory,
@@ -61,9 +61,9 @@ namespace Texture
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		void* data;
-		vkMapMemory(vkh::GContext.device, stagingBufferMemory, 0, imageSize, 0, &data);
+		vkMapMemory(vkh::GContext.device, stagingBufferMemory.handle, 0, imageSize, 0, &data);
 		memcpy(data, pixels, static_cast<size_t>(imageSize));
-		vkUnmapMemory(vkh::GContext.device, stagingBufferMemory);
+		vkUnmapMemory(vkh::GContext.device, stagingBufferMemory.handle);
 
 		stbi_image_free(pixels);
 
@@ -92,7 +92,7 @@ namespace Texture
 		vkh::createTexSampler(t.rData.sampler);
 
 		vkDestroyBuffer(vkh::GContext.device, stagingBuffer, nullptr);
-		vkFreeMemory(vkh::GContext.device, stagingBufferMemory, nullptr);
+		vkh::freeDeviceMemory(stagingBufferMemory);
 
 		texStorage.data.insert(std::pair<uint32_t, TextureAsset>(newId, t));
 		return newId;

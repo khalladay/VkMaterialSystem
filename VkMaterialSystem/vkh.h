@@ -15,6 +15,21 @@ namespace vkh
 		Present
 	};
 
+	struct Allocation
+	{
+		VkDeviceMemory handle;
+		uint32_t type;
+		size_t size;
+	};
+
+	struct AllocatorInterface
+	{
+		void(*alloc)(Allocation&, size_t, uint32_t);
+		void(*free)(Allocation&);
+		size_t(*allocatedSize)(uint32_t);
+		uint32_t(*numAllocs)();
+	};
+
 	struct VkhSurface
 	{
 		VkSurfaceKHR surface;
@@ -47,7 +62,7 @@ namespace vkh
 	{
 		VkImage			handle;
 		VkImageView		view;
-		VkDeviceMemory	imageMemory;
+		Allocation		imageMemory;
 	};
 
 	struct VkhLogicalDevice
@@ -92,7 +107,7 @@ namespace vkh
 		std::vector<VkFence>	frameFences;
 		VkSemaphore				imageAvailableSemaphore;
 		VkSemaphore				renderFinishedSemaphore;
-
+		AllocatorInterface		allocator;
 		VkDescriptorPool		descriptorPool;
 
 		//hate this being here, but if material can create itself
@@ -117,8 +132,8 @@ namespace vkh
 	void createFrameBuffers(std::vector<VkFramebuffer>& outBuffers, const VkhSwapChain& swapChain, const VkImageView* depthBufferView, const VkRenderPass& renderPass, const VkDevice& device);
 
 	void createBuffer(VkBuffer& outBuffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, const VkPhysicalDevice& gpu, const VkDevice& device);
+	void createBuffer(VkBuffer& outBuffer, Allocation& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+	void createBuffer(VkBuffer& outBuffer, Allocation& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, const VkPhysicalDevice& gpu, const VkDevice& device);
 
 	void createImage(VkImage& outImage, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
 	void createImage(VkImage& outImage, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, const VkDevice& device);
@@ -133,11 +148,10 @@ namespace vkh
 	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size);
 	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size, VkhCommandBuffer& buffer);
 
-	void allocateDeviceMemory(VkDeviceMemory& outMem, size_t size, uint32_t memoryType);
-	void allocateDeviceMemory(VkDeviceMemory& outMem, size_t size, uint32_t memoryType, const VkDevice& device);
-
-	void allocBindImageToMem(VkDeviceMemory& outMem, const VkImage& image, VkMemoryPropertyFlags properties);
-	void allocBindImageToMem(VkDeviceMemory& outMem, const VkImage& image, VkMemoryPropertyFlags properties, const VkDevice& device, const VkPhysicalDevice& gpu);
+	void allocateDeviceMemory(Allocation& outMem, size_t size, uint32_t memoryType);
+	void freeDeviceMemory(Allocation& mem);
+	void allocBindImageToMem(Allocation& outMem, const VkImage& image, VkMemoryPropertyFlags properties);
+	void allocBindImageToMem(Allocation& outMem, const VkImage& image, VkMemoryPropertyFlags properties, const VkDevice& device, const VkPhysicalDevice& gpu);
 
 	void waitForFence(VkFence& fence, const VkDevice& device);
 

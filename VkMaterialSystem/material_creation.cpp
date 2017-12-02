@@ -420,7 +420,7 @@ namespace Material
 		return curBuffer;
 	}
 
-	void allocateDeviceMemoryForBuffers(VkDeviceMemory& dst, size_t size, VkBuffer* buffers, VkMemoryPropertyFlags memFlags)
+	void allocateDeviceMemoryForBuffers(vkh::Allocation& dst, size_t size, VkBuffer* buffers, VkMemoryPropertyFlags memFlags)
 	{
 		if (size > 0)
 		{
@@ -438,7 +438,7 @@ namespace Material
 		if (dataSize <= 0) return;
 
 		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingMemory;
+		vkh::Allocation stagingMemory;
 
 		vkh::createBuffer(stagingBuffer,
 			stagingMemory,
@@ -447,7 +447,7 @@ namespace Material
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		void* mappedStagingBuffer;
-		vkMapMemory(vkh::GContext.device, stagingMemory, 0, dataSize, 0, &mappedStagingBuffer);
+		vkMapMemory(vkh::GContext.device, stagingMemory.handle, 0, dataSize, 0, &mappedStagingBuffer);
 
 		memset(mappedStagingBuffer, 0, dataSize);
 		memcpy(mappedStagingBuffer, defaultData, dataSize);
@@ -507,7 +507,7 @@ namespace Material
 		}
 	}
 
-	void bindBuffersToMemory(VkDeviceMemory& memoryToBind, VkBuffer* buffers,std::vector<DescriptorSetBinding*> bindings)
+	void bindBuffersToMemory(vkh::Allocation& memoryToBind, VkBuffer* buffers,std::vector<DescriptorSetBinding*> bindings)
 	{
 		uint32_t bufferOffset = 0;
 		uint32_t curBuffer = 0;
@@ -515,7 +515,7 @@ namespace Material
 		{
 			if (binding->type == InputType::UNIFORM)
 			{
-				vkBindBufferMemory(vkh::GContext.device, buffers[curBuffer++], memoryToBind, bufferOffset);
+				vkBindBufferMemory(vkh::GContext.device, buffers[curBuffer++], memoryToBind.handle, bufferOffset);
 				bufferOffset += binding->sizeBytes;
 			}
 		}

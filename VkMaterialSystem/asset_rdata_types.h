@@ -5,8 +5,8 @@ struct MeshRenderData
 {
 	VkBuffer vBuffer;
 	VkBuffer iBuffer;
-	VkDeviceMemory vBufferMemory;
-	VkDeviceMemory iBufferMemory;
+	vkh::Allocation vBufferMemory;
+	vkh::Allocation iBufferMemory;
 
 	uint32_t vCount;
 	uint32_t iCount;
@@ -29,7 +29,7 @@ struct MaterialDynamicData
 	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
 	uint32_t* layout;
 	VkBuffer* buffers;
-	VkDeviceMemory uniformMem;
+	vkh::Allocation uniformMem;
 
 	VkWriteDescriptorSet* descriptorSetWrites;
 };
@@ -43,6 +43,8 @@ struct MaterialRenderData
 	uint32_t layoutCount;
 	VkDescriptorSetLayout* descriptorSetLayouts;
 
+	//needs information about stride in various arrays for instances
+	// ie/ material instance ID = 2, where does that start in the descSets array? the static buffers array? 
 	VkDescriptorSet* descSets;
 	uint32_t numDescSets;
 
@@ -52,7 +54,7 @@ struct MaterialRenderData
 	//we don't need a layout for static data since it cannot be 
 	//changed after initialization
 	VkBuffer* staticBuffers;
-	VkDeviceMemory staticUniformMem;
+	vkh::Allocation staticUniformMem;
 	uint32_t numStaticBuffers;
 
 	//for now, just add buffers here to modify. when this
@@ -61,10 +63,19 @@ struct MaterialRenderData
 	MaterialDynamicData dynamic;
 };
 
+struct MaterialInstance
+{
+	uint32_t parentMaterialName;
+
+	//going to need index and generation a la bitsquid 
+	//start with just index though
+	uint32_t id;
+};
+
 struct TextureRenderData
 {
 	VkImage image;
-	VkDeviceMemory deviceMemory;
+	vkh::Allocation deviceMemory;
 	VkImageView view;
 	VkFormat format;
 	VkSampler sampler;

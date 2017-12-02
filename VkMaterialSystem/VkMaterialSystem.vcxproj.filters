@@ -66,6 +66,9 @@
     <ClCompile Include="material_creation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vkh_allocator_passthrough.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="os_input.h">
@@ -118,6 +121,12 @@
     </ClInclude>
     <ClInclude Include="material_creation.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkh_stack_allocator.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkh_allocator_passthrough.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

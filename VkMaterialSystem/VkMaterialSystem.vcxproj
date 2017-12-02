@@ -109,6 +109,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PrecompiledHeader>Create</PrecompiledHeader>
+      <AdditionalOptions>/std:c++latest</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>vulkan-1.lib;dxguid.lib;Winmm.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -140,6 +141,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalOptions>/std:c++latest</AdditionalOptions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -166,6 +168,7 @@
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="timing.cpp" />
     <ClCompile Include="vkh.cpp" />
+    <ClCompile Include="vkh_allocator_passthrough.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asset_rdata_types.h" />
@@ -185,6 +188,8 @@
     <ClInclude Include="timing.h" />
     <ClInclude Include="vkh.h" />
     <ClInclude Include="vkh_initializers.h" />
+    <ClInclude Include="vkh_allocator_passthrough.h" />
+    <ClInclude Include="vkh_stack_allocator.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\materials\raymarch_primitives.mat" />

@@ -7,6 +7,7 @@
 #include "procedural_geo.h"
 #include "material_creation.h"
 #include "texture.h"
+
 namespace App
 {
 	uint32_t matId = 0;
@@ -21,8 +22,7 @@ namespace App
 
 		Material::setTexture(matId, "testSampler", fruits);
 
-		Mesh::quad();
-
+		Mesh::quad(1.0f, 1.0f, 0.25f, 0.0f);
 	}
 
 	void tick(float deltaTime)

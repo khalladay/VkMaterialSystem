@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "vkh.h"
 #include "file_utils.h"
-
+#include "vkh_allocator_passthrough.h"
 namespace vkh
 {
 	VkhContext GContext;
@@ -15,7 +15,6 @@ namespace vkh
 	void createCommandPool(VkCommandPool& outPool, const VkDevice& lDevice, const VkhPhysicalDevice& physDevice, uint32_t queueFamilyIdx);
 	uint32_t getMemoryType(const VkPhysicalDevice& device, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void createImageView(VkImageView& outView, VkFormat imageFormat, VkImageAspectFlags aspectMask, uint32_t mipCount, const VkImage& imageHdl, const VkDevice& device);
-	void allocateDeviceMemory(VkDeviceMemory& outMem, size_t size, uint32_t memoryType, const VkDevice& device);
 
 	VkDebugReportCallbackEXT callback;
 
@@ -39,6 +38,9 @@ namespace vkh
 		createWin32Surface(outContext.surface, outContext.instance, Instance, wndHdl);
 		getDiscretePhysicalDevice(outContext.gpu, outContext.instance, outContext.surface);
 		createLogicalDevice(outContext.device, outContext.deviceQueues, outContext.gpu);
+		
+		vkh::allocators::passthrough::activate(&outContext);
+		
 		createSwapchainForSurface(outContext.swapChain, outContext.gpu, outContext.device, outContext.surface);
 		createCommandPool(outContext.gfxCommandPool, outContext.device, outContext.gpu, outContext.gpu.graphicsQueueFamilyIdx);
 		createCommandPool(outContext.transferCommandPool, outContext.device, outContext.gpu, outContext.gpu.transferQueueFamilyIdx);
@@ -700,7 +702,7 @@ namespace vkh
 
 		VkDescriptorPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.poolSizeCount = poolSizes.size();
+		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		poolInfo.pPoolSizes = &poolSizes[0];
 		poolInfo.maxSets = summedDescCount;
 
@@ -795,7 +797,7 @@ namespace vkh
 		}
 	}
 
-	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+	void createBuffer(VkBuffer& outBuffer, Allocation& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 	{
 		createBuffer(outBuffer, bufferMemory, size, usage, properties, GContext.gpu.device, GContext.device);
 	}
@@ -826,7 +828,7 @@ namespace vkh
 		assert(res == VK_SUCCESS);
 	}
 
-	void createBuffer(VkBuffer& outBuffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, const VkPhysicalDevice& gpu, const VkDevice& device)
+	void createBuffer(VkBuffer& outBuffer, Allocation& bufferMemory, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, const VkPhysicalDevice& gpu, const VkDevice& device)
 	{
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -860,10 +862,8 @@ namespace vkh
 		allocInfo.allocationSize = memRequirements.size;
 		allocInfo.memoryTypeIndex = getMemoryType(gpu, memRequirements.memoryTypeBits, properties);
 
-		res = vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory);
-		assert(res == VK_SUCCESS);
-
-		vkBindBufferMemory(device, outBuffer, bufferMemory, 0);
+		GContext.allocator.alloc(bufferMemory, memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties));
+		vkBindBufferMemory(device, outBuffer, bufferMemory.handle, 0);
 	}
 
 	void createImage(VkImage& outImage, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
@@ -892,17 +892,17 @@ namespace vkh
 		assert(res == VK_SUCCESS);
 	}
 
-	void allocBindImageToMem(VkDeviceMemory& outMem, const VkImage& image, VkMemoryPropertyFlags properties)
+	void allocBindImageToMem(Allocation& outMem, const VkImage& image, VkMemoryPropertyFlags properties)
 	{
 		allocBindImageToMem(outMem, image, properties, GContext.device, GContext.gpu.device);
 	}
 
-	void allocBindImageToMem(VkDeviceMemory& outMem, const VkImage& image, VkMemoryPropertyFlags properties, const VkDevice& device, const VkPhysicalDevice& gpu)
+	void allocBindImageToMem(Allocation& outMem, const VkImage& image, VkMemoryPropertyFlags properties, const VkDevice& device, const VkPhysicalDevice& gpu)
 	{
 		VkMemoryRequirements memRequirements;
 		vkGetImageMemoryRequirements(device, image, &memRequirements);
-		allocateDeviceMemory(outMem, (size_t)memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties), device);
-		vkBindImageMemory(device, image, outMem, 0);
+		allocateDeviceMemory(outMem, (size_t)memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties));
+		vkBindImageMemory(device, image, outMem.handle, 0);
 	}
 
 	VkFormat depthFormat()
@@ -925,7 +925,7 @@ namespace vkh
 		createImageView(outBuffer.view, depthFormat(), VK_IMAGE_ASPECT_DEPTH_BIT, 1, outBuffer.handle, device);
 	}
 
-	uint32_t getMemoryType(const VkPhysicalDevice& device, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+	uint32_t getMemoryType(const VkPhysicalDevice& device, uint32_t memoryTypeBitsRequirement, VkMemoryPropertyFlags requiredProperties)
 	{
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(device, &memProperties);
@@ -936,32 +936,33 @@ namespace vkh
 		//we'll only concern ourselves with the type of memory and not the heap it comes from, 
 		//but you can imagine that this can affect performance.
 
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		for (uint32_t memoryIndex = 0; memoryIndex < memProperties.memoryTypeCount; memoryIndex++)
 		{
-			if ((typeFilter & (1 << i)) && ((memProperties.memoryTypes[i].propertyFlags & properties) == properties))
+			const uint32_t memoryTypeBits = (1 << memoryIndex);
+			const bool isRequiredMemoryType = memoryTypeBitsRequirement & memoryTypeBits;
+
+			const VkMemoryPropertyFlags properties = memProperties.memoryTypes[memoryIndex].propertyFlags;
+			const bool hasRequiredProperties = (properties & requiredProperties) == requiredProperties;
+
+			if (isRequiredMemoryType && hasRequiredProperties)
 			{
-				return i;
+				return static_cast<int32_t>(memoryIndex);
 			}
+
 		}
 
 		assert(0);
 		return 0;
 	}
 
-	void allocateDeviceMemory(VkDeviceMemory& outMem, size_t size, uint32_t memoryType)
+	void freeDeviceMemory(Allocation& mem)
 	{
-		allocateDeviceMemory(outMem, size, memoryType, GContext.device);
+		GContext.allocator.free(mem);
 	}
 
-	void allocateDeviceMemory(VkDeviceMemory& outMem, size_t size, uint32_t memoryType, const VkDevice& device)
+	void allocateDeviceMemory(Allocation& outMem, size_t size, uint32_t memoryType)
 	{
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = size;
-		allocInfo.memoryTypeIndex = memoryType;
-
-		VkResult res = vkAllocateMemory(device, &allocInfo, nullptr, &outMem);
-		assert(res == VK_SUCCESS);
+		GContext.allocator.alloc(outMem, size, memoryType);
 	}
 
 	size_t getUniformBufferAlignment()
