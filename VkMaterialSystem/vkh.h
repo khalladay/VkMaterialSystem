@@ -19,12 +19,14 @@ namespace vkh
 	{
 		VkDeviceMemory handle;
 		uint32_t type;
-		size_t size;
+		uint32_t id;
+		VkDeviceSize size;
+		VkDeviceSize offset;
 	};
 
 	struct AllocatorInterface
 	{
-		void(*alloc)(Allocation&, size_t, uint32_t);
+		void(*alloc)(Allocation&, VkDeviceSize, uint32_t);
 		void(*free)(Allocation&);
 		size_t(*allocatedSize)(uint32_t);
 		uint32_t(*numAllocs)();

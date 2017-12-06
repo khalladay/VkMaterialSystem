@@ -15,7 +15,7 @@ namespace vkh::allocators::passthrough
 	AllocatorState state;
 
 	//ALLOCATOR INTERFACE / INSTALLATION 
-	void alloc(Allocation& outHandle, size_t size, uint32_t memoryType);
+	void alloc(Allocation& outHandle, VkDeviceSize size, uint32_t memoryType);
 	void free(Allocation& handle);
 	size_t allocatedSize(uint32_t memoryType);
 	uint32_t numAllocs();
@@ -41,7 +41,7 @@ namespace vkh::allocators::passthrough
 	//IMPLEMENTATION
 
 
-	void alloc(Allocation& outAlloc, size_t size, uint32_t memoryType)
+	void alloc(Allocation& outAlloc, VkDeviceSize size, uint32_t memoryType)
 	{
 		state.totalAllocs++;
 		state.memTypeAllocSizes[memoryType] += size;

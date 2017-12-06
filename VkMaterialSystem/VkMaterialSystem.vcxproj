@@ -108,7 +108,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/std:c++latest</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -169,6 +169,7 @@
     <ClCompile Include="timing.cpp" />
     <ClCompile Include="vkh.cpp" />
     <ClCompile Include="vkh_allocator_passthrough.cpp" />
+    <ClCompile Include="vkh_allocator_pool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asset_rdata_types.h" />
@@ -187,6 +188,7 @@
     <ClInclude Include="texture.h" />
     <ClInclude Include="timing.h" />
     <ClInclude Include="vkh.h" />
+    <ClInclude Include="vkh_allocator_pool.h" />
     <ClInclude Include="vkh_initializers.h" />
     <ClInclude Include="vkh_allocator_passthrough.h" />
     <ClInclude Include="vkh_stack_allocator.h" />

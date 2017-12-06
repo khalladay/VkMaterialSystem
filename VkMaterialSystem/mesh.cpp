@@ -70,7 +70,7 @@ namespace Mesh
 		);
 
 		void* data;
-		vkMapMemory(GContext.device, stagingMemory.handle, 0, vBufferSize, 0, &data);
+		vkMapMemory(GContext.device, stagingMemory.handle, stagingMemory.offset, vBufferSize, 0, &data);
 		memcpy(data, vertices, (size_t)vBufferSize);
 		vkUnmapMemory(GContext.device, stagingMemory.handle);
 
@@ -88,7 +88,7 @@ namespace Mesh
 			GContext.device
 		);
 
-		vkMapMemory(GContext.device, stagingMemory.handle, 0, iBufferSize, 0, &data);
+		vkMapMemory(GContext.device, stagingMemory.handle, stagingMemory.offset, iBufferSize, 0, &data);
 		memcpy(data, indices, (size_t)iBufferSize);
 		vkUnmapMemory(GContext.device, stagingMemory.handle);
 

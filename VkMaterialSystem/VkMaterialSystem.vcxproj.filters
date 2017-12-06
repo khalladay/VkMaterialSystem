@@ -22,6 +22,12 @@
     <Filter Include="data\materials">
       <UniqueIdentifier>{c569c64c-8b48-4315-8adb-82c87f49c1a3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\allocators">
+      <UniqueIdentifier>{ef193b09-88ed-4c67-a783-c7d92bbd2ce0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\allocators">
+      <UniqueIdentifier>{ff195a03-b5b3-4a40-a0d9-9127f3332dff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -67,7 +73,10 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vkh_allocator_passthrough.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\allocators</Filter>
+    </ClCompile>
+    <ClCompile Include="vkh_allocator_pool.cpp">
+      <Filter>Source Files\allocators</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -126,7 +135,10 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="vkh_allocator_passthrough.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="vkh_allocator_pool.h">
+      <Filter>Header Files\allocators</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

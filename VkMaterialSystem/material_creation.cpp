@@ -447,7 +447,7 @@ namespace Material
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		void* mappedStagingBuffer;
-		vkMapMemory(vkh::GContext.device, stagingMemory.handle, 0, dataSize, 0, &mappedStagingBuffer);
+		vkMapMemory(vkh::GContext.device, stagingMemory.handle, stagingMemory.offset, dataSize, 0, &mappedStagingBuffer);
 
 		memset(mappedStagingBuffer, 0, dataSize);
 		memcpy(mappedStagingBuffer, defaultData, dataSize);
@@ -509,7 +509,7 @@ namespace Material
 
 	void bindBuffersToMemory(vkh::Allocation& memoryToBind, VkBuffer* buffers,std::vector<DescriptorSetBinding*> bindings)
 	{
-		uint32_t bufferOffset = 0;
+		uint32_t bufferOffset = memoryToBind.offset;
 		uint32_t curBuffer = 0;
 		for (DescriptorSetBinding* binding : bindings)
 		{

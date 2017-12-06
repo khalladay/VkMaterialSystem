@@ -61,7 +61,7 @@ namespace Texture
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		void* data;
-		vkMapMemory(vkh::GContext.device, stagingBufferMemory.handle, 0, imageSize, 0, &data);
+		vkMapMemory(vkh::GContext.device, stagingBufferMemory.handle, stagingBufferMemory.offset, imageSize, 0, &data);
 		memcpy(data, pixels, static_cast<size_t>(imageSize));
 		vkUnmapMemory(vkh::GContext.device, stagingBufferMemory.handle);
 

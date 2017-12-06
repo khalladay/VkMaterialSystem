@@ -31,7 +31,16 @@ namespace vkh
 		layoutInfo.pBindings = bindingCount > 0 ? bindings : nullptr;
 		return layoutInfo;
 	}
-	
+
+	inline VkMemoryAllocateInfo memoryAllocateInfo(VkDeviceSize size, uint32_t type)
+	{
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = size;
+		allocInfo.memoryTypeIndex = type;
+		return allocInfo;
+	}
+
 	inline VkDescriptorSetAllocateInfo descriptorSetAllocateInfo(const VkDescriptorSetLayout* layouts, uint32_t layoutCount, VkDescriptorPool pool)
 	{
 		VkDescriptorSetAllocateInfo allocInfo = {};

@@ -59,7 +59,7 @@ namespace Material
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			vkMapMemory(vkh::GContext.device, globalMem.handle, 0, globalSize,0, &mappedMemory);
+			vkMapMemory(vkh::GContext.device, globalMem.handle, globalMem.offset, globalSize, 0, &mappedMemory);
 			isInitialized = true;
 		}
 	}

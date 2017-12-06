@@ -2,6 +2,7 @@
 #include "vkh.h"
 #include "file_utils.h"
 #include "vkh_allocator_passthrough.h"
+#include "vkh_allocator_pool.h"
 namespace vkh
 {
 	VkhContext GContext;
@@ -39,7 +40,7 @@ namespace vkh
 		getDiscretePhysicalDevice(outContext.gpu, outContext.instance, outContext.surface);
 		createLogicalDevice(outContext.device, outContext.deviceQueues, outContext.gpu);
 		
-		vkh::allocators::passthrough::activate(&outContext);
+		vkh::allocators::pool::activate(&outContext);
 		
 		createSwapchainForSurface(outContext.swapChain, outContext.gpu, outContext.device, outContext.surface);
 		createCommandPool(outContext.gfxCommandPool, outContext.device, outContext.gpu, outContext.gpu.graphicsQueueFamilyIdx);
@@ -863,7 +864,7 @@ namespace vkh
 		allocInfo.memoryTypeIndex = getMemoryType(gpu, memRequirements.memoryTypeBits, properties);
 
 		GContext.allocator.alloc(bufferMemory, memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties));
-		vkBindBufferMemory(device, outBuffer, bufferMemory.handle, 0);
+		vkBindBufferMemory(device, outBuffer, bufferMemory.handle, bufferMemory.offset);
 	}
 
 	void createImage(VkImage& outImage, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage)
@@ -902,7 +903,7 @@ namespace vkh
 		VkMemoryRequirements memRequirements;
 		vkGetImageMemoryRequirements(device, image, &memRequirements);
 		allocateDeviceMemory(outMem, (size_t)memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties));
-		vkBindImageMemory(device, image, outMem.handle, 0);
+		vkBindImageMemory(device, image, outMem.handle, outMem.offset);
 	}
 
 	VkFormat depthFormat()
