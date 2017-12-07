@@ -7,7 +7,7 @@
 #include "procedural_geo.h"
 #include "material_creation.h"
 #include "texture.h"
-
+#include "vkh.h"
 namespace App
 {
 	uint32_t matId = 0;
@@ -23,6 +23,8 @@ namespace App
 		Material::setTexture(matId, "testSampler", fruits);
 
 		Mesh::quad(1.0f, 1.0f, 0.25f, 0.0f);
+
+		printf("Total allocation count: %i\n", vkh::GContext.allocator.numAllocs());
 	}
 
 	void tick(float deltaTime)

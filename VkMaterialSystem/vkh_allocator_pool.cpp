@@ -29,7 +29,6 @@ namespace vkh::allocators::pool
 		size_t* memTypeAllocSizes;
 		uint32_t totalAllocs;
 
-	//	MemoryPool* memPools;
 		std::vector<MemoryPool> memPools;
 
 		VkhContext* context;
@@ -48,7 +47,7 @@ namespace vkh::allocators::pool
 	uint32_t numAllocs();
 
 	AllocatorInterface allocImpl = { alloc, free, allocatedSize, numAllocs };
-	void initializeMemoryPools(uint32_t memoryType);
+	void initializeMemoryPool(uint32_t memoryType);
 
 	void activate(VkhContext* context) 
 	{
@@ -67,11 +66,11 @@ namespace vkh::allocators::pool
 
 		for (uint32_t i = 0; i < state.memTypeCount; i++)
 		{
-			initializeMemoryPools(i);
+			initializeMemoryPool(i);
 		}
 	}
 
-	void initializeMemoryPools(uint32_t memoryType)
+	void initializeMemoryPool(uint32_t memoryType)
 	{
 		DeviceMemoryBlock firstBlock;
 		firstBlock.mem = {};
@@ -83,6 +82,8 @@ namespace vkh::allocators::pool
 
 		vkAllocateMemory(vkh::GContext.device, &info, nullptr, &(rootBlock.mem.handle));
 		rootBlock.layout.push_back( { 0, state.memoryBlockMinSize });
+		state.totalAllocs++;
+
 	}
 
 	void deactivate(VkhContext* context)
@@ -110,6 +111,7 @@ namespace vkh::allocators::pool
 
 					pool.blocks[i].layout[j].offset += requestedAllocSize;
 					pool.blocks[i].layout[j].size -= requestedAllocSize;
+					state.memTypeAllocSizes[memoryType] += size;
 
 					return;
 				}
@@ -134,10 +136,18 @@ namespace vkh::allocators::pool
 		outAlloc.offset = 0;
 		outAlloc.type = memoryType;
 		outAlloc.id = pool.blocks.size() - 1;
+		state.memTypeAllocSizes[memoryType] += size;
+
+		state.totalAllocs++;
 	}
 
 	void free(Allocation& allocation)
 	{
+		VkDeviceSize requestedAllocSize = ((allocation.size / state.pageSize) + 1) * state.pageSize;
+
+		FreeSpan span = {allocation.offset, requestedAllocSize };
+		state.memPools[allocation.type].blocks[allocation.id].layout.push_back(span);
+		state.memTypeAllocSizes[allocation.type] -= allocation.size;
 
 	}
 
