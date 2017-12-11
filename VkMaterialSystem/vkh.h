@@ -7,6 +7,7 @@
 namespace vkh
 {
 	const uint32_t INVALID_QUEUE_FAMILY_IDX = -1;
+	struct VkhContext; 
 
 	enum ECommandPoolType
 	{
@@ -26,6 +27,7 @@ namespace vkh
 
 	struct AllocatorInterface
 	{
+		void(*activate)(VkhContext*);
 		void(*alloc)(Allocation&, VkDeviceSize, uint32_t);
 		void(*free)(Allocation&);
 		size_t(*allocatedSize)(uint32_t);

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "vkh_allocator_passthrough.h"
 #include "vkh.h"
+#include "vkh_initializers.h"
 
 namespace vkh::allocators::passthrough
 {
@@ -15,12 +16,13 @@ namespace vkh::allocators::passthrough
 	AllocatorState state;
 
 	//ALLOCATOR INTERFACE / INSTALLATION 
+	void activate(VkhContext* context);
 	void alloc(Allocation& outHandle, VkDeviceSize size, uint32_t memoryType);
 	void free(Allocation& handle);
 	size_t allocatedSize(uint32_t memoryType);
 	uint32_t numAllocs();
 
-	AllocatorInterface allocImpl = { alloc, free, allocatedSize, numAllocs };
+	AllocatorInterface allocImpl = { activate, alloc, free, allocatedSize, numAllocs };
 
 	void activate(VkhContext* context)
 	{
@@ -46,16 +48,15 @@ namespace vkh::allocators::passthrough
 		state.totalAllocs++;
 		state.memTypeAllocSizes[memoryType] += size;
 
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = size;
-		allocInfo.memoryTypeIndex = memoryType;
-
+		VkMemoryAllocateInfo allocInfo = vkh::memoryAllocateInfo(size, memoryType);
 		VkResult res = vkAllocateMemory(state.context->device, &allocInfo, nullptr, &(outAlloc.handle));
 
 		outAlloc.size = size;
 		outAlloc.type = memoryType;
+		outAlloc.offset = 0;
 
+		checkf(res != VK_ERROR_OUT_OF_DEVICE_MEMORY, "Out of device memory");
+		checkf(res != VK_ERROR_TOO_MANY_OBJECTS, "Attempting to create too many allocations")
 		checkf(res == VK_SUCCESS, "Error allocating memory in passthrough allocator");
 	}
 
