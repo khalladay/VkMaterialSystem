@@ -428,7 +428,13 @@ namespace Material
 			//from the first element in the array for all of them. 
 			VkMemoryRequirements memRequirements;
 			vkGetBufferMemoryRequirements(vkh::GContext.device, buffers[0], &memRequirements);
-			vkh::allocateDeviceMemory(dst, size, vkh::getMemoryType(vkh::GContext.gpu.device, memRequirements.memoryTypeBits, memFlags));
+
+			vkh::AllocationCreateInfo createInfo;
+			createInfo.size = size;
+			createInfo.memoryTypeIndex = vkh::getMemoryType(vkh::GContext.gpu.device, memRequirements.memoryTypeBits, memFlags);
+			createInfo.usage = memFlags == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ? vkh::AllocationUsage::Default : vkh::AllocationUsage::PersistentMapped;
+
+			vkh::allocateDeviceMemory(dst,createInfo );
 		}
 
 	}
@@ -452,6 +458,7 @@ namespace Material
 		memset(mappedStagingBuffer, 0, dataSize);
 		memcpy(mappedStagingBuffer, defaultData, dataSize);
 
+		vkUnmapMemory(vkh::GContext.device, stagingMemory.handle);
 		vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
 
 		uint32_t curBuffer = 0;

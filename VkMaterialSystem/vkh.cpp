@@ -858,12 +858,12 @@ namespace vkh
 		VkMemoryRequirements memRequirements;
 		vkGetBufferMemoryRequirements(device, outBuffer, &memRequirements);
 
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = memRequirements.size;
+		AllocationCreateInfo allocInfo = {};
+		allocInfo.size = memRequirements.size;
 		allocInfo.memoryTypeIndex = getMemoryType(gpu, memRequirements.memoryTypeBits, properties);
+		allocInfo.usage = (properties != VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) ? AllocationUsage::PersistentMapped : AllocationUsage::Default;
 
-		GContext.allocator.alloc(bufferMemory, memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties));
+		GContext.allocator.alloc(bufferMemory, allocInfo);
 		vkBindBufferMemory(device, outBuffer, bufferMemory.handle, bufferMemory.offset);
 	}
 
@@ -902,7 +902,13 @@ namespace vkh
 	{
 		VkMemoryRequirements memRequirements;
 		vkGetImageMemoryRequirements(device, image, &memRequirements);
-		allocateDeviceMemory(outMem, (size_t)memRequirements.size, getMemoryType(gpu, memRequirements.memoryTypeBits, properties));
+
+		AllocationCreateInfo createInfo;
+		createInfo.size = memRequirements.size;
+		createInfo.memoryTypeIndex = getMemoryType(gpu, memRequirements.memoryTypeBits, properties);
+		createInfo.usage = (properties == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) ? AllocationUsage::PersistentMapped : AllocationUsage::Default;
+
+		allocateDeviceMemory(outMem, createInfo);
 		vkBindImageMemory(device, image, outMem.handle, outMem.offset);
 	}
 
@@ -961,9 +967,9 @@ namespace vkh
 		GContext.allocator.free(mem);
 	}
 
-	void allocateDeviceMemory(Allocation& outMem, size_t size, uint32_t memoryType)
+	void allocateDeviceMemory(Allocation& outMem, AllocationCreateInfo info)
 	{
-		GContext.allocator.alloc(outMem, size, memoryType);
+		GContext.allocator.alloc(outMem, info);
 	}
 
 	size_t getUniformBufferAlignment()

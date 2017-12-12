@@ -38,7 +38,7 @@ namespace vkh::allocators::pool
 
 	//ALLOCATOR INTERFACE / INSTALLATION 
 	void activate(VkhContext* context);
-	void alloc(Allocation& outHandle, VkDeviceSize size, uint32_t memoryType);
+	void alloc(Allocation& outAlloc, AllocationCreateInfo createInfo);
 	void free(Allocation& handle);
 	size_t allocatedSize(uint32_t memoryType);
 	uint32_t numAllocs();
@@ -60,15 +60,20 @@ namespace vkh::allocators::pool
 		state.memoryBlockMinSize = state.pageSize * 10;
 	}
 
-	uint32_t addBlockToPool(VkDeviceSize size, uint32_t memoryType)
+	uint32_t addBlockToPool(VkDeviceSize size, uint32_t memoryType, bool fitToAlloc)
 	{
-		VkDeviceSize newPoolSize = size * 2;
+		VkDeviceSize newPoolSize = size * (fitToAlloc ? 1 : 2);
 		newPoolSize = newPoolSize < state.memoryBlockMinSize ? state.memoryBlockMinSize : newPoolSize;
 		
 		VkMemoryAllocateInfo info = vkh::memoryAllocateInfo(newPoolSize, memoryType);
 
 		DeviceMemoryBlock newBlock = {};
-		vkAllocateMemory(state.context->device, &info, nullptr, &newBlock.mem.handle);
+		VkResult res = vkAllocateMemory(state.context->device, &info, nullptr, &newBlock.mem.handle);
+	
+		checkf(res != VK_ERROR_OUT_OF_DEVICE_MEMORY, "Out of device memory");
+		checkf(res != VK_ERROR_TOO_MANY_OBJECTS, "Attempting to create too many allocations")
+		checkf(res == VK_SUCCESS, "Error allocating memory in passthrough allocator");
+
 		newBlock.mem.type = memoryType;
 		newBlock.mem.size = newPoolSize;
 
@@ -90,7 +95,7 @@ namespace vkh::allocators::pool
 		pool.blocks[indices.blockIdx].layout[indices.spanIdx].size -= size;
 	}
 
-	bool findFreeChunkForAllocation(BlockSpanIndexPair& outIndexPair, uint32_t memoryType, VkDeviceSize size)
+	bool findFreeChunkForAllocation(BlockSpanIndexPair& outIndexPair, uint32_t memoryType, VkDeviceSize size, bool needsWholePage)
 	{
 		MemoryPool& pool = state.memPools[memoryType];
 		
@@ -98,7 +103,8 @@ namespace vkh::allocators::pool
 		{
 			for (uint32_t j = 0; j < pool.blocks[i].layout.size(); ++j)
 			{
-				if (pool.blocks[i].layout[j].size >= size)
+				bool validOffset = needsWholePage ? pool.blocks[i].layout[j].offset == 0 : true;
+				if (pool.blocks[i].layout[j].size >= size && validOffset)
 				{
 					outIndexPair.blockIdx = i;
 					outIndexPair.spanIdx = j;
@@ -109,20 +115,31 @@ namespace vkh::allocators::pool
 		return false;
 	}
 
-	void alloc(Allocation& outAlloc, VkDeviceSize size, uint32_t memoryType)
+	void alloc(Allocation& outAlloc, AllocationCreateInfo createInfo)
 	{
-		MemoryPool& pool = state.memPools[memoryType];
-		state.memTypeAllocSizes[memoryType] += size;
+		uint32_t memoryType = createInfo.memoryTypeIndex;
+		VkDeviceSize size = createInfo.size;
 
+		MemoryPool& pool = state.memPools[memoryType];
 		//make sure we always alloc a multiple of pageSize
 		VkDeviceSize requestedAllocSize = ((size / state.pageSize) + 1) * state.pageSize;
+		state.memTypeAllocSizes[memoryType] += requestedAllocSize;
 
 		BlockSpanIndexPair location;
-		bool found = findFreeChunkForAllocation(location, memoryType, requestedAllocSize);
+
+		bool needsOwnPage = createInfo.usage == AllocationUsage::PersistentMapped;
+		bool found = findFreeChunkForAllocation(location, memoryType, requestedAllocSize, needsOwnPage);
+
+		if (found && needsOwnPage)
+		{
+			OffsetSize& curLoc = pool.blocks[location.blockIdx].layout[location.spanIdx];
+			curLoc.size = pool.blocks[location.blockIdx].mem.size;
+			
+		}
 
 		if (!found)
 		{
-			location = { addBlockToPool(requestedAllocSize, memoryType), 0 };
+			location = { addBlockToPool(requestedAllocSize, memoryType, needsOwnPage), 0 };
 		}
 
 		outAlloc.handle = pool.blocks[location.blockIdx].mem.handle;
@@ -142,12 +159,19 @@ namespace vkh::allocators::pool
 
 		MemoryPool& pool = state.memPools[allocation.type];
 		bool found = false;
-		for (uint32_t j = 0; j < pool.blocks[allocation.id].layout.size(); ++j)
+
+		uint32_t numLayoutMems = pool.blocks[allocation.id].layout.size();
+		for (uint32_t j = 0; j < numLayoutMems; ++j)
 		{
 			if (pool.blocks[allocation.id].layout[j].offset == requestedAllocSize +allocation.offset)
 			{
 				pool.blocks[allocation.id].layout[j].offset = allocation.offset;
-				pool.blocks[allocation.id].layout[j].size += requestedAllocSize;
+
+				if (numLayoutMems == 1)
+				{
+					pool.blocks[allocation.id].layout[j].size = pool.blocks[allocation.id].mem.size;
+				}
+				else pool.blocks[allocation.id].layout[j].size += requestedAllocSize;
 				found = true;
 				break;
 			}
@@ -156,7 +180,7 @@ namespace vkh::allocators::pool
 		if (!found)
 		{
 			state.memPools[allocation.type].blocks[allocation.id].layout.push_back(span);
-			state.memTypeAllocSizes[allocation.type] -= allocation.size;
+			state.memTypeAllocSizes[allocation.type] -= requestedAllocSize;
 		}
 	}
 

@@ -24,11 +24,24 @@ namespace vkh
 		VkDeviceSize size;
 		VkDeviceSize offset;
 	};
+	
+	enum class AllocationUsage : uint8_t
+	{
+		Default,
+		PersistentMapped
+	};
+
+	struct AllocationCreateInfo
+	{
+		AllocationUsage usage;
+		uint32_t memoryTypeIndex;
+		VkDeviceSize size;
+	};
 
 	struct AllocatorInterface
 	{
 		void(*activate)(VkhContext*);
-		void(*alloc)(Allocation&, VkDeviceSize, uint32_t);
+		void(*alloc)(Allocation&, AllocationCreateInfo);
 		void(*free)(Allocation&);
 		size_t(*allocatedSize)(uint32_t);
 		uint32_t(*numAllocs)();
@@ -152,7 +165,7 @@ namespace vkh
 	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size);
 	void copyBuffer(VkBuffer& srcBuffer, VkBuffer& dstBuffer, VkDeviceSize size, VkhCommandBuffer& buffer);
 
-	void allocateDeviceMemory(Allocation& outMem, size_t size, uint32_t memoryType);
+	void allocateDeviceMemory(Allocation& outMem, AllocationCreateInfo info);
 	void freeDeviceMemory(Allocation& mem);
 	void allocBindImageToMem(Allocation& outMem, const VkImage& image, VkMemoryPropertyFlags properties);
 	void allocBindImageToMem(Allocation& outMem, const VkImage& image, VkMemoryPropertyFlags properties, const VkDevice& device, const VkPhysicalDevice& gpu);

@@ -17,7 +17,7 @@ namespace vkh::allocators::passthrough
 
 	//ALLOCATOR INTERFACE / INSTALLATION 
 	void activate(VkhContext* context);
-	void alloc(Allocation& outHandle, VkDeviceSize size, uint32_t memoryType);
+	void alloc(Allocation& outAlloc, AllocationCreateInfo createInfo);
 	void free(Allocation& handle);
 	size_t allocatedSize(uint32_t memoryType);
 	uint32_t numAllocs();
@@ -43,16 +43,16 @@ namespace vkh::allocators::passthrough
 	//IMPLEMENTATION
 
 
-	void alloc(Allocation& outAlloc, VkDeviceSize size, uint32_t memoryType)
+	void alloc(Allocation& outAlloc, AllocationCreateInfo createInfo)
 	{
 		state.totalAllocs++;
-		state.memTypeAllocSizes[memoryType] += size;
+		state.memTypeAllocSizes[createInfo.memoryTypeIndex] += createInfo.size;
 
-		VkMemoryAllocateInfo allocInfo = vkh::memoryAllocateInfo(size, memoryType);
+		VkMemoryAllocateInfo allocInfo = vkh::memoryAllocateInfo(createInfo.size, createInfo.memoryTypeIndex);
 		VkResult res = vkAllocateMemory(state.context->device, &allocInfo, nullptr, &(outAlloc.handle));
 
-		outAlloc.size = size;
-		outAlloc.type = memoryType;
+		outAlloc.size = createInfo.size;
+		outAlloc.type = createInfo.memoryTypeIndex;
 		outAlloc.offset = 0;
 
 		checkf(res != VK_ERROR_OUT_OF_DEVICE_MEMORY, "Out of device memory");
