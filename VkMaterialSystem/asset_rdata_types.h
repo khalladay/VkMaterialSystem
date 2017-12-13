@@ -63,15 +63,6 @@ struct MaterialRenderData
 	MaterialDynamicData dynamic;
 };
 
-struct MaterialInstance
-{
-	uint32_t parentMaterialName;
-
-	//going to need index and generation a la bitsquid 
-	//start with just index though
-	uint32_t id;
-};
-
 struct TextureRenderData
 {
 	VkImage image;
