@@ -432,8 +432,7 @@ namespace Material
 			vkh::AllocationCreateInfo createInfo;
 			createInfo.size = size;
 			createInfo.memoryTypeIndex = vkh::getMemoryType(vkh::GContext.gpu.device, memRequirements.memoryTypeBits, memFlags);
-			createInfo.usage = memFlags == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ? vkh::AllocationUsage::Default : vkh::AllocationUsage::PersistentMapped;
-
+			createInfo.usage = memFlags;
 			vkh::allocateDeviceMemory(dst,createInfo );
 		}
 
@@ -475,6 +474,7 @@ namespace Material
 		}
 
 		vkh::submitScratchCommandBuffer(scratch);
+		vkh::freeDeviceMemory(stagingMemory);
 	}
 	
 	void collectDefaultValuesIntoBufferAndBuildLayout(char* outBuffer, std::vector<DescriptorSetBinding*> bindings, std::vector<uint32_t>* optionalOutLayout = nullptr)

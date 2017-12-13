@@ -18,11 +18,11 @@ namespace App
 		//Texture::make("../data/textures/test_texture.jpg");
 		Material::initGlobalShaderData();
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
-		matId = Material::make("../data/materials/show_uvs.mat");
+		matId = Material::make("../data/materials/raymarch_primitives.mat");
 
 		Material::setTexture(matId, "testSampler", fruits);
 
-		Mesh::quad(1.0f, 1.0f, 0.25f, 0.0f);
+		Mesh::quad(2.0f, 2.0f);
 
 		printf("Total allocation count: %i\n", vkh::GContext.allocator.numAllocs());
 	}

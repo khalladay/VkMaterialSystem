@@ -25,15 +25,9 @@ namespace vkh
 		VkDeviceSize offset;
 	};
 	
-	enum class AllocationUsage : uint8_t
-	{
-		Default,
-		PersistentMapped
-	};
-
 	struct AllocationCreateInfo
 	{
-		AllocationUsage usage;
+		VkMemoryPropertyFlags usage;
 		uint32_t memoryTypeIndex;
 		VkDeviceSize size;
 	};

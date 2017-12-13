@@ -14,6 +14,7 @@ namespace vkh::allocators::pool
 	{
 		Allocation mem;
 		std::vector<OffsetSize> layout;
+		bool pageReserved;
 	};
 
 	struct MemoryPool
@@ -62,7 +63,7 @@ namespace vkh::allocators::pool
 
 	uint32_t addBlockToPool(VkDeviceSize size, uint32_t memoryType, bool fitToAlloc)
 	{
-		VkDeviceSize newPoolSize = size * (fitToAlloc ? 1 : 2);
+		VkDeviceSize newPoolSize = size * 2;
 		newPoolSize = newPoolSize < state.memoryBlockMinSize ? state.memoryBlockMinSize : newPoolSize;
 		
 		VkMemoryAllocateInfo info = vkh::memoryAllocateInfo(newPoolSize, memoryType);
@@ -83,7 +84,7 @@ namespace vkh::allocators::pool
 		pool.blocks[pool.blocks.size() - 1].layout.push_back({ 0, newPoolSize });
 
 		state.totalAllocs++;
-		
+				
 		return pool.blocks.size() - 1;
 	}
 
@@ -127,20 +128,15 @@ namespace vkh::allocators::pool
 
 		BlockSpanIndexPair location;
 
-		bool needsOwnPage = createInfo.usage == AllocationUsage::PersistentMapped;
+		bool needsOwnPage = createInfo.usage != VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		bool found = findFreeChunkForAllocation(location, memoryType, requestedAllocSize, needsOwnPage);
-
-		if (found && needsOwnPage)
-		{
-			OffsetSize& curLoc = pool.blocks[location.blockIdx].layout[location.spanIdx];
-			curLoc.size = pool.blocks[location.blockIdx].mem.size;
-			
-		}
 
 		if (!found)
 		{
 			location = { addBlockToPool(requestedAllocSize, memoryType, needsOwnPage), 0 };
 		}
+
+		pool.blocks[location.blockIdx].pageReserved = needsOwnPage;
 
 		outAlloc.handle = pool.blocks[location.blockIdx].mem.handle;
 		outAlloc.size = size;
@@ -158,6 +154,8 @@ namespace vkh::allocators::pool
 		OffsetSize span = {allocation.offset, requestedAllocSize };
 
 		MemoryPool& pool = state.memPools[allocation.type];
+		pool.blocks[allocation.id].pageReserved = false;
+
 		bool found = false;
 
 		uint32_t numLayoutMems = pool.blocks[allocation.id].layout.size();
@@ -166,12 +164,7 @@ namespace vkh::allocators::pool
 			if (pool.blocks[allocation.id].layout[j].offset == requestedAllocSize +allocation.offset)
 			{
 				pool.blocks[allocation.id].layout[j].offset = allocation.offset;
-
-				if (numLayoutMems == 1)
-				{
-					pool.blocks[allocation.id].layout[j].size = pool.blocks[allocation.id].mem.size;
-				}
-				else pool.blocks[allocation.id].layout[j].size += requestedAllocSize;
+				pool.blocks[allocation.id].layout[j].size += requestedAllocSize;
 				found = true;
 				break;
 			}

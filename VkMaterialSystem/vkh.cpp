@@ -861,7 +861,7 @@ namespace vkh
 		AllocationCreateInfo allocInfo = {};
 		allocInfo.size = memRequirements.size;
 		allocInfo.memoryTypeIndex = getMemoryType(gpu, memRequirements.memoryTypeBits, properties);
-		allocInfo.usage = (properties != VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) ? AllocationUsage::PersistentMapped : AllocationUsage::Default;
+		allocInfo.usage = properties;
 
 		GContext.allocator.alloc(bufferMemory, allocInfo);
 		vkBindBufferMemory(device, outBuffer, bufferMemory.handle, bufferMemory.offset);
@@ -906,7 +906,7 @@ namespace vkh
 		AllocationCreateInfo createInfo;
 		createInfo.size = memRequirements.size;
 		createInfo.memoryTypeIndex = getMemoryType(gpu, memRequirements.memoryTypeBits, properties);
-		createInfo.usage = (properties == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) ? AllocationUsage::PersistentMapped : AllocationUsage::Default;
+		createInfo.usage = properties;
 
 		allocateDeviceMemory(outMem, createInfo);
 		vkBindImageMemory(device, image, outMem.handle, outMem.offset);
