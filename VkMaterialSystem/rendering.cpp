@@ -65,7 +65,7 @@ namespace Rendering
 	}
 
 
-	void draw(uint32_t materialId)
+	void draw(DrawCall* drawCalls, uint32_t count)
 	{
 		//acquire an image from the swap chain
 		uint32_t imageIndex;
@@ -105,11 +105,13 @@ namespace Rendering
 		vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//eventually this will have to iterate over multiple objects/materials
+		for (uint32_t dc = 0; dc < count; dc++)
 		{
+			uint32_t materialId = drawCalls[dc].matIdx;
+			uint32_t meshId = drawCalls[dc].meshIdx;
+			const MeshRenderData& mesh = Mesh::getRenderData(meshId);
 
-			const MeshRenderData& mesh = Mesh::getRenderData();
 			const MaterialRenderData& mat = Material::getRenderData(materialId);
-
 
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
 			VkBuffer vertexBuffers[] = { mesh.vBuffer };

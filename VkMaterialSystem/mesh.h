@@ -14,9 +14,9 @@ struct Vertex
 
 namespace Mesh
 {
-	void make(Vertex* vertices, uint32_t vertexCount, uint32_t* indices, uint32_t indexCount);
+	uint32_t make(Vertex* vertices, uint32_t vertexCount, uint32_t* indices, uint32_t indexCount);
 
-	MeshRenderData getRenderData();
+	MeshRenderData getRenderData(uint32_t meshId);
 	const VertexRenderData* vertexRenderData();
 
 	void destroy();

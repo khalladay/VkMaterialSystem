@@ -3,32 +3,32 @@
 #include "mesh.h"
 #include "vkh.h"
 #include <map>
+#include <vector>
 #include "asset_rdata_types.h"
-
 
 struct MeshAsset
 {
 	MeshRenderData rData;
 };
 
-//eventually this will be expanded to track all meshes
 struct MeshStore
 {
-	MeshAsset fullScreenMesh;
+	std::vector<MeshAsset> data;
 };
 
 MeshStore meshStorage;
 
 namespace Mesh
 {
-	void make(Vertex* vertices, uint32_t vertexCount, uint32_t* indices, uint32_t indexCount)
+	uint32_t make(Vertex* vertices, uint32_t vertexCount, uint32_t* indices, uint32_t indexCount)
 	{
 		using vkh::GContext;
 
 		size_t vBufferSize = sizeof(Vertex) * vertexCount + sizeof(uint32_t) * indexCount;
 		size_t iBufferSize = sizeof(uint32_t) * indexCount;
-
-		MeshRenderData m;
+		
+		MeshAsset newAsset;
+		MeshRenderData& m = newAsset.rData;
 
 		m.iCount = indexCount;
 		m.vCount = vertexCount;
@@ -98,7 +98,8 @@ namespace Mesh
 		vkh::freeDeviceMemory(stagingMemory);
 		vkDestroyBuffer(GContext.device, stagingBuffer, nullptr);
 
-		meshStorage.fullScreenMesh.rData = m;
+		meshStorage.data.push_back(newAsset);
+		return static_cast<uint32_t>(meshStorage.data.size()) - 1;
 	}
 	
 	const VertexRenderData* vertexRenderData()
@@ -118,9 +119,9 @@ namespace Mesh
 		return vkRenderData;
 	}
 
-	MeshRenderData getRenderData()
+	MeshRenderData getRenderData(uint32_t meshId)
 	{
-		return meshStorage.fullScreenMesh.rData;
+		return meshStorage.data[meshId].rData;
 	}
 
 	void destroy()
