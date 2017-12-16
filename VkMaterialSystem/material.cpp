@@ -143,9 +143,9 @@ namespace Material
 		{
 			if (rData.dynamic.layout[i] == varHash)
 			{
-				VkBuffer& targetBuffer = rData.dynamic.buffers[rData.dynamic.layout[i + 1]];
+				VkBuffer& targetBuffer = rData.dynamic.buffer;
 				uint32_t size = rData.dynamic.layout[i + 2];
-				uint32_t offset = rData.dynamic.layout[i + 3];
+				uint32_t offset = rData.dynamic.layout[i + 1] + rData.dynamic.layout[i + 3];
 
 				vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
 				vkCmdUpdateBuffer(scratch.buffer, targetBuffer, offset, size, data);

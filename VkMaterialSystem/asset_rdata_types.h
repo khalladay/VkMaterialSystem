@@ -25,10 +25,10 @@ struct MaterialDynamicData
 {
 	uint32_t numInputs;
 
-	// stride: 4 - hashed name / buffer index / member size / member offset
+	// stride: 4 - hashed name / offset of binding start / member size / member offset
 	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
 	uint32_t* layout;
-	VkBuffer* buffers;
+	VkBuffer buffer;
 	vkh::Allocation uniformMem;
 
 	VkWriteDescriptorSet* descriptorSetWrites;
@@ -55,7 +55,6 @@ struct MaterialRenderData
 	//changed after initialization
 	VkBuffer staticBuffer;
 	vkh::Allocation staticUniformMem;
-	uint32_t numStaticBuffers;
 
 	//for now, just add buffers here to modify. when this
 	//is modified to support material instances, we'll change it 
