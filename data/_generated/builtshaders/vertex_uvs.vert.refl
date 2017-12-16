@@ -16,13 +16,7 @@
             "name": "GLOBAL_DATA",
             "size": 128,
             "type": "UNIFORM",
-            "members": [
-                {
-                    "name": "time",
-                    "size": 16,
-                    "offset": 0
-                }
-            ]
+            "members": []
         },
         {
             "set": 2,

@@ -21,5 +21,7 @@ void main()
 {
 	vec4 tex = texture(texSampler, fragUV);
 	vec4 tex2 = texture(testSampler, fragUV);
-    outColor = mix(tex,tex2,fragColor.g) * global.mouse.z;
+	float t = sin( mod(global.time, 1.0));
+
+    outColor = mix(tex,tex2,t) * fragColor * global.mouse.z;
 }

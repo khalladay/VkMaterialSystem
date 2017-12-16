@@ -8,6 +8,11 @@
             "type": "UNIFORM",
             "members": [
                 {
+                    "name": "time",
+                    "size": 16,
+                    "offset": 0
+                },
+                {
                     "name": "mouse",
                     "size": 16,
                     "offset": 16

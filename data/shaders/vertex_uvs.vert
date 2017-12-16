@@ -47,8 +47,7 @@ out gl_PerVertex
 void main() 
 {
     gl_Position = vec4(vertex, 1.0);
-	float t = sin( mod(global.time, 1.0));
-    fragColor = pc.col * inst_data.tint * inst_data2.tint2 * dyn_data.test * t;
+    fragColor = pc.col * inst_data.tint * inst_data2.tint2 * dyn_data.test;
 	fragUV = uv;
 }
 

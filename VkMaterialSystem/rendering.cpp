@@ -135,7 +135,7 @@ namespace Rendering
 			if (Material::getRenderData(materialId).pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector(materialId, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
+				Material::setPushConstantVector(materialId, "col", glm::vec4(1.0, 1.0, 1.0, 1.0));
 				Material::setPushConstantFloat(materialId, "time", (float)(os_getMilliseconds() / 1000.0f));
 
 				vkCmdPushConstants(

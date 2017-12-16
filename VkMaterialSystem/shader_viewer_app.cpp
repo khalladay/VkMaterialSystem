@@ -21,17 +21,17 @@ namespace App
 		//Texture::make("../data/textures/test_texture.jpg");
 		Material::initGlobalShaderData();
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
-		matId = Material::make("../data/materials/raymarch_primitives.mat");
+		matId = Material::make("../data/materials/show_uvs.mat");
 
 		Material::setTexture(matId, "testSampler", fruits);
 
-		drawCalls = (Rendering::DrawCall*)malloc(sizeof(Rendering::DrawCall) * 100);
+		drawCalls = (Rendering::DrawCall*)malloc(sizeof(Rendering::DrawCall) * 25);
 		uint32_t dc = 0;
-		for (uint32_t i = 0; i < 10; ++i)
+		for (uint32_t i = 0; i < 5; ++i)
 		{
-			for (uint32_t j = 0; j < 10; ++j)
+			for (uint32_t j = 0; j < 5; ++j)
 			{
-				drawCalls[dc].meshIdx = Mesh::quad(0.2, 0.2, -0.9 + i * 0.2f, -0.9 + j * 0.2f);
+				drawCalls[dc].meshIdx = Mesh::quad(0.4, 0.4, -0.8 + i * 0.4f, -0.8 + j * 0.4f);
 				drawCalls[dc++].matIdx = matId;
 			}
 		}
@@ -41,7 +41,7 @@ namespace App
 
 	void tick(float deltaTime)
 	{
-		Rendering::draw(drawCalls, 100);
+		Rendering::draw(drawCalls, 25);
 	}
 
 	void kill()
