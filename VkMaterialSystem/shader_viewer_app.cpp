@@ -21,7 +21,7 @@ namespace App
 		//Texture::make("../data/textures/test_texture.jpg");
 		Material::initGlobalShaderData();
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
-		matId = Material::make("../data/materials/raymarch_primitives.mat");
+		matId = Material::make("../data/materials/show_uvs.mat");
 
 		Material::setTexture(matId, "testSampler", fruits);
 

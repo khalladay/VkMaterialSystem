@@ -113,13 +113,13 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData(matId);
 
 		uint32_t varHash = hash(var);
-		for (uint32_t i = 0; i < rData.dynamic.numInputs * 4; i += 4)
+		for (uint32_t i = 0; i < rData.numDynamicInputs * 4; i += 4)
 		{
-			if (rData.dynamic.layout[i] == varHash)
+			if (rData.dynamicLayout[i] == varHash)
 			{
 				TextureRenderData* texData = Texture::getRenderData(texId);
-				uint32_t index = rData.dynamic.layout[i + 1];
-				uint32_t setWriteIdx = rData.dynamic.layout[i + 2];
+				uint32_t index = rData.dynamicLayout[i + 1];
+				uint32_t setWriteIdx = rData.dynamicLayout[i + 2];
 
 				VkWriteDescriptorSet& setWrite = rData.dynamic.descriptorSetWrites[setWriteIdx];
 				VkDescriptorImageInfo imageInfo = {};
@@ -139,13 +139,13 @@ namespace Material
 		MaterialRenderData& rData = Material::getRenderData(matId);
 		uint32_t varHash = hash(name);
 
-		for (uint32_t i = 0; i < rData.dynamic.numInputs * 4; i += 4)
+		for (uint32_t i = 0; i < rData.numDynamicInputs * 4; i += 4)
 		{
-			if (rData.dynamic.layout[i] == varHash)
+			if (rData.dynamicLayout[i] == varHash)
 			{
 				VkBuffer& targetBuffer = rData.dynamic.buffer;
-				uint32_t size = rData.dynamic.layout[i + 2];
-				uint32_t offset = rData.dynamic.layout[i + 1] + rData.dynamic.layout[i + 3];
+				uint32_t size = rData.dynamicLayout[i + 2];
+				uint32_t offset = rData.dynamicLayout[i + 1] + rData.dynamicLayout[i + 3];
 
 				vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
 				vkCmdUpdateBuffer(scratch.buffer, targetBuffer, offset, size, data);

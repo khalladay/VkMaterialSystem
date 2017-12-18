@@ -606,8 +606,6 @@ namespace Material
 			}
 		}
 
-		outMaterial.dynamic.numInputs = static_cast<uint32_t>(def.dynamicSets.size());
-
 		VkResult res;
 
 		/////////////////////////////////////////////////////////////////////////////////
@@ -816,8 +814,8 @@ namespace Material
 			//global buffers come from elsewhere in the application
 
 			//dynamic buffers are a pain in the ass and we need to track a lot of information about them. 
-			outAsset.rData->dynamic.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.numDynamicUniforms * 3);
-			outAsset.rData->dynamic.numInputs = def.numDynamicUniforms + def.numDynamicTextures;
+			outAsset.rData->dynamicLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.numDynamicUniforms * 3);
+			outAsset.rData->numDynamicInputs = def.numDynamicUniforms + def.numDynamicTextures;
 
 			//all material mem should be device local, for perf
 			VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -853,8 +851,8 @@ namespace Material
 			collectDefaultValuesIntoBufferAndBuildLayout(dynamicDefaultData, dynamicBindings, false, &layout);
 
 			//we can convert the layout array to a pointer for storage in our POD MaterialRenderData
-			outMaterial.dynamic.layout = (uint32_t*)malloc(sizeof(uint32_t) * layout.size());
-			memcpy(outMaterial.dynamic.layout, layout.data(), sizeof(uint32_t) * layout.size());
+			outMaterial.dynamicLayout = (uint32_t*)malloc(sizeof(uint32_t) * layout.size());
+			memcpy(outMaterial.dynamicLayout, layout.data(), sizeof(uint32_t) * layout.size());
 
 			//same as before, we need to create buffers, alloc memory, bind it to the buffers
 			createSingleBufferForDescriptorSetBindingArray(dynamicBindings, &outAsset.rData->dynamic.buffer, memFlags);
@@ -1002,7 +1000,7 @@ namespace Material
 			if (binding.type == InputType::UNIFORM)
 			{
 				VkDescriptorBufferInfo uniformBufferInfo;
-				uniformBufferInfo.offset = outMaterial.dynamic.layout[dynamicIdx++ * 4 + 1];
+				uniformBufferInfo.offset = outMaterial.dynamicLayout[dynamicIdx++ * 4 + 1];
 				uniformBufferInfo.buffer = outAsset.rData->dynamic.buffer;
 				uniformBufferInfo.range = binding.sizeBytes;
 

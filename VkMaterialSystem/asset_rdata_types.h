@@ -23,11 +23,6 @@ struct UniformBlockDef
 
 struct MaterialDynamicData
 {
-	uint32_t numInputs;
-
-	// stride: 4 - hashed name / offset of binding start / member size / member offset
-	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
-	uint32_t* layout;
 	VkBuffer buffer;
 	vkh::Allocation uniformMem;
 
@@ -60,6 +55,12 @@ struct MaterialRenderData
 	//is modified to support material instances, we'll change it 
 	//to something more sane. 
 	MaterialDynamicData dynamic;
+
+	// stride: 4 - hashed name / offset of binding start / member size / member offset
+	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
+	uint32_t* dynamicLayout;
+	uint32_t numDynamicInputs;
+
 };
 
 struct TextureRenderData
