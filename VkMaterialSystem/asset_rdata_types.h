@@ -24,9 +24,14 @@ struct UniformBlockDef
 struct MaterialDynamicData
 {
 	VkBuffer buffer;
-	vkh::Allocation uniformMem;
 
 	VkWriteDescriptorSet* descriptorSetWrites;
+};
+
+struct MaterialInstanceData
+{
+	uint32_t parent;
+	uint32_t id;
 };
 
 struct MaterialRenderData
@@ -60,6 +65,8 @@ struct MaterialRenderData
 	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
 	uint32_t* dynamicLayout;
 	uint32_t numDynamicInputs;
+
+	vkh::Allocation dynamicUniformMem;
 
 };
 

@@ -564,7 +564,7 @@ namespace Material
 
 	void bindBuffersToMemory(vkh::Allocation& memoryToBind, VkBuffer* buffers,std::vector<DescriptorSetBinding*> bindings)
 	{
-		uint32_t bufferOffset = memoryToBind.offset;
+		VkDeviceSize bufferOffset = memoryToBind.offset;
 		uint32_t curBuffer = 0;
 		for (DescriptorSetBinding* binding : bindings)
 		{
@@ -856,10 +856,10 @@ namespace Material
 
 			//same as before, we need to create buffers, alloc memory, bind it to the buffers
 			createSingleBufferForDescriptorSetBindingArray(dynamicBindings, &outAsset.rData->dynamic.buffer, memFlags);
-			allocateDeviceMemoryForBuffers(outAsset.rData->dynamic.uniformMem, def.dynamicSetsSize, &outAsset.rData->dynamic.buffer, memFlags);
+			allocateDeviceMemoryForBuffers(outAsset.rData->dynamicUniformMem, def.dynamicSetsSize, &outAsset.rData->dynamic.buffer, memFlags);
 			if (def.dynamicSetsSize > 0)
 			{
-				vkBindBufferMemory(vkh::GContext.device, outAsset.rData->dynamic.buffer, outAsset.rData->dynamic.uniformMem.handle, outAsset.rData->dynamic.uniformMem.offset);
+				vkBindBufferMemory(vkh::GContext.device, outAsset.rData->dynamic.buffer, outAsset.rData->dynamicUniformMem.handle, outAsset.rData->dynamicUniformMem.offset);
 
 				fillBufferWithData(&outAsset.rData->dynamic.buffer, def.dynamicSetsSize, dynamicDefaultData);
 			}
@@ -1030,7 +1030,7 @@ namespace Material
 			//but it will still work. 
 			if (firstDynamicWriteIdx == 0)
 			{
-				firstDynamicWriteIdx = descSetWrites.size();
+				firstDynamicWriteIdx = static_cast<uint32_t>(descSetWrites.size());
 			}
 
 			descSetWrites.push_back(descriptorWrite);
@@ -1040,13 +1040,13 @@ namespace Material
 		uint32_t numDynamicSetWrites = def.numDynamicTextures + def.numDynamicUniforms;
 		uint32_t numStaticSetWrites = def.numStaticTextures + def.numStaticUniforms;
 
-		uint32_t indexOfFirstDynamicSetWrite = def.globalSets.size() + numStaticSetWrites;
+		uint32_t indexOfFirstDynamicSetWrite = static_cast<uint32_t>(def.globalSets.size()) + numStaticSetWrites;
 
 		outAsset.rData->dynamic.descriptorSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
 		memcpy(outAsset.rData->dynamic.descriptorSetWrites, &descSetWrites.data()[indexOfFirstDynamicSetWrite], sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
 
 		//it's kinda weird that the order of desc writes has to be the order of sets. 
-		vkUpdateDescriptorSets(GContext.device, descSetWrites.size(), descSetWrites.data(), 0, nullptr);
+		vkUpdateDescriptorSets(GContext.device, static_cast<uint32_t>(descSetWrites.size()), descSetWrites.data(), 0, nullptr);
 
 		///////////////////////////////////////////////////////////////////////////////
 		//cleanup
