@@ -695,10 +695,10 @@ namespace Material
 			//for sanity in storage, we want to keep MaterialAssets and MaterialRenderDatas POD structs, so we need to convert our lovely
 			//containers to arrays. This might change later, if I decide to start using POD arrays. In any case, in a real application you'd
 			//almost certainly want these allocations done with any allocator other than malloc
-			outMaterial.layoutCount = static_cast<uint32_t>(uniformLayouts.size());
+			outMaterial.numDescSetLayouts = static_cast<uint32_t>(uniformLayouts.size());
 
-			outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.layoutCount);
-			memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * outMaterial.layoutCount);
+			outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
+			memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
 		}
 		
 		///////////////////////////////////////////////////////////////////////////////
@@ -706,7 +706,7 @@ namespace Material
 		///////////////////////////////////////////////////////////////////////////////
 		{
 			//we also use the descriptor set layouts to set up our pipeline layout
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.layoutCount);
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.numDescSetLayouts);
 
 			//we need to figure out what's up with push constants here becaus the pipeline layout object needs to know
 			if (def.pcBlock.sizeBytes > 0)
@@ -829,19 +829,21 @@ namespace Material
 			collectDefaultValuesIntoBufferAndBuildLayout(staticDefaultData, staticBindings, true, &staticLayout);
 
 			//then create a single vkBuffer to hold all (non texture) static data 
-			createSingleBufferForDescriptorSetBindingArray(staticBindings, &outAsset.rData->staticBuffer, memFlags);
+			outAsset.rData->staticBuffers.push_back({});
+			createSingleBufferForDescriptorSetBindingArray(staticBindings, &outAsset.rData->staticBuffers[0], memFlags);
 
 			//allocate memory for those buffers
 			//we need to pass in one buffer to grab the memory type bits for our device memory. 
 			//since all our buffers have the same memory flags / properties, this will be the same for all of them 
-			allocateDeviceMemoryForBuffers(outAsset.rData->staticUniformMem, def.staticSetsSize, &outAsset.rData->staticBuffer, memFlags);
+			outAsset.rData->staticUniformMem.resize(1);
+			allocateDeviceMemoryForBuffers(outAsset.rData->staticUniformMem[0], def.staticSetsSize, &outAsset.rData->staticBuffers[0], memFlags);
 			if (def.staticSetsSize > 0)
 			{
-				vkBindBufferMemory(vkh::GContext.device, outAsset.rData->staticBuffer, outAsset.rData->staticUniformMem.handle, outAsset.rData->staticUniformMem.offset);
+				vkBindBufferMemory(vkh::GContext.device, outAsset.rData->staticBuffers[0], outAsset.rData->staticUniformMem[0].handle, outAsset.rData->staticUniformMem[0].offset);
 
 				//now we have all our default data written in the staticDefaultData array, we can map it to the device memory bound to the static
 				//buffers in one shot
-				fillBufferWithData(&outAsset.rData->staticBuffer, def.staticSetsSize, staticDefaultData);
+				fillBufferWithData(&outAsset.rData->staticBuffers[0], def.staticSetsSize, staticDefaultData);
 
 			}
 
@@ -855,13 +857,17 @@ namespace Material
 			memcpy(outMaterial.dynamicLayout, layout.data(), sizeof(uint32_t) * layout.size());
 
 			//same as before, we need to create buffers, alloc memory, bind it to the buffers
-			createSingleBufferForDescriptorSetBindingArray(dynamicBindings, &outAsset.rData->dynamic.buffer, memFlags);
-			allocateDeviceMemoryForBuffers(outAsset.rData->dynamicUniformMem, def.dynamicSetsSize, &outAsset.rData->dynamic.buffer, memFlags);
+			outAsset.rData->dynamicBuffers.push_back({});
+
+			createSingleBufferForDescriptorSetBindingArray(dynamicBindings, &outAsset.rData->dynamicBuffers[0], memFlags);
+
+			outAsset.rData->dynamicUniformMem.resize(1);
+			allocateDeviceMemoryForBuffers(outAsset.rData->dynamicUniformMem[0], def.dynamicSetsSize, &outAsset.rData->dynamicBuffers[0], memFlags);
 			if (def.dynamicSetsSize > 0)
 			{
-				vkBindBufferMemory(vkh::GContext.device, outAsset.rData->dynamic.buffer, outAsset.rData->dynamicUniformMem.handle, outAsset.rData->dynamicUniformMem.offset);
+				vkBindBufferMemory(vkh::GContext.device, outAsset.rData->dynamicBuffers[0], outAsset.rData->dynamicUniformMem[0].handle, outAsset.rData->dynamicUniformMem[0].offset);
 
-				fillBufferWithData(&outAsset.rData->dynamic.buffer, def.dynamicSetsSize, dynamicDefaultData);
+				fillBufferWithData(&outAsset.rData->dynamicBuffers[0], def.dynamicSetsSize, dynamicDefaultData);
 			}
 		}
 
@@ -875,7 +881,7 @@ namespace Material
 			//use those buffers. the first step is allocating them
 
 			outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * uniformLayouts.size());
-			outMaterial.numDescSets = outMaterial.layoutCount;
+			outMaterial.numDescSets = outMaterial.numDescSetLayouts;
 
 			for (uint32_t j = 0; j < uniformLayouts.size(); ++j)
 			{
@@ -953,7 +959,7 @@ namespace Material
 			{
 				VkDescriptorBufferInfo uniformBufferInfo;
 				uniformBufferInfo.offset = staticLayout[staticIdx++ * 4 + 1];
-				uniformBufferInfo.buffer = outAsset.rData->staticBuffer;
+				uniformBufferInfo.buffer = outAsset.rData->staticBuffers[0];
 				uniformBufferInfo.range = binding.sizeBytes;
 
 				uniformBufferInfos.push_back(uniformBufferInfo);
@@ -1001,7 +1007,7 @@ namespace Material
 			{
 				VkDescriptorBufferInfo uniformBufferInfo;
 				uniformBufferInfo.offset = outMaterial.dynamicLayout[dynamicIdx++ * 4 + 1];
-				uniformBufferInfo.buffer = outAsset.rData->dynamic.buffer;
+				uniformBufferInfo.buffer = outAsset.rData->dynamicBuffers[0];
 				uniformBufferInfo.range = binding.sizeBytes;
 
 				uniformBufferInfos.push_back(uniformBufferInfo);
@@ -1041,9 +1047,9 @@ namespace Material
 		uint32_t numStaticSetWrites = def.numStaticTextures + def.numStaticUniforms;
 
 		uint32_t indexOfFirstDynamicSetWrite = static_cast<uint32_t>(def.globalSets.size()) + numStaticSetWrites;
-
-		outAsset.rData->dynamic.descriptorSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
-		memcpy(outAsset.rData->dynamic.descriptorSetWrites, &descSetWrites.data()[indexOfFirstDynamicSetWrite], sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
+		outAsset.rData->descSetWrites.resize(numDynamicSetWrites);
+		outAsset.rData->descSetStride = numDynamicSetWrites;
+		memcpy(outAsset.rData->descSetWrites.data(), &descSetWrites.data()[indexOfFirstDynamicSetWrite], sizeof(VkWriteDescriptorSet) * numDynamicSetWrites);
 
 		//it's kinda weird that the order of desc writes has to be the order of sets. 
 		vkUpdateDescriptorSets(GContext.device, static_cast<uint32_t>(descSetWrites.size()), descSetWrites.data(), 0, nullptr);

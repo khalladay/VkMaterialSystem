@@ -21,53 +21,40 @@ struct UniformBlockDef
 	VkShaderStageFlags visibleStages;
 };
 
-struct MaterialDynamicData
-{
-	VkBuffer buffer;
-
-	VkWriteDescriptorSet* descriptorSetWrites;
-};
-
 struct MaterialInstanceData
 {
 	uint32_t parent;
-	uint32_t id;
+	uint32_t index;
 };
 
+/* For the dynamicLayout array: (removed comment from struct for easier reading) 
+// stride: 4 - hashed name / offset of binding start / member size / member offset
+// for images- hasehd name / textureViewPtr index / desc set write idx / padding
+*/
 struct MaterialRenderData
 {
-	//general material data
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 
-	uint32_t layoutCount;
+	uint32_t numDescSetLayouts;
 	VkDescriptorSetLayout* descriptorSetLayouts;
-
-	//needs information about stride in various arrays for instances
-	// ie/ material instance ID = 2, where does that start in the descSets array? the static buffers array? 
-	VkDescriptorSet* descSets;
-	uint32_t numDescSets;
 
 	UniformBlockDef pushConstantLayout;
 	char* pushConstantData;
 
-	//we don't need a layout for static data since it cannot be 
-	//changed after initialization
-	VkBuffer staticBuffer;
-	vkh::Allocation staticUniformMem;
+	VkDescriptorSet* descSets;
+	uint32_t numDescSets;
 
-	//for now, just add buffers here to modify. when this
-	//is modified to support material instances, we'll change it 
-	//to something more sane. 
-	MaterialDynamicData dynamic;
-
-	// stride: 4 - hashed name / offset of binding start / member size / member offset
-	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
 	uint32_t* dynamicLayout;
 	uint32_t numDynamicInputs;
 
-	vkh::Allocation dynamicUniformMem;
+	std::vector<vkh::Allocation> staticUniformMem;
+	std::vector<vkh::Allocation> dynamicUniformMem;
 
+	std::vector<VkBuffer> staticBuffers;
+	std::vector<VkBuffer> dynamicBuffers;
+	std::vector<VkWriteDescriptorSet> descSetWrites;
+	uint32_t descSetStride;
 };
 
 struct TextureRenderData

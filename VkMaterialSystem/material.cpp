@@ -71,11 +71,6 @@ namespace Material
 		return newId;
 	}
 
-	uint32_t makeInstance(uint32_t parentId)
-	{
-		return 0;
-	}
-
 	uint32_t reserve(const char* reserveName)
 	{
 		uint32_t hashedName = hash(reserveName);
@@ -121,7 +116,7 @@ namespace Material
 				uint32_t index = rData.dynamicLayout[i + 1];
 				uint32_t setWriteIdx = rData.dynamicLayout[i + 2];
 
-				VkWriteDescriptorSet& setWrite = rData.dynamic.descriptorSetWrites[setWriteIdx];
+				VkWriteDescriptorSet& setWrite = rData.descSetWrites[setWriteIdx];
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				imageInfo.imageView = texData->view; 
@@ -143,7 +138,7 @@ namespace Material
 		{
 			if (rData.dynamicLayout[i] == varHash)
 			{
-				VkBuffer& targetBuffer = rData.dynamic.buffer;
+				VkBuffer& targetBuffer = rData.dynamicBuffers[0];
 				uint32_t size = rData.dynamicLayout[i + 2];
 				uint32_t offset = rData.dynamicLayout[i + 1] + rData.dynamicLayout[i + 3];
 

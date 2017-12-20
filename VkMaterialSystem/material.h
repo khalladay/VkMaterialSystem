@@ -20,7 +20,6 @@ namespace Material
 
 	void initGlobalShaderData();
 	uint32_t make(const char* assetPath);
-	uint32_t makeInstance(uint32_t parentId);
 
 	//used to create an empty material in material storage, 
 	//only needed if you're creating a material in a way other than
