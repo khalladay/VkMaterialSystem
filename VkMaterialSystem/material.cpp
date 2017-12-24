@@ -9,16 +9,6 @@
 #include <map>
 #include "material_creation.h"
 
-struct MaterialStorage
-{
-	//std::vector<MaterialAsset> data;
-	std::map<uint32_t, MaterialAsset> data;
-	MaterialAsset mat;
-};
-
-MaterialStorage matStorage;
-
-
 struct GlobalShaderData
 {
 	__declspec(align(16)) glm::float32 time;
@@ -30,6 +20,18 @@ struct GlobalShaderData
 //
 namespace Material
 {
+	struct MaterialStorage
+	{
+		//std::vector<MaterialAsset> data;
+		std::map<uint32_t, Asset> baseMaterials;
+
+		Asset mat;
+	};
+
+	MaterialStorage matStorage;
+
+
+
 	vkh::Allocation globalMem;
 	VkBuffer globalBuffer;
 	GlobalShaderData globalShaderData;
@@ -66,9 +68,20 @@ namespace Material
 
 	uint32_t make(const char* materialPath)
 	{
-		uint32_t newId = reserve(materialPath);
-		make(newId, load(materialPath));
-		return newId;
+		uint32_t baseMaterial = hash(materialPath);
+
+		if (matStorage.baseMaterials.count(baseMaterial) > 0)
+		{
+			
+		}
+		else
+		{
+			baseMaterial = reserve(materialPath);
+			make(baseMaterial, load(materialPath));
+			
+		}		
+
+		return makeInstance(baseMaterial);
 	}
 
 	uint32_t reserve(const char* reserveName)
@@ -76,12 +89,12 @@ namespace Material
 		uint32_t hashedName = hash(reserveName);
 		
 		//if there is any collision, increment the hashed value until we find an empty slot
-		while (matStorage.data.count(hashedName) > 0)
+		while (matStorage.baseMaterials.count(hashedName) > 0)
 		{
 			hashedName++;
 		}
 
-		matStorage.data[hashedName] = {};
+		matStorage.baseMaterials[hashedName] = {};
 		return hashedName;
 	}
 
@@ -209,7 +222,7 @@ namespace Material
 
 	MaterialRenderData& getRenderData(uint32_t matId)
 	{
-		return *matStorage.data[matId].rData;
+		return *matStorage.baseMaterials[matId].rData;
 	}
 
 	void destroy()
@@ -217,9 +230,9 @@ namespace Material
 		assert(0); //unimeplemented
 	}
 
-	MaterialAsset& getMaterialAsset(uint32_t matId)
+	Asset& getMaterialAsset(uint32_t matId)
 	{
-		return matStorage.data[matId];
+		return matStorage.baseMaterials[matId];
 	}
 
 }

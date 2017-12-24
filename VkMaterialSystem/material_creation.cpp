@@ -16,6 +16,7 @@
 #include <rapidjson\document.h>
 #include <rapidjson\filereadstream.h>
 
+//Material Creation
 namespace Material
 {
 	InputType stringToInputType(const char* str);
@@ -576,10 +577,16 @@ namespace Material
 		}
 	}
 
+	uint32_t makeInstance(uint32_t parentId)
+	{
+		return parentId;
+	}
+
 	void make(uint32_t id, Definition def)
 	{
 		using vkh::GContext;
-		MaterialAsset& outAsset = Material::getMaterialAsset(id);
+
+		Asset& outAsset = Material::getMaterialAsset(id);
 		outAsset.rData = (MaterialRenderData*)calloc(1,sizeof(MaterialRenderData));
 		MaterialRenderData& outMaterial = *outAsset.rData;
 
@@ -1064,3 +1071,33 @@ namespace Material
 
 	}
 }
+
+//Material Instance Creation
+namespace Material
+{
+	uint32_t allocInstance(uint32_t baseMaterial)
+	{
+		MaterialRenderData& data = Material::getRenderData(baseMaterial);
+
+		Instance inst = { 0,0,0,0 };
+		inst.parent = baseMaterial;
+
+		for (uint32_t page = 0; page < data.instPages.size(); ++page)
+		{
+			MaterialInstancePage& curPage = data.instPages[page];
+
+			if (curPage.freeIndices.size() > 0)
+			{
+				uint8_t slot = curPage.freeIndices.front();
+				curPage.freeIndices.pop();
+
+				inst.page = page;
+				inst.index = slot;
+				inst.generation = curPage.generation[slot];
+			}
+		}
+
+		return 0;
+	}
+}
+

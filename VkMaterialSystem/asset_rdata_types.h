@@ -1,5 +1,7 @@
 #pragma once
 #include "vkh.h"
+#include "stdafx.h"
+#include <queue>
 
 struct MeshRenderData
 {
@@ -21,11 +23,21 @@ struct UniformBlockDef
 	VkShaderStageFlags visibleStages;
 };
 
-struct MaterialInstanceData
+struct MaterialInstancePage
 {
-	uint32_t parent;
-	uint32_t index;
+	VkBuffer staticBuffer;
+	VkBuffer dynamicBuffer;
+	std::vector<VkWriteDescriptorSet> descSetWrites;
+
+	//stores the generation of material instances
+	//0 is not a valid generation, empty slots are 0.
+	uint8_t generation[MATERIAL_INSTANCE_PAGESIZE];
+	std::queue<uint8_t> freeIndices; 
+
+	vkh::Allocation staticMem;
+	vkh::Allocation dynamicMem;
 };
+
 
 /* For the dynamicLayout array: (removed comment from struct for easier reading) 
 // stride: 4 - hashed name / offset of binding start / member size / member offset
@@ -47,6 +59,8 @@ struct MaterialRenderData
 
 	uint32_t* dynamicLayout;
 	uint32_t numDynamicInputs;
+
+	std::vector<MaterialInstancePage> instPages;
 
 	std::vector<vkh::Allocation> staticUniformMem;
 	std::vector<vkh::Allocation> dynamicUniformMem;

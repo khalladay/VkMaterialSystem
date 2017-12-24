@@ -78,6 +78,6 @@ namespace Material
 	//you need to manually request a key from Material Storage with reserve()
 	//since we don't have a path to hash to use as the (potential) map key
 	void make(uint32_t matId, Material::Definition def);
-
+	uint32_t makeInstance(uint32_t parentId);
 	Definition load(const char* assetPath);
 }

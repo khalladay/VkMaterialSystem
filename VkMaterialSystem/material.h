@@ -3,11 +3,6 @@
 
 struct MaterialRenderData;
 
-struct MaterialAsset
-{
-	MaterialRenderData* rData;
-};
-
 //right now, all the calls that take a material Id argument do a lookup into
 //a map to get the material. This is obviously terrible. You probably want to 
 //store materials in some sort of array, and return the index of the array 
@@ -15,8 +10,22 @@ struct MaterialAsset
 //can just access the element directly in all these calls
 namespace Material
 {
+	struct Instance
+	{
+		uint32_t parent;
+		uint32_t page;
+		uint8_t index;
+		uint8_t generation;
+	};
+
+	struct Asset
+	{
+		MaterialRenderData* rData;
+	};
+
+
 	MaterialRenderData& getRenderData(uint32_t matId);
-	MaterialAsset& getMaterialAsset(uint32_t matId);
+	Asset& getMaterialAsset(uint32_t matId);
 
 	void initGlobalShaderData();
 	uint32_t make(const char* assetPath);

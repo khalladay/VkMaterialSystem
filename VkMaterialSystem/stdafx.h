@@ -33,3 +33,5 @@
 #define INITIAL_SCREEN_H 600
 
 #include "array.h"
+
+#define MATERIAL_INSTANCE_PAGESIZE 32
