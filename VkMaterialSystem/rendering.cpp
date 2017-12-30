@@ -107,7 +107,7 @@ namespace Rendering
 		//eventually this will have to iterate over multiple objects/materials
 		for (uint32_t dc = 0; dc < count; dc++)
 		{
-			uint32_t materialId = drawCalls[dc].matIdx;
+			uint32_t materialId = drawCalls[dc].mat.parent;
 			uint32_t meshId = drawCalls[dc].meshIdx;
 			const MeshRenderData& mesh = Mesh::getRenderData(meshId);
 
@@ -130,13 +130,13 @@ namespace Rendering
 			Material::setGlobalVector4("mouse", mouseData);
 			Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
-			Material::setUniformVector4(materialId, "global.mouse", mouseData);
-			Material::setUniformFloat(materialId, "test", 1.0f);
-			if (Material::getRenderData(materialId).pushConstantLayout.blockSize > 0)
+			Material::setUniformVector4(drawCalls[dc].mat, "global.mouse", mouseData);
+			Material::setUniformFloat(drawCalls[dc].mat, "test", 1.0f);
+			if (mat.pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector(materialId, "col", glm::vec4(1.0, 1.0, 1.0, 1.0));
-				Material::setPushConstantFloat(materialId, "time", (float)(os_getMilliseconds() / 1000.0f));
+				Material::setPushConstantVector(drawCalls[dc].mat, "col", glm::vec4(1.0, 1.0, 1.0, 1.0));
+				Material::setPushConstantFloat(drawCalls[dc].mat, "time", (float)(os_getMilliseconds() / 1000.0f));
 
 				vkCmdPushConstants(
 					commandBuffers[imageIndex],

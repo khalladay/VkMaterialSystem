@@ -30,13 +30,16 @@ namespace Material
 
 	MaterialStorage matStorage;
 
-
-
 	vkh::Allocation globalMem;
 	VkBuffer globalBuffer;
 	GlobalShaderData globalShaderData;
 	void* mappedMemory;
 	uint32_t globalSize;
+
+	uint32_t charArrayToMaterialName(const char* name)
+	{
+		return hash(name);
+	}
 
 	void initGlobalShaderData()
 	{
@@ -66,22 +69,23 @@ namespace Material
 		}
 	}
 
-	uint32_t make(const char* materialPath)
+	Instance make(const char* materialPath)
 	{
-		uint32_t baseMaterial = hash(materialPath);
-
+		uint32_t baseMaterial = charArrayToMaterialName(materialPath);
+		
 		if (matStorage.baseMaterials.count(baseMaterial) > 0)
 		{
-			
+			checkf(0, "material already exists, or hash collision");
 		}
-		else
-		{
-			baseMaterial = reserve(materialPath);
-			make(baseMaterial, load(materialPath));
-			
-		}		
 
-		return makeInstance(baseMaterial);
+		
+		baseMaterial = reserve(materialPath);
+		return make(baseMaterial, load(materialPath));
+	}
+
+	Instance make(Instance baseInstance)
+	{
+		return{ 0,0,0,0 };
 	}
 
 	uint32_t reserve(const char* reserveName)
@@ -98,9 +102,9 @@ namespace Material
 		return hashedName;
 	}
 
-	void setPushConstantData(uint32_t matId, const char* var, void* data, uint32_t size)
+	void setPushConstantData(Instance instance, const char* var, void* data, uint32_t size)
 	{
-		MaterialRenderData& rData = Material::getRenderData(matId);
+		MaterialRenderData& rData = Material::getRenderData(instance.parent);
 
 		uint32_t varHash = hash(var);
 
@@ -116,9 +120,9 @@ namespace Material
 	}
 
 	//note: this cannot be done from within a command buffer
-	void setTexture(uint32_t matId, const char* var, uint32_t texId)
+	void setTexture(Instance instance, const char* var, uint32_t texId)
 	{
-		MaterialRenderData& rData = Material::getRenderData(matId);
+		MaterialRenderData& rData = Material::getRenderData(instance.parent);
 
 		uint32_t varHash = hash(var);
 		for (uint32_t i = 0; i < rData.numDynamicInputs * 4; i += 4)
@@ -141,19 +145,19 @@ namespace Material
 			}
 		}
 	}
-	
-	void setUniformData(uint32_t matId, const char* name, void* data)
+
+	void setUniformData(Instance instance, uint32_t name, void* data)
 	{
-		MaterialRenderData& rData = Material::getRenderData(matId);
-		uint32_t varHash = hash(name);
+		MaterialRenderData& rData = Material::getRenderData(instance.parent);
+		uint32_t varHash = name;
 
 		for (uint32_t i = 0; i < rData.numDynamicInputs * 4; i += 4)
 		{
 			if (rData.dynamicLayout[i] == varHash)
 			{
-				VkBuffer& targetBuffer = rData.dynamicBuffers[0];
+				VkBuffer& targetBuffer = rData.instPages[instance.page].staticBuffer;
 				uint32_t size = rData.dynamicLayout[i + 2];
-				uint32_t offset = rData.dynamicLayout[i + 1] + rData.dynamicLayout[i + 3];
+				uint32_t offset = rData.dynamicUniformMemSize * instance.index + rData.dynamicLayout[i + 1] + rData.dynamicLayout[i + 3];
 
 				vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
 				vkCmdUpdateBuffer(scratch.buffer, targetBuffer, offset, size, data);
@@ -161,41 +165,48 @@ namespace Material
 				break;
 			}
 		}
+
+	}
+	
+	void setUniformData(Instance instance, const char* name, void* data)
+	{
+		uint32_t varHash = hash(name);
+		setUniformData(instance, varHash, data);
 	}
 
-	void setPushConstantVector(uint32_t matId, const char* var, glm::vec4& data)
+	void setPushConstantVector(Instance instance, const char* var, glm::vec4& data)
 	{
-		setPushConstantData(matId, var, &data, sizeof(glm::vec4));
+		setPushConstantData(instance, var, &data, sizeof(glm::vec4));
 	}
 
-	void setPushConstantMatrix(uint32_t matId, const char* var, glm::mat4& data)
+	void setPushConstantMatrix(Instance instance, const char* var, glm::mat4& data)
 	{
-		setPushConstantData(matId, var, &data, sizeof(glm::mat4));
+		setPushConstantData(instance, var, &data, sizeof(glm::mat4));
 	}
 
-	void setPushConstantFloat(uint32_t matId, const char* var, float data)
+	void setPushConstantFloat(Instance instance, const char* var, float data)
 	{
-		setPushConstantData(matId, var, &data, sizeof(float));
+		setPushConstantData(instance, var, &data, sizeof(float));
 	}
 
-	void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data)
+	void setUniformVector4(Instance instance, const char* name, glm::vec4& data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(instance, name, &data);
 	}
 
-	void setUniformVector2(uint32_t matId, const char* name, glm::vec2& data)
+	void setUniformVector2(Instance instance, const char* name, glm::vec2& data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(instance, name, &data);
 	}
 
-	void setUniformFloat(uint32_t matId, const char* name, float data)
+	void setUniformFloat(Instance instance, const char* name, float data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(instance, name, &data);
 	}
 
-	void setUniformMatrix(uint32_t matId, const char* name, glm::mat4& data)
+	void setUniformMatrix(Instance instance, const char* name, glm::mat4& data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(instance, name, &data);
 	}
 
 	void setGlobalFloat(const char* name, float data)
@@ -233,6 +244,16 @@ namespace Material
 	Asset& getMaterialAsset(uint32_t matId)
 	{
 		return matStorage.baseMaterials[matId];
+	}
+
+	void destroy(uint32_t asset)
+	{
+		
+	}
+
+	void destroy(Instance instance)
+	{
+		destroyInstance(instance);
 	}
 
 }

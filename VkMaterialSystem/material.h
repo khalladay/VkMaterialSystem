@@ -10,6 +10,8 @@ struct MaterialRenderData;
 //can just access the element directly in all these calls
 namespace Material
 {
+	//could probably get away with packing this into a single uint64 like
+	//bitsquid, but that seems like overkill, and way harder to debug. 
 	struct Instance
 	{
 		uint32_t parent;
@@ -28,27 +30,32 @@ namespace Material
 	Asset& getMaterialAsset(uint32_t matId);
 
 	void initGlobalShaderData();
-	uint32_t make(const char* assetPath);
+	Instance make(const char* assetPath);
+	Instance make(Instance baseInstance);
 
 	//used to create an empty material in material storage, 
 	//only needed if you're creating a material in a way other than
 	//loading the definition file from a path (as above)
 	uint32_t reserve(const char* reserveName);
 
-	void setPushConstantVector(uint32_t matId, const char* name, glm::vec4& data);
-	void setPushConstantFloat(uint32_t matId, const char* name, float data);
-	void setPushConstantMatrix(uint32_t matId, const char* name, glm::mat4& data);
+	void setPushConstantVector(Instance instance, const char* name, glm::vec4& data);
+	void setPushConstantFloat(Instance instance, const char* name, float data);
+	void setPushConstantMatrix(Instance instance, const char* name, glm::mat4& data);
+	
+	void setUniformData(Instance instance, uint32_t name, void* data);
+	void setUniformVector4(Instance instance, const char* name, glm::vec4& data);
+	void setUniformVector2(Instance instance, const char* name, glm::vec2& data);
+	void setUniformFloat(Instance instance, const char* name, float data);
+	void setUniformMatrix(Instance instance, const char* name, glm::mat4& data);
 
-	void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data);
-	void setUniformVector2(uint32_t matId, const char* name, glm::vec2& data);
-	void setUniformFloat(uint32_t matId, const char* name, float data);
-	void setUniformMatrix(uint32_t matId, const char* name, glm::mat4& data);
-
-	void setTexture(uint32_t matId, const char* name, uint32_t texId);
+	void setTexture(Instance instance, const char* name, uint32_t texId);
 
 	void setGlobalFloat(const char* name, float data);
 	void setGlobalVector4(const char* name, glm::vec4& data);
 	void setGlobalVector2(const char* name, glm::vec2& data);
 
-	void destroy();
+	uint32_t charArrayToMaterialName(const char* name);
+
+	void destroy(uint32_t asset);
+	void destroy(Instance instance);
 }

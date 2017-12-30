@@ -3,6 +3,9 @@
 #include "stdafx.h"
 #include <queue>
 
+#define MATERIAL_LAYOUT_STRIDE 4
+#define MATERIAL_IMAGE_FLAG_VALUE 0xFFFFFFFF
+
 struct MeshRenderData
 {
 	VkBuffer vBuffer;
@@ -41,7 +44,7 @@ struct MaterialInstancePage
 
 /* For the dynamicLayout array: (removed comment from struct for easier reading) 
 // stride: 4 - hashed name / offset of binding start / member size / member offset
-// for images- hasehd name / textureViewPtr index / desc set write idx / padding
+// for images- hasehd name / textureViewPtr index / desc set write idx / imageFlagValue
 */
 struct MaterialRenderData
 {
@@ -60,15 +63,19 @@ struct MaterialRenderData
 	uint32_t* dynamicLayout;
 	uint32_t numDynamicInputs;
 
+	uint32_t* staticLayout;
+	uint32_t numStaticInputs;
+
+	VkDeviceSize staticUniformMemSize;
+	VkDeviceSize dynamicUniformMemSize;
+
+	uint32_t dynamicDescSetStride;
+	uint32_t staticDescSetStride;
+
+	char* defaultStaticData;
+	char* defaultDynamicData;
+
 	std::vector<MaterialInstancePage> instPages;
-
-	std::vector<vkh::Allocation> staticUniformMem;
-	std::vector<vkh::Allocation> dynamicUniformMem;
-
-	std::vector<VkBuffer> staticBuffers;
-	std::vector<VkBuffer> dynamicBuffers;
-	std::vector<VkWriteDescriptorSet> descSetWrites;
-	uint32_t descSetStride;
 };
 
 struct TextureRenderData

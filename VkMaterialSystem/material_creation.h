@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include <vector>
 #include <map>
+#include "material.h"
 
 //this is in it's own file so that unless you want to manually 
 //create a Material Definition, you don't need to know about any of 
@@ -27,7 +28,6 @@ namespace Material
 		char name[32];
 		uint32_t size;
 		uint32_t offset;
-		char defaultValue[64];
 	};
 
 	struct PushConstantBlock
@@ -44,9 +44,20 @@ namespace Material
 		uint32_t binding;
 		uint32_t sizeBytes;
 		char name[32];
-		char defaultValue[64];
 		std::vector<ShaderStage> owningStages;
 		std::vector<BlockMember> blockMembers;
+	};
+
+	struct UniformValue
+	{
+		uint32_t name;
+		char value[64];
+	};
+
+	struct InstanceDefinition
+	{
+		char parentName[256];
+		std::vector<UniformValue> defaultValues;
 	};
 
 	struct ShaderStageDefinition
@@ -61,6 +72,8 @@ namespace Material
 		std::vector<ShaderStageDefinition> stages;
 		std::map<uint32_t, std::vector<DescriptorSetBinding>> descSets;
 
+		InstanceDefinition rootInstanceDefinition;
+
 		std::vector<uint32_t> dynamicSets;
 		std::vector<uint32_t> staticSets;
 		std::vector<uint32_t> globalSets;
@@ -73,11 +86,15 @@ namespace Material
 		uint32_t dynamicSetsSize;
 	};
 
-
 	//if you're manually specifying a material definition instead of loading it, 
 	//you need to manually request a key from Material Storage with reserve()
 	//since we don't have a path to hash to use as the (potential) map key
-	void make(uint32_t matId, Material::Definition def);
-	uint32_t makeInstance(uint32_t parentId);
 	Definition load(const char* assetPath);
+	Material::Instance make(uint32_t matId, Material::Definition def);
+
+	InstanceDefinition loadInstance(const char* assetPath);
+	Material::Instance makeInstance(InstanceDefinition def);
+
+	void destroyInstance(Material::Instance instance);
+
 }

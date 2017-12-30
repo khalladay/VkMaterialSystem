@@ -1,12 +1,12 @@
 #pragma once
-
+#include "material.h"
 
 namespace Rendering
 {
 	struct DrawCall
 	{
 		uint32_t meshIdx;
-		uint32_t matIdx;
+		Material::Instance mat;
 	};
 
 	void init();

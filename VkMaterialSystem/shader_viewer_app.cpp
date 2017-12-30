@@ -5,20 +5,19 @@
 #include "material.h"
 #include "mesh.h"
 #include "procedural_geo.h"
-#include "material_creation.h"
 #include "texture.h"
 #include "vkh.h"
 
 namespace App
 {
-	uint32_t matId = 0;
+	Material::Instance matId = {};
 
 	Rendering::DrawCall* drawCalls;
 
 	void init()
 	{
 		Rendering::init();
-		//Texture::make("../data/textures/test_texture.jpg");
+
 		Material::initGlobalShaderData();
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
 		matId = Material::make("../data/materials/show_uvs.mat");
@@ -32,7 +31,7 @@ namespace App
 			for (uint32_t j = 0; j < 5; ++j)
 			{
 				drawCalls[dc].meshIdx = Mesh::quad(0.4, 0.4, -0.8 + i * 0.4f, -0.8 + j * 0.4f);
-				drawCalls[dc++].matIdx = matId;
+				drawCalls[dc++].mat = Material::make(matId);
 			}
 		}
 

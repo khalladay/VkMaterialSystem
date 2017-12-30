@@ -28,6 +28,9 @@
     <Filter Include="Header Files\allocators">
       <UniqueIdentifier>{ff195a03-b5b3-4a40-a0d9-9127f3332dff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="data\instances">
+      <UniqueIdentifier>{88a22fdf-b999-4bf7-96ff-5b93cef0ee4c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
