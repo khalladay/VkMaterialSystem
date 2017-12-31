@@ -1,6 +1,8 @@
 #pragma once
 #include "vkh.h"
 
+#define MATERIAL_IMAGE_UNIFORM_FLAG 0xFFFFFFFF
+
 struct MeshRenderData
 {
 	VkBuffer vBuffer;
@@ -39,9 +41,6 @@ struct MaterialRenderData
 	//general material data
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
-
-	uint32_t layoutCount;
-	VkDescriptorSetLayout* descriptorSetLayouts;
 
 	//needs information about stride in various arrays for instances
 	// ie/ material instance ID = 2, where does that start in the descSets array? the static buffers array? 

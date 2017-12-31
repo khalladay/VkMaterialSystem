@@ -646,13 +646,7 @@ namespace Material
 				res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]);
 			}
 
-			//for sanity in storage, we want to keep MaterialAssets and MaterialRenderDatas POD structs, so we need to convert our lovely
-			//containers to arrays. This might change later, if I decide to start using POD arrays. In any case, in a real application you'd
-			//almost certainly want these allocations done with any allocator other than malloc
-			outMaterial.layoutCount = static_cast<uint32_t>(uniformLayouts.size());
-
-			outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.layoutCount);
-			memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * outMaterial.layoutCount);
+		
 		}
 		
 		///////////////////////////////////////////////////////////////////////////////
@@ -660,7 +654,7 @@ namespace Material
 		///////////////////////////////////////////////////////////////////////////////
 		{
 			//we also use the descriptor set layouts to set up our pipeline layout
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(outMaterial.descriptorSetLayouts, outMaterial.layoutCount);
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(uniformLayouts.data(), uniformLayouts.size());
 
 			//we need to figure out what's up with push constants here becaus the pipeline layout object needs to know
 			if (def.pcBlock.sizeBytes > 0)
@@ -826,11 +820,11 @@ namespace Material
 			//use those buffers. the first step is allocating them
 
 			outMaterial.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * uniformLayouts.size());
-			outMaterial.numDescSets = outMaterial.layoutCount;
+			outMaterial.numDescSets = uniformLayouts.size();
 
 			for (uint32_t j = 0; j < uniformLayouts.size(); ++j)
 			{
-				VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[j], 1, GContext.descriptorPool);
+				VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&uniformLayouts[j], 1, GContext.descriptorPool);
 				res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.descSets[j]);
 				checkf(res == VK_SUCCESS, "Error allocating descriptor set");
 			}
