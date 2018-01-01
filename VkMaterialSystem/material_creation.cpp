@@ -125,7 +125,7 @@ namespace Material
 		materialDoc.Parse(materialString, len);
 		checkf(!materialDoc.HasParseError(), "Error parsing material file");
 		free((void*)materialString);
-		
+
 		/////////////////////////////////////////////////////////////////////////////////
 		////Build array of block names with defaults present
 		/////////////////////////////////////////////////////////////////////////////////
@@ -250,21 +250,21 @@ namespace Material
 					mem.size = element["size"].GetInt();
 
 					bool memberAlreadyExists = false;
-					for (uint32_t member = 0; member < materialDef.pcBlock.blockMembers.size(); ++member)
-					{
-						BlockMember& existing = materialDef.pcBlock.blockMembers[member];
-						if (existing.name == mem.name)
-						{
-							memberAlreadyExists = true;
-						}
-					}
+for (uint32_t member = 0; member < materialDef.pcBlock.blockMembers.size(); ++member)
+{
+	BlockMember& existing = materialDef.pcBlock.blockMembers[member];
+	if (existing.name == mem.name)
+	{
+		memberAlreadyExists = true;
+	}
+}
 
-					//if we've already created the push constant block from an earlier stage's shader
-					//we might already have info about this block member. 
-					if (!memberAlreadyExists)
-					{
-						materialDef.pcBlock.blockMembers.push_back(mem);
-					}
+//if we've already created the push constant block from an earlier stage's shader
+//we might already have info about this block member. 
+if (!memberAlreadyExists)
+{
+	materialDef.pcBlock.blockMembers.push_back(mem);
+}
 				}
 			}
 
@@ -280,13 +280,13 @@ namespace Material
 
 				for (SizeType dsIdx = 0; dsIdx < reflFileDescSets.Size(); dsIdx++)
 				{
-					const Value& currentInputFromReflData = reflFileDescSets[dsIdx];
+					const Value& curDescBlockFromReflData = reflFileDescSets[dsIdx];
 
 					DescriptorSetBinding descSetBindingDef = {};
-					descSetBindingDef.sizeBytes = getGPUAlignedSize(currentInputFromReflData["size"].GetInt());
-					descSetBindingDef.set = currentInputFromReflData["set"].GetInt();
-					descSetBindingDef.binding = currentInputFromReflData["binding"].GetInt();
-					descSetBindingDef.type = stringToInputType(currentInputFromReflData["type"].GetString());
+					descSetBindingDef.sizeBytes = getGPUAlignedSize(curDescBlockFromReflData["size"].GetInt());
+					descSetBindingDef.set = curDescBlockFromReflData["set"].GetInt();
+					descSetBindingDef.binding = curDescBlockFromReflData["binding"].GetInt();
+					descSetBindingDef.type = stringToInputType(curDescBlockFromReflData["type"].GetString());
 
 					//we might already know about this descriptor set binding if it was also in a previous stage,
 					//in that case, all we need to do is add the current shader's stage to the set binding's stages array
@@ -319,21 +319,11 @@ namespace Material
 
 						descSetBindingDef.owningStages.push_back(stageDef.stage);
 
-						checkf(currentInputFromReflData["name"].GetStringLength() <= 31, "opaque block names must be less than 32 characters");
-						snprintf(descSetBindingDef.name, sizeof(descSetBindingDef.name), "%s", currentInputFromReflData["name"].GetString());
-
-						int blockDefaultsIndex = -1;
-						for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
-						{
-							uint32_t hashedName = hash(currentInputFromReflData["name"].GetString());
-							if (blocksWithDefaultsPresent[d] == hashedName)
-							{
-								blockDefaultsIndex = d;
-							}
-						}
+						checkf(curDescBlockFromReflData["name"].GetStringLength() <= 31, "opaque block names must be less than 32 characters");
+						snprintf(descSetBindingDef.name, sizeof(descSetBindingDef.name), "%s", curDescBlockFromReflData["name"].GetString());
 
 						//add all members to block definition
-						const Value& reflBlockMembers = currentInputFromReflData["members"];
+						const Value& reflBlockMembers = curDescBlockFromReflData["members"];
 						for (SizeType m = 0; m < reflBlockMembers.Size(); m++)
 						{
 							const Value& reflBlockMember = reflBlockMembers[m];
@@ -350,19 +340,32 @@ namespace Material
 						//if the block member has a default defined in the material
 						//we want to grab it. For samplers, this is the path of their texture, 
 						//for uniform blocks, this is an array of floats for each member. 
-						if (blockDefaultsIndex > -1)
 						{
 							const Value& arrayOfDefaultValuesFromMaterial = materialDoc["defaults"];
-							const Value& defaultItem = arrayOfDefaultValuesFromMaterial[blockDefaultsIndex];
 
 							if (descSetBindingDef.type == InputType::SAMPLER)
 							{
-								const Value& defaultValue = defaultItem["value"];
-								snprintf(descSetBindingDef.defaultValue, sizeof(descSetBindingDef.defaultValue), "%s", defaultValue.GetString());
+								int32_t index = -1;
+								for (uint32_t idx = 0; idx < blocksWithDefaultsPresent.size(); ++idx)
+								{
+									if (blocksWithDefaultsPresent[idx] == hash(curDescBlockFromReflData["name"].GetString()))
+									{
+										index = idx;
+									}
+								}
+
+								if (index > 0)
+								{
+									const Value& defaultItem = arrayOfDefaultValuesFromMaterial[index];
+									const Value& defaultValue = defaultItem["value"];
+									snprintf(descSetBindingDef.defaultValue, sizeof(descSetBindingDef.defaultValue), "%s", defaultValue.GetString());
+								}
 							}
+							//the material file doesn't know where in the descriptor sets a particular value lives, 
+							//so we have to loop over all the sets until we find our match. 
 							else
 							{
-								const Value& defaultBlockMembers = defaultItem["members"];
+								//const Value& defaultBlockMembers = defaultItem["members"];
 
 								//remmeber, we dont' know which members have default values specified yet,
 								for (SizeType m = 0; m < descSetBindingDef.blockMembers.size(); m++)
@@ -370,22 +373,29 @@ namespace Material
 									BlockMember& mem = descSetBindingDef.blockMembers[m];
 									memset(&mem.defaultValue[0], 0, sizeof(float) * 16);
 
-									//since we might not have default values for each block member, 
-									//we need to make sure we're grabbing data for our current member
-									//loop over all the default blocks we have and find one that corresponds to this block member
-									for (uint32_t defaultMemIdx = 0; defaultMemIdx < defaultBlockMembers.Size(); ++defaultMemIdx)
+									uint32_t defIndex = 0;
+									int32_t index = -1;
+									for (uint32_t idx = 0; idx < blocksWithDefaultsPresent.size(); ++idx)
 									{
-										if (hash(defaultBlockMembers[defaultMemIdx]["name"].GetString()) == hash(mem.name))
+										if (blocksWithDefaultsPresent[idx] == hash(mem.name))
 										{
-											const Value& defaultValues = defaultBlockMembers[defaultMemIdx]["value"];
-											float* defaultFloats = (float*)mem.defaultValue;
-											for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
-											{
-												defaultFloats[dv] = defaultValues[dv].GetFloat();
-											}
-											break;
-
+											index = idx;
 										}
+									}
+
+									if (index > -1)
+									{
+										const Value& defaultItem = arrayOfDefaultValuesFromMaterial[index];
+										
+										const Value& defaultValue = defaultItem["value"];
+										float* defaultFloats = (float*)mem.defaultValue;
+									
+										for (uint32_t dv = 0; dv < defaultValue.Size(); ++dv)
+										{
+											defaultFloats[dv] = defaultValue[dv].GetFloat();
+										}
+
+									
 									}
 								}
 							}
