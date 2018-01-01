@@ -3,56 +3,35 @@
 	[
 		{
 			"stage": "vertex",
-			"shader": "vertex_uvs",
-			"defaults":
-			[
-				{
-					"name":"Instance",
-					"members":
-					[
-						{
-							"name": "tint",
-							"value": [0.0, 1.0, 1.0, 1.0]
-						}
-					]
-				},
-				{
-					"name":"Instance2",
-					"members":
-					[
-						{
-							"name": "tint2",
-							"value": [1.0, 1.0, 0.0, 1.0]
-						}
-					]
-				},
-				{
-					"name":"Dynamic",
-					"members":
-					[
-						{
-							"name":"test",
-							"value":[0.5]
-						}
-					]
-				}
-			]
+			"shader": "vertex_uvs"
 		},
 		{
 			"stage": "fragment",
-			"shader": "fragment_passthrough",
-			"defaults": 
-			[
-				{
-					"name": "texSampler",
-					"value":"../data/textures/airplane.png"
-				},
-				{
-					"name": "testSampler",
-					"value":"../data/textures/test_texture.jpg"
-				}
-
-			]
+			"shader": "fragment_passthrough"
+		}
+	],
+			
+	"defaults":
+	[
+		{
+			"name": "tint",
+			"value": [0.0, 1.0, 1.0, 1.0]
+		},
+		{
+			"name": "tint2",
+			"value": [1.0, 1.0, 0.0, 1.0]
+		},
+		{
+			"name":"test",
+			"value":[0.5]
+		},
+		{
+			"name": "texSampler",
+			"value":"../data/textures/airplane.png"
+		},
+		{
+			"name": "testSampler",
+			"value":"../data/textures/test_texture.jpg"
 		}
 	]
 }

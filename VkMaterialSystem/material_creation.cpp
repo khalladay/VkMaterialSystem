@@ -112,8 +112,11 @@ namespace Material
 		using namespace rapidjson;
 
 		Material::Definition materialDef = {};
-
 		const static char* generatedShaderPath = "../data/_generated/builtshaders/";
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Load and parse material json
+		/////////////////////////////////////////////////////////////////////////////////
 
 		const char* materialString = loadTextFile(assetPath);
 		size_t len = strlen(materialString);
@@ -122,23 +125,41 @@ namespace Material
 		materialDoc.Parse(materialString, len);
 		checkf(!materialDoc.HasParseError(), "Error parsing material file");
 		free((void*)materialString);
+		
+		/////////////////////////////////////////////////////////////////////////////////
+		////Build array of block names with defaults present
+		/////////////////////////////////////////////////////////////////////////////////
+
+		std::vector<uint32_t> blocksWithDefaultsPresent;
+
+		if (materialDoc.HasMember("defaults"))
+		{
+			const Value& defaults = materialDoc["defaults"];
+
+			for (SizeType i = 0; i < defaults.Size(); ++i)
+			{
+				const Value& default = defaults[i];
+				uint32_t hashedName = hash(default["name"].GetString());
+
+				for (uint32_t def = 0; def < blocksWithDefaultsPresent.size(); ++def)
+				{
+					if (blocksWithDefaultsPresent[def] == hashedName)
+					{
+						checkf(0, "hash collision with material uniform names");
+					}
+				}
+
+				blocksWithDefaultsPresent.push_back(hashedName);
+			}
+		}
+
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Build shader stage definitions
+		/////////////////////////////////////////////////////////////////////////////////
 
 		const Value& shaders = materialDoc["shaders"];
 		materialDef.stages.reserve(shaders.Size());
-
-		/*
-		this will iterate over each shader in a material file
-		each shader is laid out in json like so: 
-		
-		{
-			"stage": "fragment",
-			"shader" : "fragment_passthrough",
-			"inputs" :
-			[
-				... defined in later comment ... 
-			]
-		}
-		*/
 
 		for (SizeType i = 0; i < shaders.Size(); i++)
 		{
@@ -152,11 +173,15 @@ namespace Material
 			checkf(printfErr > -1, "");
 
 			materialDef.stages.push_back(stageDef);
+		
+
+			/////////////////////////////////////////////////////////////////////////////////
+			////Parse Shader Inputs
+			/////////////////////////////////////////////////////////////////////////////////
 
 			//now we need to get information about the layout of the shader inputs
 			//this isn't necessarily known when writing a material file, so we have to 
 			//grab it from a reflection file
-
 			char reflPath[256];
 			printfErr = snprintf(reflPath, sizeof(reflPath), "%s%s%s", generatedShaderPath, matStage["shader"].GetString(), shaderReflExtensionForStage(stageDef.stage));
 			checkf(printfErr > -1, "");
@@ -164,30 +189,11 @@ namespace Material
 			const char* reflData = loadTextFile(reflPath);
 			size_t reflLen = strlen(reflData);
 
-			//if we do have defaults in the material, store a list of all the block members that
-			//have a value from the material. This array does not store individual
-			//block members, just the name of the block that contains a default value
-			std::vector<uint32_t> blocksWithDefaultsPresent;
-
-			if (matStage.HasMember("defaults"))
-			{
-				const Value& arrayOfDefaultValuesFromMaterial = matStage["defaults"];
-
-				for (SizeType d = 0; d < arrayOfDefaultValuesFromMaterial.Size(); ++d)
-				{
-					const Value& default = arrayOfDefaultValuesFromMaterial[d];
-					blocksWithDefaultsPresent.push_back(hash(default["name"].GetString()));
-				}
-			}
-
-
 			Document reflDoc;
 			reflDoc.Parse(reflData, reflLen);
 			checkf(!reflDoc.HasParseError(), "Error parsing reflection file");
 			free((void*)reflData);
 
-		//	materialDef.dynamicSetsSize += (reflDoc["dynamic_set_size"].GetInt());
-		//	materialDef.staticSetsSize += (reflDoc["static_set_size"].GetInt());
 			materialDef.numDynamicTextures += reflDoc["num_dynamic_textures"].GetInt();
 			materialDef.numDynamicUniforms += reflDoc["num_dynamic_uniforms"].GetInt();
 			materialDef.numStaticTextures += reflDoc["num_static_textures"].GetInt();
@@ -282,15 +288,6 @@ namespace Material
 					descSetBindingDef.binding = currentInputFromReflData["binding"].GetInt();
 					descSetBindingDef.type = stringToInputType(currentInputFromReflData["type"].GetString());
 
-					if (std::find(materialDef.staticSets.begin(), materialDef.staticSets.end(), descSetBindingDef.set) != materialDef.staticSets.end())
-					{
-						materialDef.staticSetsSize += descSetBindingDef.sizeBytes;
-					}
-					else if (std::find(materialDef.dynamicSets.begin(), materialDef.dynamicSets.end(), descSetBindingDef.set) != materialDef.dynamicSets.end())
-					{
-						materialDef.dynamicSetsSize += descSetBindingDef.sizeBytes;
-					}
-
 					//we might already know about this descriptor set binding if it was also in a previous stage,
 					//in that case, all we need to do is add the current shader's stage to the set binding's stages array
 					bool alreadyExists = false;
@@ -311,15 +308,25 @@ namespace Material
 					//if not, we have to create it
 					if (!alreadyExists)
 					{
+						if (std::find(materialDef.staticSets.begin(), materialDef.staticSets.end(), descSetBindingDef.set) != materialDef.staticSets.end())
+						{
+							materialDef.staticSetsSize += descSetBindingDef.sizeBytes;
+						}
+						else if (std::find(materialDef.dynamicSets.begin(), materialDef.dynamicSets.end(), descSetBindingDef.set) != materialDef.dynamicSets.end())
+						{
+							materialDef.dynamicSetsSize += descSetBindingDef.sizeBytes;
+						}
+
 						descSetBindingDef.owningStages.push_back(stageDef.stage);
 
-						checkf(currentInputFromReflData["name"].GetStringLength() < 31, "opaque block names must be less than 32 characters");
+						checkf(currentInputFromReflData["name"].GetStringLength() <= 31, "opaque block names must be less than 32 characters");
 						snprintf(descSetBindingDef.name, sizeof(descSetBindingDef.name), "%s", currentInputFromReflData["name"].GetString());
 
 						int blockDefaultsIndex = -1;
 						for (uint32_t d = 0; d < blocksWithDefaultsPresent.size(); ++d)
 						{
-							if (blocksWithDefaultsPresent[d] == hash(currentInputFromReflData["name"].GetString()))
+							uint32_t hashedName = hash(currentInputFromReflData["name"].GetString());
+							if (blocksWithDefaultsPresent[d] == hashedName)
 							{
 								blockDefaultsIndex = d;
 							}
@@ -345,7 +352,7 @@ namespace Material
 						//for uniform blocks, this is an array of floats for each member. 
 						if (blockDefaultsIndex > -1)
 						{
-							const Value& arrayOfDefaultValuesFromMaterial = matStage["defaults"];
+							const Value& arrayOfDefaultValuesFromMaterial = materialDoc["defaults"];
 							const Value& defaultItem = arrayOfDefaultValuesFromMaterial[blockDefaultsIndex];
 
 							if (descSetBindingDef.type == InputType::SAMPLER)
