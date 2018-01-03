@@ -55,6 +55,18 @@ namespace Material
 		char shaderPath[256];
 	};
 
+	struct ShaderInputDefinition
+	{
+		char name[32];
+		char value[64];
+	};
+
+	struct InstanceDefinition
+	{
+		char parentPath[256];
+		std::vector<ShaderInputDefinition> defaults;
+	};
+
 	struct Definition
 	{
 		PushConstantBlock pcBlock;
@@ -80,4 +92,5 @@ namespace Material
 	void make(uint32_t matId, Material::Definition def);
 
 	Definition load(const char* assetPath);
+	InstanceDefinition loadInstance(const char* instancePath);
 }

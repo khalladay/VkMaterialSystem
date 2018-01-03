@@ -20,6 +20,8 @@ namespace App
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
 		matId = Material::make("../data/materials/show_uvs.mat");
 
+		Material::loadInstance("../data/instances/red_tint.inst");
+
 		Material::setTexture(matId, "testSampler", fruits);
 
 		Mesh::quad(2.0f, 2.0f);

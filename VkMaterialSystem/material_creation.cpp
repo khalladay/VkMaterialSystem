@@ -18,6 +18,9 @@
 
 namespace Material
 {
+	const static char* generatedShaderPath = "../data/_generated/builtshaders/";
+
+
 	InputType stringToInputType(const char* str);
 	ShaderStage stringToShaderStage(const char* str);
 	const char* shaderExtensionForStage(ShaderStage stage);
@@ -112,7 +115,6 @@ namespace Material
 		using namespace rapidjson;
 
 		Material::Definition materialDef = {};
-		const static char* generatedShaderPath = "../data/_generated/builtshaders/";
 
 		/////////////////////////////////////////////////////////////////////////////////
 		////Load and parse material json
@@ -130,7 +132,7 @@ namespace Material
 		////Build array of block names with defaults present
 		/////////////////////////////////////////////////////////////////////////////////
 
-		std::vector<uint32_t> blocksWithDefaultsPresent;
+		std::vector<uint32_t> defaultNamesFromMaterialFile;
 
 		if (materialDoc.HasMember("defaults"))
 		{
@@ -141,15 +143,15 @@ namespace Material
 				const Value& default = defaults[i];
 				uint32_t hashedName = hash(default["name"].GetString());
 
-				for (uint32_t def = 0; def < blocksWithDefaultsPresent.size(); ++def)
+				for (uint32_t def = 0; def < defaultNamesFromMaterialFile.size(); ++def)
 				{
-					if (blocksWithDefaultsPresent[def] == hashedName)
+					if (defaultNamesFromMaterialFile[def] == hashedName)
 					{
 						checkf(0, "hash collision with material uniform names");
 					}
 				}
 
-				blocksWithDefaultsPresent.push_back(hashedName);
+				defaultNamesFromMaterialFile.push_back(hashedName);
 			}
 		}
 
@@ -250,21 +252,21 @@ namespace Material
 					mem.size = element["size"].GetInt();
 
 					bool memberAlreadyExists = false;
-for (uint32_t member = 0; member < materialDef.pcBlock.blockMembers.size(); ++member)
-{
-	BlockMember& existing = materialDef.pcBlock.blockMembers[member];
-	if (existing.name == mem.name)
-	{
-		memberAlreadyExists = true;
-	}
-}
+					for (uint32_t member = 0; member < materialDef.pcBlock.blockMembers.size(); ++member)
+					{
+						BlockMember& existing = materialDef.pcBlock.blockMembers[member];
+						if (existing.name == mem.name)
+						{
+							memberAlreadyExists = true;
+						}
+					}
 
-//if we've already created the push constant block from an earlier stage's shader
-//we might already have info about this block member. 
-if (!memberAlreadyExists)
-{
-	materialDef.pcBlock.blockMembers.push_back(mem);
-}
+					//if we've already created the push constant block from an earlier stage's shader
+					//we might already have info about this block member. 
+					if (!memberAlreadyExists)
+					{
+						materialDef.pcBlock.blockMembers.push_back(mem);
+					}
 				}
 			}
 
@@ -346,9 +348,9 @@ if (!memberAlreadyExists)
 							if (descSetBindingDef.type == InputType::SAMPLER)
 							{
 								int32_t index = -1;
-								for (uint32_t idx = 0; idx < blocksWithDefaultsPresent.size(); ++idx)
+								for (uint32_t idx = 0; idx < defaultNamesFromMaterialFile.size(); ++idx)
 								{
-									if (blocksWithDefaultsPresent[idx] == hash(curDescBlockFromReflData["name"].GetString()))
+									if (defaultNamesFromMaterialFile[idx] == hash(curDescBlockFromReflData["name"].GetString()))
 									{
 										index = idx;
 									}
@@ -375,9 +377,9 @@ if (!memberAlreadyExists)
 
 									uint32_t defIndex = 0;
 									int32_t index = -1;
-									for (uint32_t idx = 0; idx < blocksWithDefaultsPresent.size(); ++idx)
+									for (uint32_t idx = 0; idx < defaultNamesFromMaterialFile.size(); ++idx)
 									{
-										if (blocksWithDefaultsPresent[idx] == hash(mem.name))
+										if (defaultNamesFromMaterialFile[idx] == hash(mem.name))
 										{
 											index = idx;
 										}
@@ -412,6 +414,67 @@ if (!memberAlreadyExists)
 		}
 
 		return materialDef;
+	}
+
+	InstanceDefinition loadInstance(const char* instancePath)
+	{
+		using namespace rapidjson;
+
+		Material::InstanceDefinition instanceDef = {};
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Load and parse instance json
+		/////////////////////////////////////////////////////////////////////////////////
+
+		const char* instanceString = loadTextFile(instancePath);
+		size_t len = strlen(instanceString);
+
+		Document instanceDoc;
+		instanceDoc.Parse(instanceString, len);
+		checkf(!instanceDoc.HasParseError(), "Error parsing instance file");
+		free((void*)instanceString);
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Build array of block names with defaults present
+		/////////////////////////////////////////////////////////////////////////////////
+
+		snprintf(instanceDef.parentPath, 1, "%s", instanceDoc["material"].GetString());
+
+		if (instanceDoc.HasMember("defaults"))
+		{
+			const Value& defaults = instanceDoc["defaults"];
+
+			for (SizeType i = 0; i < defaults.Size(); ++i)
+			{
+				const Value& default = defaults[i];
+
+				ShaderInputDefinition inputDef;
+				memset(inputDef.value, 0, sizeof(inputDef.value));
+				snprintf(inputDef.name, default["name"].GetStringLength(), "%s", default["name"].GetString());
+
+				const Value& defaultValue = default["value"];
+				
+				if (defaultValue.IsArray())
+				{
+					float* defaultFloats = (float*)inputDef.value;
+
+					for (uint32_t dv = 0; dv < defaultValue.Size(); ++dv)
+					{
+						defaultFloats[dv] = defaultValue[dv].GetFloat();
+					}
+				}
+				else
+				{
+					snprintf(inputDef.value, defaultValue.GetStringLength(), "%s", defaultValue.GetString());
+				}
+
+				instanceDef.defaults.push_back(inputDef);
+				
+
+			}
+		}
+
+		return instanceDef;
 	}
 
 	uint32_t createBuffersForDescriptorSetBindingArray(std::vector<DescriptorSetBinding*>& input, VkBuffer* dst, VkMemoryPropertyFlags memFlags)
@@ -575,7 +638,7 @@ if (!memberAlreadyExists)
 			}
 		}
 
-		outMaterial.dynamic.numInputs = static_cast<uint32_t>(def.dynamicSets.size());
+		outMaterial.numDynamicUniforms = static_cast<uint32_t>(def.dynamicSets.size());
 
 		VkResult res;
 
@@ -779,12 +842,12 @@ if (!memberAlreadyExists)
 
 			//static buffers never change, so we don't need to keep any information around about them
 			outAsset.rData->staticBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * def.numStaticUniforms);
-			outAsset.rData->numStaticBuffers = def.numStaticTextures + def.numStaticUniforms;
+			outAsset.rData->numStaticUniforms = def.numStaticTextures + def.numStaticUniforms;
 
 			//dynamic buffers are a pain in the ass and we need to track a lot of information about them. 
 			outAsset.rData->dynamic.buffers = (VkBuffer*)malloc(sizeof(VkBuffer) * def.numDynamicUniforms);
-			outAsset.rData->dynamic.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.numDynamicUniforms * 3);
-			outAsset.rData->dynamic.numInputs = def.numDynamicUniforms + def.numDynamicTextures;
+			outAsset.rData->dynamicUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * def.numDynamicUniforms * 3);
+			outAsset.rData->numDynamicUniforms = def.numDynamicUniforms + def.numDynamicTextures;
 
 			//all material mem should be device local, for perf
 			VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -794,8 +857,14 @@ if (!memberAlreadyExists)
 
 			//start by writing out the default data our material file is providing for these bindings
 			//this can be done basically at any point in the process before we write this data to the buffers
-			char* staticDefaultData = (char*)malloc(def.staticSetsSize);
-			collectDefaultValuesIntoBufferAndBuildLayout(staticDefaultData, staticBindings);
+			std::vector<uint32_t> staticLayout;
+			outAsset.rData->defaultStaticData = (char*)malloc(def.staticSetsSize);
+			collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultStaticData, staticBindings, &staticLayout);
+
+			//we can convert the layout array to a pointer for storage in our POD MaterialRenderData
+			outMaterial.staticUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * staticLayout.size());
+			memcpy(outMaterial.staticUniformLayout, staticLayout.data(), sizeof(uint32_t) * staticLayout.size());
+
 
 			//then create buffers for each of those bindings
 			createBuffersForDescriptorSetBindingArray(staticBindings, &outAsset.rData->staticBuffers[0], memFlags);	
@@ -808,23 +877,23 @@ if (!memberAlreadyExists)
 
 			//now we have all our default data written in the staticDefaultData array, we can map it to the device memory bound to the static
 			//buffers in one shot
-			fillBuffersWithDefaultValues(outAsset.rData->staticBuffers, def.staticSetsSize, staticDefaultData, staticBindings);
+			fillBuffersWithDefaultValues(outAsset.rData->staticBuffers, def.staticSetsSize, outAsset.rData->defaultStaticData, staticBindings);
 
 
 			//next we do the same for dynamic uniform memory, except we also need to create the layout structure so we can edit this later. 
-			std::vector<uint32_t> layout;
-			char* dynamicDefaultData = (char*)malloc(def.dynamicSetsSize);
-			collectDefaultValuesIntoBufferAndBuildLayout(dynamicDefaultData, dynamicBindings, &layout);
+			std::vector<uint32_t> dynLayout;
+			outAsset.rData->defaultDynamicData = (char*)malloc(def.dynamicSetsSize);
+			collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultDynamicData, dynamicBindings, &dynLayout);
 
 			//we can convert the layout array to a pointer for storage in our POD MaterialRenderData
-			outMaterial.dynamic.layout = (uint32_t*)malloc(sizeof(uint32_t) * layout.size());
-			memcpy(outMaterial.dynamic.layout, layout.data(), sizeof(uint32_t) * layout.size());
+			outMaterial.dynamicUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * dynLayout.size());
+			memcpy(outMaterial.dynamicUniformLayout, dynLayout.data(), sizeof(uint32_t) * dynLayout.size());
 
 			//same as before, we need to create buffers, alloc memory, bind it to the buffers
 			createBuffersForDescriptorSetBindingArray(dynamicBindings, &outAsset.rData->dynamic.buffers[0], memFlags);
 			allocateDeviceMemoryForBuffers(outAsset.rData->dynamic.uniformMem, def.dynamicSetsSize, &outAsset.rData->dynamic.buffers[0], memFlags);
 			bindBuffersToMemory(outAsset.rData->dynamic.uniformMem, outAsset.rData->dynamic.buffers, dynamicBindings);
-			fillBuffersWithDefaultValues(outAsset.rData->dynamic.buffers, def.dynamicSetsSize, dynamicDefaultData, dynamicBindings);
+			fillBuffersWithDefaultValues(outAsset.rData->dynamic.buffers, def.dynamicSetsSize, outAsset.rData->defaultDynamicData, dynamicBindings);
 		}
 
 		

@@ -3,6 +3,14 @@
 
 struct MaterialRenderData;
 
+struct MaterialInstance
+{
+	uint32_t parent;
+	uint32_t page;
+	uint8_t index;
+	uint8_t generation;
+};
+
 struct MaterialAsset
 {
 	MaterialRenderData* rData;

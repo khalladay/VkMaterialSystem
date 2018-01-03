@@ -1,7 +1,18 @@
 #pragma once
 #include "vkh.h"
+#include <queue>
+
+#define MATERIAL_INSTANCE_PAGESIZE 32
 
 #define MATERIAL_IMAGE_UNIFORM_FLAG 0xFFFFFFFF
+
+#define HASHED_NAME_IDX				0
+#define BUFFER_INDEX_IDX			1
+#define TEXTUREVIEWPTR_INDEX_IDX	1
+#define MEMBER_SIZE_IDX				2
+#define DESCSET_WRITE_IDX			2
+#define MEMBER_OFFSET_IDX			3
+#define IMAGE_FLAG_IDX				3
 
 struct MeshRenderData
 {
@@ -25,16 +36,31 @@ struct UniformBlockDef
 
 struct MaterialDynamicData
 {
-	uint32_t numInputs;
 
-	// stride: 4 - hashed name / buffer index / member size / member offset
-	// for images- hasehd name / textureViewPtr index / desc set write idx / padding 
-	uint32_t* layout;
+//	stride: 4 - hashed name / buffer index / member size / member offset
+//	for images- hasehd name / textureViewPtr index / desc set write idx / image flag value 
+
 	VkBuffer* buffers;
 	vkh::Allocation uniformMem;
 
 	VkWriteDescriptorSet* descriptorSetWrites;
 };
+
+struct MaterialInstancePage
+{
+	VkBuffer staticBuffer;
+	VkBuffer dynamicBuffer;
+	std::vector<VkWriteDescriptorSet> descSetWrites;
+
+	//stores the generation of material instances
+	//0 is not a valid generation, empty slots are 0.
+	uint8_t generation[MATERIAL_INSTANCE_PAGESIZE];
+	std::queue<uint8_t> freeIndices;
+
+	vkh::Allocation staticMem;
+	vkh::Allocation dynamicMem;
+};
+
 
 struct MaterialRenderData
 {
@@ -42,24 +68,30 @@ struct MaterialRenderData
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 
-	//needs information about stride in various arrays for instances
-	// ie/ material instance ID = 2, where does that start in the descSets array? the static buffers array? 
 	VkDescriptorSet* descSets;
 	uint32_t numDescSets;
 
 	UniformBlockDef pushConstantLayout;
 	char* pushConstantData;
 
-	//we don't need a layout for static data since it cannot be 
-	//changed after initialization
 	VkBuffer* staticBuffers;
 	vkh::Allocation staticUniformMem;
-	uint32_t numStaticBuffers;
 
 	//for now, just add buffers here to modify. when this
 	//is modified to support material instances, we'll change it 
 	//to something more sane. 
 	MaterialDynamicData dynamic;
+
+	std::vector<MaterialInstancePage> instPages;
+
+	char* defaultStaticData;
+	char* defaultDynamicData;
+
+	uint32_t numStaticUniforms;
+	uint32_t numDynamicUniforms;
+
+	uint32_t* staticUniformLayout;
+	uint32_t* dynamicUniformLayout;
 };
 
 struct TextureRenderData
