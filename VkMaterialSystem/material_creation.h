@@ -54,10 +54,16 @@ namespace Material
 		char value[64];
 	};
 
+	struct ShaderInputDefinition
+	{
+		char name[32];
+		char value[64];
+	};
+
 	struct InstanceDefinition
 	{
-		char parentName[256];
-		std::vector<UniformValue> defaultValues;
+		char parentPath[256];
+		std::vector<ShaderInputDefinition> defaults;
 	};
 
 	struct ShaderStageDefinition
@@ -94,7 +100,5 @@ namespace Material
 
 	InstanceDefinition loadInstance(const char* assetPath);
 	Material::Instance makeInstance(InstanceDefinition def);
-
-	void destroyInstance(Material::Instance instance);
 
 }

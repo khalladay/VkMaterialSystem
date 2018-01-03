@@ -133,7 +133,7 @@ namespace Material
 				uint32_t index = rData.dynamicLayout[i + 1];
 				uint32_t setWriteIdx = rData.dynamicLayout[i + 2];
 
-				VkWriteDescriptorSet& setWrite = rData.descSetWrites[setWriteIdx];
+				VkWriteDescriptorSet& setWrite = rData.instPages[instance.page].descSetWrites[setWriteIdx];
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				imageInfo.imageView = texData->view; 
@@ -253,7 +253,6 @@ namespace Material
 
 	void destroy(Instance instance)
 	{
-		destroyInstance(instance);
 	}
 
 }

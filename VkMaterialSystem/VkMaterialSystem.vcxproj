@@ -194,6 +194,7 @@
     <ClInclude Include="vkh_stack_allocator.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\data\instances\red_tint.inst" />
     <None Include="..\data\materials\raymarch_primitives.mat" />
     <None Include="..\data\materials\show_uvs.mat" />
     <None Include="..\data\shaders\fragment_passthrough.frag" />

@@ -349,10 +349,10 @@ namespace Material
 							{
 								const Value& defaultValue = defaultItem["value"];
 								
-								materialDef.rootInstanceDefinition.defaultValues[hashedBlockName];
+								materialDef.rootInstanceDefinition.defaults[hashedBlockName];
 
-								snprintf(materialDef.rootInstanceDefinition.defaultValues[hashedBlockName].value
-									, sizeof(materialDef.rootInstanceDefinition.defaultValues[hashedBlockName].value)
+								snprintf(materialDef.rootInstanceDefinition.defaults[hashedBlockName].value
+									, sizeof(materialDef.rootInstanceDefinition.defaults[hashedBlockName].value)
 									, "%s", defaultValue.GetString());
 							}
 							else
@@ -365,8 +365,8 @@ namespace Material
 									BlockMember& mem = descSetBindingDef.blockMembers[m];
 									uint32_t memName = hash(mem.name);
 									
-									materialDef.rootInstanceDefinition.defaultValues[memName];
-									memset(&materialDef.rootInstanceDefinition.defaultValues[memName], 0, sizeof(float) * 16);
+									materialDef.rootInstanceDefinition.defaults[memName];
+									memset(&materialDef.rootInstanceDefinition.defaults[memName], 0, sizeof(float) * 16);
 
 									//since we might not have default values for each block member, 
 									//we need to make sure we're grabbing data for our current member
@@ -376,7 +376,7 @@ namespace Material
 										if (hash(defaultBlockMembers[defaultMemIdx]["name"].GetString()) == hash(mem.name))
 										{
 											const Value& defaultValues = defaultBlockMembers[defaultMemIdx]["value"];
-											float* defaultFloats = (float*)materialDef.rootInstanceDefinition.defaultValues[memName].value;
+											float* defaultFloats = (float*)materialDef.rootInstanceDefinition.defaults[memName].value;
 											for (uint32_t dv = 0; dv < defaultValues.Size(); ++dv)
 											{
 												defaultFloats[dv] = defaultValues[dv].GetFloat();
@@ -634,7 +634,7 @@ namespace Material
 				for (uint32_t k = 0; k < binding->blockMembers.size(); ++k)
 				{
 					uint32_t hashedBlockName = hash(binding->blockMembers[k].name);
-					memcpy(&outBuffer[0] + bufferOffset + binding->blockMembers[k].offset, &(inst.defaultValues[hashedBlockName].value), binding->blockMembers[k].size);
+					memcpy(&outBuffer[0] + bufferOffset + binding->blockMembers[k].offset, &(inst.defaults[hashedBlockName].value), binding->blockMembers[k].size);
 				}
 
 				bufferOffset += binding->sizeBytes;
@@ -1047,7 +1047,7 @@ namespace Material
 		///////////////////////////////////////////////////////////////////////////////
 		//Place Material Instance in a page
 		///////////////////////////////////////////////////////////////////////////////			
-		uint32_t parentName = charArrayToMaterialName(def.parentName);
+		uint32_t parentName = charArrayToMaterialName(def.parentPath);
 		MaterialRenderData& data = Material::getRenderData(parentName);
 
 		Instance inst = { 0,0,0,0 };
@@ -1096,9 +1096,9 @@ namespace Material
 		char* dynData = (char*)malloc(data.dynamicUniformMemSize);
 		memcpy(dynData, data.defaultDynamicData, data.dynamicUniformMemSize);
 
-		for (UniformValue& v : def.defaultValues)
+		for (ShaderInputDefinition& v : def.defaults)
 		{
-			uint32_t varHash = v.name;
+			uint32_t varHash = hash(v.name);
 
 			for (uint32_t i = 0; i < data.numDynamicInputs * 4; i += 4)
 			{
@@ -1106,21 +1106,17 @@ namespace Material
 				{
 					if (data.dynamicLayout[i + 3] == MATERIAL_IMAGE_FLAG_VALUE)
 					{
-
+						
 					}
 					else
 					{
 
 					}
 				}
+			}
 		}
 
 
 		return inst;
-	}
-
-	void destroyInstance(Material::Instance instance)
-	{
-
 	}
 }

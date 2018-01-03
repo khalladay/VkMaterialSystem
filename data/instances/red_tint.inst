@@ -1,0 +1,10 @@
+{
+	"material":"show_uvs",
+	"defaults":
+	[
+		{
+			"name":"tint",
+			"value": [1.0, 0.0, 0.0, 1.0]
+		}
+	]
+}
