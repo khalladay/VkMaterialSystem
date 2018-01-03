@@ -402,6 +402,67 @@ namespace Material
 		return materialDef;
 	}
 
+	InstanceDefinition loadInstance(const char* instancePath)
+	{
+		using namespace rapidjson;
+
+		Material::InstanceDefinition instanceDef = {};
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Load and parse instance json
+		/////////////////////////////////////////////////////////////////////////////////
+
+		const char* instanceString = loadTextFile(instancePath);
+		size_t len = strlen(instanceString);
+
+		Document instanceDoc;
+		instanceDoc.Parse(instanceString, len);
+		checkf(!instanceDoc.HasParseError(), "Error parsing instance file");
+		free((void*)instanceString);
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Build array of block names with defaults present
+		/////////////////////////////////////////////////////////////////////////////////
+
+		snprintf(instanceDef.parentPath, 1, "%s", instanceDoc["material"].GetString());
+
+		if (instanceDoc.HasMember("defaults"))
+		{
+			const Value& defaults = instanceDoc["defaults"];
+
+			for (SizeType i = 0; i < defaults.Size(); ++i)
+			{
+				const Value& default = defaults[i];
+
+				ShaderInputDefinition inputDef;
+				memset(inputDef.value, 0, sizeof(inputDef.value));
+				snprintf(inputDef.name, default["name"].GetStringLength(), "%s", default["name"].GetString());
+
+				const Value& defaultValue = default["value"];
+
+				if (defaultValue.IsArray())
+				{
+					float* defaultFloats = (float*)inputDef.value;
+
+					for (uint32_t dv = 0; dv < defaultValue.Size(); ++dv)
+					{
+						defaultFloats[dv] = defaultValue[dv].GetFloat();
+					}
+				}
+				else
+				{
+					snprintf(inputDef.value, defaultValue.GetStringLength(), "%s", defaultValue.GetString());
+				}
+
+				instanceDef.defaults.push_back(inputDef);
+
+
+			}
+		}
+
+		return instanceDef;
+	}
+
 	uint32_t createSingleBufferForDescriptorSetBindingArray(std::vector<DescriptorSetBinding*>& input, VkBuffer* dst, VkMemoryPropertyFlags memFlags)
 	{
 		uint32_t totalSize = 0;
