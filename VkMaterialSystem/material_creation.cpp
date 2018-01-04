@@ -28,6 +28,8 @@ namespace Material
 	VkShaderStageFlags shaderStageVectorToVkEnum(std::vector<ShaderStage>& vec);
 	VkShaderStageFlagBits shaderStageEnumToVkEnum(ShaderStage stage);
 	VkDescriptorType inputTypeEnumToVkEnum(InputType type);
+	uint32_t allocInstancePage(uint32_t baseMaterial);
+	MaterialInstance makeInstance(InstanceDefinition def);
 
 	InputType stringToInputType(const char* str)
 	{
@@ -426,7 +428,7 @@ namespace Material
 		////Build array of block names with defaults present
 		/////////////////////////////////////////////////////////////////////////////////
 
-		snprintf(instanceDef.parentPath, 1, "%s", instanceDoc["material"].GetString());
+		instanceDef.parent = charArrayToMaterialName(instanceDoc["material"].GetString());
 
 		if (instanceDoc.HasMember("defaults"))
 		{
@@ -464,8 +466,6 @@ namespace Material
 
 		return instanceDef;
 	}
-
-
 
 	uint32_t createBuffersForDescriptorSetBindingArray(std::vector<DescriptorSetBinding*>& input, VkBuffer* dst, VkMemoryPropertyFlags memFlags)
 	{
@@ -505,6 +505,31 @@ namespace Material
 			createInfo.usage = memFlags;
 			vkh::allocateDeviceMemory(dst,createInfo );
 		}
+
+	}
+
+	void fillBufferWithData(VkBuffer* buffer, uint32_t dataSize, uint32_t dstOffset, char* data)
+	{
+		VkBuffer stagingBuffer;
+		vkh::Allocation stagingMemory;
+
+		vkh::createBuffer(stagingBuffer,
+			stagingMemory,
+			dataSize,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		void* mappedStagingBuffer;
+		vkMapMemory(vkh::GContext.device, stagingMemory.handle, stagingMemory.offset, dataSize, 0, &mappedStagingBuffer);
+
+		memset(mappedStagingBuffer, 0, dataSize);
+		memcpy(mappedStagingBuffer, data, dataSize);
+		vkUnmapMemory(vkh::GContext.device, stagingMemory.handle);
+
+		vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
+		vkh::copyBuffer(stagingBuffer, *buffer, dataSize, 0, 0, scratch);
+		vkh::submitScratchCommandBuffer(scratch);
+		vkh::freeDeviceMemory(stagingMemory);
 
 	}
 
@@ -550,9 +575,9 @@ namespace Material
 	void collectDefaultValuesIntoBufferAndBuildLayout(char* outBuffer, std::vector<DescriptorSetBinding*> bindings, std::vector<uint32_t>* optionalOutLayout = nullptr)
 	{
 		uint32_t bufferOffset = 0;
-		uint32_t curBuffer = 0; //need this number to know the index into our VkBuffer array that a uniform block will be
 		uint32_t curImage = 0;
 		uint32_t total = 0; //eed this number to know the index into the descriptor set write array our image will be
+		
 		for (DescriptorSetBinding* binding : bindings)
 		{
 			if (binding->type == InputType::UNIFORM)
@@ -563,21 +588,20 @@ namespace Material
 					if (optionalOutLayout)
 					{
 						optionalOutLayout->push_back(hash(binding->blockMembers[k].name));
-						optionalOutLayout->push_back(curBuffer);
+						optionalOutLayout->push_back(bufferOffset);
 						optionalOutLayout->push_back(binding->blockMembers[k].size);
 						optionalOutLayout->push_back(binding->blockMembers[k].offset);
 					}
 					memcpy(&outBuffer[0] + bufferOffset + binding->blockMembers[k].offset, binding->blockMembers[k].defaultValue, binding->blockMembers[k].size);
 				}
 				bufferOffset += binding->sizeBytes;
-				curBuffer++;
 			}
 			else if (optionalOutLayout)
 			{
 				optionalOutLayout->push_back(hash(binding->name));
 				optionalOutLayout->push_back(curImage++);
 				optionalOutLayout->push_back(total);
-				optionalOutLayout->push_back(0);
+				optionalOutLayout->push_back(MATERIAL_IMAGE_UNIFORM_FLAG);
 			}
 			total++;
 
@@ -598,15 +622,15 @@ namespace Material
 		}
 	}
 
-	void make(uint32_t id, Definition def)
+	MaterialInstance make(uint32_t id, Definition def)
 	{
 		using vkh::GContext;
 		VkResult res;
 
 		MaterialAsset& outAsset = Material::getMaterialAsset(id);
-		MaterialRenderData& outMaterial = *outAsset.rData;
 
 		outAsset.rData = (MaterialRenderData*)calloc(1, sizeof(MaterialRenderData));
+		MaterialRenderData& outMaterial = *outAsset.rData;
 
 		/////////////////////////////////////////////////////////////////////////////////
 		////Build Arrays of Bindings
@@ -829,8 +853,10 @@ namespace Material
 		//this is also where we set up the data for the layout of our inputs (on a per binding member basis)
 		//for easy setting of individual uniform values at runtime
 	
-		outAsset.rData->numStaticUniforms	= def.numStaticTextures + def.numStaticUniforms;
-		outAsset.rData->numDynamicUniforms	= def.numDynamicUniforms + def.numDynamicTextures;
+		outAsset.rData->numStaticUniforms		= def.numStaticTextures + def.numStaticUniforms;
+		outAsset.rData->numDynamicUniforms		= def.numDynamicUniforms + def.numDynamicTextures;
+		outAsset.rData->staticUniformMemSize	= def.staticSetsSize;
+		outAsset.rData->dynamicUniformMemSize	= def.dynamicSetsSize;
 
 		outAsset.rData->defaultStaticData	= (char*)malloc(def.staticSetsSize);
 		outAsset.rData->defaultDynamicData	= (char*)malloc(def.dynamicSetsSize);
@@ -852,8 +878,14 @@ namespace Material
 		//Set up first page of instance memory
 		///////////////////////////////////////////////////////////////////////////////
 		
+		uint32_t instPageIdx = allocInstancePage(id);
+		checkf(instPageIdx == 0, "Attempting to allocate root instance page for material, but a page is already present");
 
+		InstanceDefinition rootInstanceDef;
+		rootInstanceDef.parent = id;
 
+		MaterialInstance rootInstance = makeInstance(rootInstanceDef);
+		return rootInstance;
 	}
 
 #if 0
@@ -1340,5 +1372,108 @@ namespace Material
 	}
 #endif
 
+	//Material Instance Creation
+	//return page
+	uint32_t allocInstancePage(uint32_t baseMaterial)
+	{
+		MaterialRenderData& data = Material::getRenderData(baseMaterial);
+		MaterialInstancePage page;
+		data.instPages.push_back(page);
 
+		MaterialInstancePage& newPage = data.instPages[data.instPages.size() - 1];
+
+		VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		if (data.staticUniformMemSize > 0)
+		{
+			vkh::createBuffer(newPage.staticBuffer,
+				data.staticUniformMemSize * MATERIAL_INSTANCE_PAGESIZE,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				memFlags);
+
+			allocateDeviceMemoryForBuffers(newPage.staticMem, data.staticUniformMemSize * MATERIAL_INSTANCE_PAGESIZE, &newPage.staticBuffer, memFlags);
+
+			vkBindBufferMemory(vkh::GContext.device, newPage.staticBuffer, newPage.staticMem.handle, newPage.staticMem.offset);
+		}
+
+		if (data.dynamicUniformMemSize > 0)
+		{
+			vkh::createBuffer(newPage.dynamicBuffer,
+				data.dynamicUniformMemSize * MATERIAL_INSTANCE_PAGESIZE,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				memFlags);
+
+			allocateDeviceMemoryForBuffers(newPage.dynamicMem, data.dynamicUniformMemSize * MATERIAL_INSTANCE_PAGESIZE, &newPage.dynamicBuffer, memFlags);
+
+			vkBindBufferMemory(vkh::GContext.device, newPage.dynamicBuffer, newPage.dynamicMem.handle, newPage.dynamicMem.offset);
+		}
+
+		for (uint32_t i = 0; i < MATERIAL_INSTANCE_PAGESIZE; ++i)
+		{
+			newPage.freeIndices.push(i);
+			newPage.generation[i] = 0;
+		}
+
+		return data.instPages.size() - 1;
+	}
+
+	//without other arg, this will clone static data from root instance
+	MaterialInstance makeInstance(InstanceDefinition def)
+	{
+		///////////////////////////////////////////////////////////////////////////////
+		//Place Material Instance in a page
+		///////////////////////////////////////////////////////////////////////////////			
+		MaterialRenderData& data = Material::getRenderData(def.parent);
+
+		MaterialInstance inst = { 0,0,0,0 };
+		inst.parent = def.parent;
+
+		bool foundSlot = false;
+
+		for (uint32_t page = 0; page < data.instPages.size(); ++page)
+		{
+			MaterialInstancePage& curPage = data.instPages[page];
+
+			if (curPage.freeIndices.size() > 0)
+			{
+				uint8_t slot = curPage.freeIndices.front();
+				curPage.freeIndices.pop();
+
+				inst.page = page;
+				inst.index = slot;
+
+				curPage.generation[slot]++;
+				inst.generation = curPage.generation[slot];
+
+				foundSlot = true;
+			}
+		}
+
+		if (!foundSlot)
+		{
+			//if code reaches here, there's no room in the parent material's
+			//instance pages for this instance, and we need to alloc a new page
+			uint32_t newPageIdx = allocInstancePage(inst.parent);
+			MaterialInstancePage& curPage = data.instPages[newPageIdx];
+
+			inst.page = newPageIdx;
+			inst.index = curPage.freeIndices.front();
+			curPage.freeIndices.pop();
+		}
+
+		///////////////////////////////////////////////////////////////////////////////
+		//Set up buffers
+		///////////////////////////////////////////////////////////////////////////////			
+
+		char* staticData = (char*)malloc(data.staticUniformMemSize);
+		memcpy(staticData, data.defaultStaticData, data.staticUniformMemSize);
+
+		char* dynData = (char*)malloc(data.dynamicUniformMemSize);
+		memcpy(dynData, data.defaultDynamicData, data.dynamicUniformMemSize);
+
+		fillBufferWithData(&data.instPages[inst.page].staticBuffer, data.staticUniformMemSize, inst.index * data.staticUniformMemSize, staticData);
+		fillBufferWithData(&data.instPages[inst.page].dynamicBuffer, data.dynamicUniformMemSize, inst.index * data.dynamicUniformMemSize, dynData);
+
+		return inst;
+	}
 }

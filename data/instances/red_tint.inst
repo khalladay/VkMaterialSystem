@@ -1,5 +1,5 @@
 {
-	"material":"show_uvs",
+	"material":"../data/materials/show_uvs.mat",
 	"defaults":
 	[
 		{

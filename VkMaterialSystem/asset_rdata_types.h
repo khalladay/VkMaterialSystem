@@ -75,14 +75,6 @@ struct MaterialRenderData
 	UniformBlockDef pushConstantLayout;
 	char* pushConstantData;
 
-	VkBuffer* staticBuffers;
-	vkh::Allocation staticUniformMem;
-
-	//for now, just add buffers here to modify. when this
-	//is modified to support material instances, we'll change it 
-	//to something more sane. 
-	MaterialDynamicData dynamic;
-
 	std::vector<MaterialInstancePage> instPages;
 
 	char* defaultStaticData;
@@ -90,6 +82,9 @@ struct MaterialRenderData
 
 	uint32_t numStaticUniforms;
 	uint32_t numDynamicUniforms;
+
+	uint32_t staticUniformMemSize;
+	uint32_t dynamicUniformMemSize;
 
 	uint32_t* staticUniformLayout;
 	uint32_t* dynamicUniformLayout;

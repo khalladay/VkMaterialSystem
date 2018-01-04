@@ -128,8 +128,8 @@ namespace Rendering
 			Material::setGlobalVector4("mouse", mouseData);
 			Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
-			Material::setUniformVector4(materialId, "global.mouse", mouseData);
-			Material::setUniformFloat(materialId, "test", 1.0f);
+			//Material::setUniformVector4(materialId, "global.mouse", mouseData);
+			//Material::setUniformFloat(materialId, "test", 1.0f);
 			if (Material::getRenderData(materialId).pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 

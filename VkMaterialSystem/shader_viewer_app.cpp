@@ -22,7 +22,7 @@ namespace App
 
 		Material::loadInstance("../data/instances/red_tint.inst");
 
-		Material::setTexture(matId, "testSampler", fruits);
+//		Material::setTexture(matId, "testSampler", fruits);
 
 		Mesh::quad(2.0f, 2.0f);
 

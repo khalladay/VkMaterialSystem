@@ -64,10 +64,16 @@ namespace Material
 		}
 	}
 
+	uint32_t charArrayToMaterialName(const char* name)
+	{
+		return hash(name);
+	}
+
 	uint32_t make(const char* materialPath)
 	{
 		uint32_t newId = reserve(materialPath);
 		make(newId, load(materialPath));
+		
 		return newId;
 	}
 
@@ -78,12 +84,12 @@ namespace Material
 
 	uint32_t reserve(const char* reserveName)
 	{
-		uint32_t hashedName = hash(reserveName);
+		uint32_t hashedName = charArrayToMaterialName(reserveName);
 		
-		//if there is any collision, increment the hashed value until we find an empty slot
+		//if there is any collision, explode because we can't handle that - and maybe should switch to 64 bit hashing? 
 		while (matStorage.data.count(hashedName) > 0)
 		{
-			hashedName++;
+			checkf(0, "hash collision with material name");
 		}
 
 		matStorage.data[hashedName] = {};
@@ -108,7 +114,7 @@ namespace Material
 	}
 
 	//note: this cannot be done from within a command buffer
-	void setTexture(uint32_t matId, const char* var, uint32_t texId)
+	/*void setTexture(uint32_t matId, const char* var, uint32_t texId)
 	{
 		MaterialRenderData& rData = Material::getRenderData(matId);
 
@@ -153,7 +159,7 @@ namespace Material
 				break;
 			}
 		}
-	}
+	}*/
 
 	void setPushConstantVector(uint32_t matId, const char* var, glm::vec4& data)
 	{
@@ -170,7 +176,7 @@ namespace Material
 		setPushConstantData(matId, var, &data, sizeof(float));
 	}
 
-	void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data)
+	/*void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data)
 	{
 		setUniformData(matId, name, &data);
 	}
@@ -188,7 +194,7 @@ namespace Material
 	void setUniformMatrix(uint32_t matId, const char* name, glm::mat4& data)
 	{
 		setUniformData(matId, name, &data);
-	}
+	}*/
 
 	void setGlobalFloat(const char* name, float data)
 	{

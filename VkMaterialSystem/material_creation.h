@@ -3,6 +3,8 @@
 #include <vector>
 #include <map>
 
+struct MaterialInstance;
+
 //this is in it's own file so that unless you want to manually 
 //create a Material Definition, you don't need to know about any of 
 //the enums / structs required to load a material. 
@@ -63,7 +65,7 @@ namespace Material
 
 	struct InstanceDefinition
 	{
-		char parentPath[256];
+		uint32_t parent;
 		std::vector<ShaderInputDefinition> defaults;
 	};
 
@@ -89,7 +91,7 @@ namespace Material
 	//if you're manually specifying a material definition instead of loading it, 
 	//you need to manually request a key from Material Storage with reserve()
 	//since we don't have a path to hash to use as the (potential) map key
-	void make(uint32_t matId, Material::Definition def);
+	MaterialInstance make(uint32_t matId, Material::Definition def);
 
 	Definition load(const char* assetPath);
 	InstanceDefinition loadInstance(const char* instancePath);
