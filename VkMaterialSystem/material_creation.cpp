@@ -104,10 +104,19 @@ namespace Material
 
 	}
 
-
 	bool IsDynamicInput(DescriptorSetBinding binding)
 	{
 		return binding.set == 3;
+	}
+
+	void loadJsonDocument(rapidjson::Document& jsonDoc, const char* docPath)
+	{
+		const char* assetString = loadTextFile(docPath);
+		size_t len = strlen(assetString);
+
+		jsonDoc.Parse(assetString, len);
+		checkf(!jsonDoc.HasParseError(), "Error parsing material file");
+		free((void*)assetString);
 	}
 
 	Definition load(const char* assetPath)
@@ -115,18 +124,9 @@ namespace Material
 		using namespace rapidjson;
 
 		Material::Definition materialDef = {};
-
-		/////////////////////////////////////////////////////////////////////////////////
-		////Load and parse material json
-		/////////////////////////////////////////////////////////////////////////////////
-
-		const char* materialString = loadTextFile(assetPath);
-		size_t len = strlen(materialString);
-
+		
 		Document materialDoc;
-		materialDoc.Parse(materialString, len);
-		checkf(!materialDoc.HasParseError(), "Error parsing material file");
-		free((void*)materialString);
+		loadJsonDocument(materialDoc, assetPath);
 
 		/////////////////////////////////////////////////////////////////////////////////
 		////Build array of block names with defaults present
@@ -405,10 +405,7 @@ namespace Material
 
 						//finally, add our bindingDef to the material, and continue to the next input in the reflection file 
 						materialDef.descSets[descSetBindingDef.set].push_back(descSetBindingDef);
-
 					}
-
-
 				}
 			}
 		}
@@ -422,17 +419,8 @@ namespace Material
 
 		Material::InstanceDefinition instanceDef = {};
 
-		/////////////////////////////////////////////////////////////////////////////////
-		////Load and parse instance json
-		/////////////////////////////////////////////////////////////////////////////////
-
-		const char* instanceString = loadTextFile(instancePath);
-		size_t len = strlen(instanceString);
-
 		Document instanceDoc;
-		instanceDoc.Parse(instanceString, len);
-		checkf(!instanceDoc.HasParseError(), "Error parsing instance file");
-		free((void*)instanceString);
+		loadJsonDocument(instanceDoc, instancePath);
 
 		/////////////////////////////////////////////////////////////////////////////////
 		////Build array of block names with defaults present
@@ -450,6 +438,8 @@ namespace Material
 
 				ShaderInputDefinition inputDef;
 				memset(inputDef.value, 0, sizeof(inputDef.value));
+				memset(inputDef.name, 0, sizeof(inputDef.name));
+
 				snprintf(inputDef.name, default["name"].GetStringLength(), "%s", default["name"].GetString());
 
 				const Value& defaultValue = default["value"];
@@ -469,13 +459,13 @@ namespace Material
 				}
 
 				instanceDef.defaults.push_back(inputDef);
-				
-
 			}
 		}
 
 		return instanceDef;
 	}
+
+
 
 	uint32_t createBuffersForDescriptorSetBindingArray(std::vector<DescriptorSetBinding*>& input, VkBuffer* dst, VkMemoryPropertyFlags memFlags)
 	{
@@ -611,9 +601,271 @@ namespace Material
 	void make(uint32_t id, Definition def)
 	{
 		using vkh::GContext;
+		VkResult res;
+
+		MaterialAsset& outAsset = Material::getMaterialAsset(id);
+		MaterialRenderData& outMaterial = *outAsset.rData;
+
+		outAsset.rData = (MaterialRenderData*)calloc(1, sizeof(MaterialRenderData));
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////Build Arrays of Bindings
+		/////////////////////////////////////////////////////////////////////////////////
+		
+		//for convenience, the first thing we want to do is to built arrays of the static and dynamic bindings
+		//saves us having to iterate over the map a bunch later, we still want the map of all of the bindings though, 
+
+		std::vector<DescriptorSetBinding*> staticBindings;
+		std::vector<DescriptorSetBinding*> dynamicBindings;
+
+		for (uint32_t idx : def.staticSets)
+		{
+			for (DescriptorSetBinding& binding : def.descSets[idx])
+			{
+				staticBindings.push_back(&binding);
+			}
+		}
+
+		for (uint32_t idx : def.dynamicSets)
+		{
+			for (DescriptorSetBinding& binding : def.descSets[idx])
+			{
+				dynamicBindings.push_back(&binding);
+			}
+		}
+
+		outMaterial.numDynamicUniforms = static_cast<uint32_t>(def.dynamicSets.size());
+		outMaterial.numStaticUniforms = static_cast<uint32_t>(def.staticSets.size());
+
+		/////////////////////////////////////////////////////////////////////////////////
+		////build shader stages
+		/////////////////////////////////////////////////////////////////////////////////
+
+		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+		
+		for (uint32_t i = 0; i < def.stages.size(); ++i)
+		{
+			ShaderStageDefinition& stageDef = def.stages[i];
+			VkPipelineShaderStageCreateInfo shaderStageInfo = vkh::shaderPipelineStageCreateInfo(shaderStageEnumToVkEnum(stageDef.stage));
+			vkh::createShaderModule(shaderStageInfo.module, stageDef.shaderPath, GContext.device);
+			shaderStages.push_back(shaderStageInfo);
+		}
+		
+		/////////////////////////////////////////////////////////////////////////////////
+		////set up descriptorSetLayouts
+		/////////////////////////////////////////////////////////////////////////////////
+
+		//Now we build an array of VkDescriptorSetLayouts, 
+		//one for each descriptor set in the shaders used by the material.
+		//it's important to note that this array has to have no gaps in set number, so if a set
+		//isn't used by the shaders, we have to add an empty VkDescriptorSetLayout.
+		std::vector<VkDescriptorSetLayout> uniformLayouts;
+
+		//VkDescriptorSetLayouts are created from arrays of VkDescriptorSetLayoutBindings, one for each
+		//binding in the set, so first we use the descSets array in our material definition to give us a 
+		//map that has an array of VkDescriptorSetLayoutBindings for each descriptor set index (the key of the map) 
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> descSetBindingMap;
+
+		//if there is a gap in the descriptor sets our material uses, we need
+		//to add an empty one, so we keep going until we've added an entry for each
+		//of the bindings we know we have. If we hit an empty set, we don't decrement the
+		//remaining inputs var
+		uint32_t remainingInputs = static_cast<uint32_t>(def.descSets.size());
+		uint32_t curSet = 0;
+
+		while (remainingInputs)
+		{
+			bool needsEmpty = true;
+
+			for (auto& descSetBindings : def.descSets)
+			{
+				if (descSetBindings.first == curSet)
+				{
+					//this is a vector of all the bindings for the curSet
+					std::vector<DescriptorSetBinding>& setBindingCollection = descSetBindings.second;
+					
+					for (auto& binding : setBindingCollection)
+					{
+						VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(binding.type), shaderStageVectorToVkEnum(binding.owningStages), binding.binding, 1);
+						descSetBindingMap[binding.set].push_back(layoutBinding);
+					}
+
+					remainingInputs--;
+					needsEmpty = false;
+				}
+			}
+
+			if (needsEmpty)
+			{
+				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0, 0);
+				descSetBindingMap[curSet].push_back(layoutBinding);
+			}
+
+			curSet++;
+		}
+
+		//now that we have our map of bindings for each set, we know how many VKDescriptorSetLayouts we're going to need:
+		uniformLayouts.resize(descSetBindingMap.size());
+
+		//and we can generate the VkDescriptorSetLayouts from the map arrays
+		for (auto& bindingCollection : descSetBindingMap)
+		{
+			uint32_t set = bindingCollection.first;
+
+			std::vector<VkDescriptorSetLayoutBinding>& setBindings = descSetBindingMap[bindingCollection.first];
+			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setBindings.data(), static_cast<uint32_t>(setBindings.size()));
+
+			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]);
+		}
+
+		///////////////////////////////////////////////////////////////////////////////
+		//set up pipeline layout
+		///////////////////////////////////////////////////////////////////////////////
+		
+		//we also use the descriptor set layouts to set up our pipeline layout
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(uniformLayouts.data(), uniformLayouts.size());
+
+		//we need to figure out what's up with push constants here becaus the pipeline layout object needs to know
+		if (def.pcBlock.sizeBytes > 0)
+		{
+			//the first part of this block just sets up the relevant fields on the pipelineLayoutInfo from above
+			VkPushConstantRange pushConstantRange = {};
+			pushConstantRange.offset = 0;
+			pushConstantRange.size = def.pcBlock.sizeBytes;
+			pushConstantRange.stageFlags = shaderStageVectorToVkEnum(def.pcBlock.owningStages);
+
+			outAsset.rData->pushConstantLayout.visibleStages = pushConstantRange.stageFlags;
+
+			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+			pipelineLayoutInfo.pushConstantRangeCount = 1;
+
+			//now we need to build the layout structure for the push constants, so that we can set these at runtime layer
+			outAsset.rData->pushConstantLayout.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
+			outAsset.rData->pushConstantLayout.blockSize = def.pcBlock.sizeBytes;
+			outAsset.rData->pushConstantLayout.memberCount = static_cast<uint32_t>(def.pcBlock.blockMembers.size());
+			outAsset.rData->pushConstantData = (char*)malloc(def.pcBlock.sizeBytes);
+
+			checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
+
+			for (uint32_t i = 0; i < def.pcBlock.blockMembers.size(); ++i)
+			{
+				BlockMember& mem = def.pcBlock.blockMembers[i];
+
+				outAsset.rData->pushConstantLayout.layout[i * 2] = hash(&mem.name[0]);
+				outAsset.rData->pushConstantLayout.layout[i * 2 + 1] = mem.offset;
+			}
+		}
+
+		res = vkCreatePipelineLayout(GContext.device, &pipelineLayoutInfo, nullptr, &outMaterial.pipelineLayout);
+		assert(res == VK_SUCCESS);
+
+		///////////////////////////////////////////////////////////////////////////////
+		//set up fixed function graphics pipeline
+		///////////////////////////////////////////////////////////////////////////////
+
+		//with the pipeline layout all set up, it's time to actually make the pipeline
+		VkVertexInputBindingDescription bindingDescription = vkh::vertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
+
+		const VertexRenderData* vertexLayout = Mesh::vertexRenderData();
+
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = vkh::pipelineVertexInputStateCreateInfo();
+		vertexInputInfo.vertexBindingDescriptionCount = 1; 		//todo - what would be the reason for multiple binding?
+		vertexInputInfo.vertexAttributeDescriptionCount = vertexLayout->attrCount;
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputInfo.pVertexAttributeDescriptions = &vertexLayout->attrDescriptions[0];
+
+		//most of this is all boilerplate that will never change over the lifetime of the application
+		//but some of it could conceivably be set by the material
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = vkh::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+		VkViewport viewport = vkh::viewport(0, 0, static_cast<float>(GContext.swapChain.extent.width), static_cast<float>(GContext.swapChain.extent.height));
+		VkRect2D scissor = vkh::rect2D(0, 0, GContext.swapChain.extent.width, GContext.swapChain.extent.height);
+		VkPipelineViewportStateCreateInfo viewportState = vkh::pipelineViewportStateCreateInfo(&viewport, 1, &scissor, 1);
+		
+		VkPipelineRasterizationStateCreateInfo rasterizer = vkh::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		VkPipelineMultisampleStateCreateInfo multisampling = vkh::pipelineMultisampleStateCreateInfo();
+
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = vkh::pipelineColorBlendAttachmentState(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
+		VkPipelineColorBlendStateCreateInfo colorBlending = vkh::pipelineColorBlendStateCreateInfo(colorBlendAttachment);
+
+		VkPipelineDepthStencilStateCreateInfo depthStencil = vkh::pipelineDepthStencilStateCreateInfo(
+			VK_TRUE,
+			VK_TRUE,
+			VK_COMPARE_OP_LESS);
+
+		VkGraphicsPipelineCreateInfo pipelineInfo = {};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+		pipelineInfo.pStages = shaderStages.data();
+		pipelineInfo.pVertexInputState = &vertexInputInfo;
+		pipelineInfo.pInputAssemblyState = &inputAssembly;
+		pipelineInfo.pViewportState = &viewportState;
+		pipelineInfo.pRasterizationState = &rasterizer;
+		pipelineInfo.pMultisampleState = &multisampling;
+		pipelineInfo.pDepthStencilState = nullptr; // Optional
+		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.pDynamicState = nullptr; // Optional
+		pipelineInfo.layout = outMaterial.pipelineLayout;
+		pipelineInfo.renderPass = GContext.mainRenderPass;
+		pipelineInfo.pDepthStencilState = &depthStencil;
+
+		pipelineInfo.subpass = 0;
+
+		//can use this to create new pipelines by deriving from old ones
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+		pipelineInfo.basePipelineIndex = -1; // Optional
+
+		//if you get an error about push constant ranges not being defined for offset, you have too many things defined in the push
+		//constant in the shader itself
+		res = vkCreateGraphicsPipelines(GContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &outMaterial.pipeline);
+		assert(res == VK_SUCCESS);
+
+		///////////////////////////////////////////////////////////////////////////////
+		//set up uniform layouts for shader inputs 
+		///////////////////////////////////////////////////////////////////////////////
+
+		//the initial "base material defined" values for every input are stored on the material
+		//instances can optionally override some or all of these values
+
+		//this is also where we set up the data for the layout of our inputs (on a per binding member basis)
+		//for easy setting of individual uniform values at runtime
+	
+		outAsset.rData->numStaticUniforms	= def.numStaticTextures + def.numStaticUniforms;
+		outAsset.rData->numDynamicUniforms	= def.numDynamicUniforms + def.numDynamicTextures;
+
+		outAsset.rData->defaultStaticData	= (char*)malloc(def.staticSetsSize);
+		outAsset.rData->defaultDynamicData	= (char*)malloc(def.dynamicSetsSize);
+
+		std::vector<uint32_t> staticLayout;
+		collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultStaticData, staticBindings, &staticLayout);
+		
+		std::vector<uint32_t> dynamicLayout;
+		collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultDynamicData, dynamicBindings, &dynamicLayout);
+
+		//we can convert the layout array to a bare uint32_t array for storage
+		outMaterial.staticUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * staticLayout.size());
+		outMaterial.dynamicUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * dynamicLayout.size());
+
+		memcpy(outMaterial.staticUniformLayout, staticLayout.data(), sizeof(uint32_t) * staticLayout.size());
+		memcpy(outMaterial.dynamicUniformLayout, dynamicLayout.data(), sizeof(uint32_t) * dynamicLayout.size());
+
+		///////////////////////////////////////////////////////////////////////////////
+		//Set up first page of instance memory
+		///////////////////////////////////////////////////////////////////////////////
+		
+
+
+	}
+
+#if 0
+	void make(uint32_t id, Definition def)
+	{
+		using vkh::GContext;
+		
 		MaterialAsset& outAsset = Material::getMaterialAsset(id);
 		outAsset.rData = (MaterialRenderData*)calloc(1,sizeof(MaterialRenderData));
+		
 		MaterialRenderData& outMaterial = *outAsset.rData;
+		VkResult res;
 
 		//for convenience, the first thing we want to do is to built arrays of the static and dynamic bindings
 		//saves us having to iterate over the map a bunch later, we still want the map of all of the bindings though, 
@@ -640,7 +892,6 @@ namespace Material
 
 		outMaterial.numDynamicUniforms = static_cast<uint32_t>(def.dynamicSets.size());
 
-		VkResult res;
 
 		/////////////////////////////////////////////////////////////////////////////////
 		////build shader stages
@@ -663,6 +914,7 @@ namespace Material
 
 		//The second step of setting up the material is getting an array of VkDescriptorSetLayouts, 
 		//one for each descriptor set in the shaders used by the material. 
+
 		std::vector<VkDescriptorSetLayout> uniformLayouts;
 
 		//it's important to note that this array has to have no gaps in set number, so if a set
@@ -1086,4 +1338,7 @@ namespace Material
 		}
 
 	}
+#endif
+
+
 }
