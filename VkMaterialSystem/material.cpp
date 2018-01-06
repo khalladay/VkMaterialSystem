@@ -69,17 +69,15 @@ namespace Material
 		return hash(name);
 	}
 
-	uint32_t make(const char* materialPath)
+	MaterialInstance make(const char* materialPath)
 	{
 		uint32_t newId = reserve(materialPath);
-		make(newId, load(materialPath));
-		
-		return newId;
+		return make(newId, load(materialPath));
 	}
 
-	uint32_t makeInstance(uint32_t parentId)
+	MaterialInstance makeInstance(uint32_t parentId)
 	{
-		return 0;
+		return{ parentId,0,0,0 };
 	}
 
 	uint32_t reserve(const char* reserveName)

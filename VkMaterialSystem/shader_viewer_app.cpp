@@ -10,7 +10,7 @@
 #include "vkh.h"
 namespace App
 {
-	uint32_t matId = 0;
+	MaterialInstance mInstance;
 
 	void init()
 	{
@@ -18,7 +18,7 @@ namespace App
 		//Texture::make("../data/textures/test_texture.jpg");
 		Material::initGlobalShaderData();
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
-		matId = Material::make("../data/materials/show_uvs.mat");
+		mInstance = Material::make("../data/materials/show_uvs.mat");
 
 		Material::loadInstance("../data/instances/red_tint.inst");
 
@@ -31,7 +31,7 @@ namespace App
 
 	void tick(float deltaTime)
 	{
-		Rendering::draw(matId);
+		Rendering::draw(mInstance);
 	}
 
 	void kill()

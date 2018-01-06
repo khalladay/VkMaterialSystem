@@ -610,7 +610,7 @@ namespace Material
 
 	void bindBuffersToMemory(vkh::Allocation& memoryToBind, VkBuffer* buffers,std::vector<DescriptorSetBinding*> bindings)
 	{
-		uint32_t bufferOffset = memoryToBind.offset;
+		VkDeviceSize bufferOffset = memoryToBind.offset;
 		uint32_t curBuffer = 0;
 		for (DescriptorSetBinding* binding : bindings)
 		{
@@ -658,8 +658,10 @@ namespace Material
 			}
 		}
 
-		outMaterial.numDynamicUniforms = static_cast<uint32_t>(def.dynamicSets.size());
-		outMaterial.numStaticUniforms = static_cast<uint32_t>(def.staticSets.size());
+		outMaterial.numDynamicUniforms = def.numDynamicUniforms;
+		outMaterial.numStaticUniforms = def.numStaticUniforms;
+		outMaterial.numStaticTextures = def.numStaticTextures;
+		outMaterial.numDynamicTextures = def.numDynamicTextures;
 
 		/////////////////////////////////////////////////////////////////////////////////
 		////build shader stages
@@ -742,12 +744,23 @@ namespace Material
 			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]);
 		}
 
+		//for sanity in storage, we want to keep MaterialAssets and MaterialRenderDatas POD structs, so we need to convert our lovely
+		//containers to arrays. This might change later, if I decide to start using POD arrays. In any case, in a real application you'd
+		//almost certainly want these allocations done with any allocator other than malloc
+		outMaterial.numDescSetLayouts = static_cast<uint32_t>(uniformLayouts.size());
+
+
+		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
+		memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
+
+		outMaterial.numDescSets = static_cast<uint32_t>(uniformLayouts.size());
+
 		///////////////////////////////////////////////////////////////////////////////
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
 		
 		//we also use the descriptor set layouts to set up our pipeline layout
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(uniformLayouts.data(), uniformLayouts.size());
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(uniformLayouts.data(), static_cast<uint32_t>(uniformLayouts.size()));
 
 		//we need to figure out what's up with push constants here becaus the pipeline layout object needs to know
 		if (def.pcBlock.sizeBytes > 0)
@@ -843,6 +856,175 @@ namespace Material
 		res = vkCreateGraphicsPipelines(GContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &outMaterial.pipeline);
 		assert(res == VK_SUCCESS);
 
+
+		///////////////////////////////////////////////////////////////////////////////
+		//Write Global Descriptor Set
+		///////////////////////////////////////////////////////////////////////////////
+
+		//while each instance page will have it's own set of descriptor sets, the base material will store the global descriptor set
+		//todo: move this to a single desc set for the whole application? 
+
+		//global is always set 0, to make this easier
+		VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[0], 1, GContext.descriptorPool);
+		
+		res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.globalDescSet);
+		checkf(res == VK_SUCCESS, "Error allocating descriptor set");
+
+		//if we're using global data, we pull the data from wherever our global data has been initialized
+		if (def.globalSets.size() > 0)
+		{
+			checkf(def.globalSets.size() == 1, "using more than 1 global buffer isn't supported right now");
+
+			std::vector<DescriptorSetBinding> globalBindings = def.descSets[def.globalSets[0]];
+
+			extern VkBuffer globalBuffer;
+			extern uint32_t globalSize;
+
+			VkDescriptorBufferInfo globalBufferInfo = {};
+			globalBufferInfo.offset = 0;
+			globalBufferInfo.buffer = globalBuffer;
+			globalBufferInfo.range = globalSize;
+
+			VkWriteDescriptorSet globalDescriptorWrite = {};
+			globalDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			globalDescriptorWrite.dstSet = outMaterial.globalDescSet;
+			globalDescriptorWrite.dstBinding = 0; //refers to binding in shader
+			globalDescriptorWrite.dstArrayElement = 0;
+			globalDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			globalDescriptorWrite.descriptorCount = 1;
+			globalDescriptorWrite.pBufferInfo = &globalBufferInfo;
+			globalDescriptorWrite.pImageInfo = 0;
+			globalDescriptorWrite.pTexelBufferView = nullptr; // Optional
+
+			vkUpdateDescriptorSets(GContext.device, 1, &globalDescriptorWrite, 0, nullptr);
+		}
+
+		///////////////////////////////////////////////////////////////////////////////
+		//Create Default VkWriteDescriptorSet Objects
+		///////////////////////////////////////////////////////////////////////////////
+
+		std::vector<VkWriteDescriptorSet> descSetWrites;
+
+		std::vector<VkDescriptorBufferInfo> uniformBufferInfos;
+		uniformBufferInfos.reserve(def.numStaticUniforms + def.numDynamicUniforms);
+
+		std::vector<VkDescriptorImageInfo> imageInfos;
+		imageInfos.reserve(def.numDynamicTextures + def.numStaticTextures);
+
+
+		//each page will need their own, but this simplifies setting things up, since we don't have
+		//to keep around the whole material definition once these are built once. 
+		//static info is a bit more compliated because it might be images as well
+
+		uint32_t* curLayoutEntry = &outMaterial.staticUniformLayout[0];
+		outMaterial.numDefaultStaticWrites = static_cast<uint32_t>(staticBindings.size());
+
+		for (DescriptorSetBinding* bindingPtr : staticBindings)
+		{
+			DescriptorSetBinding& binding = *bindingPtr;
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstBinding = binding.binding;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = 0; //all going to point to the same buffer
+			descriptorWrite.pImageInfo = 0;
+
+			//		descriptorWrite.dstSet = outMaterial.descSets[binding.set];
+
+
+			if (binding.type == InputType::UNIFORM)
+			{
+				VkDescriptorBufferInfo uniformBufferInfo = {};
+				uniformBufferInfo.offset = curLayoutEntry[BUFFER_START_OFFSET_IDX];
+				uniformBufferInfo.range = binding.sizeBytes * MATERIAL_INSTANCE_PAGESIZE;
+				uniformBufferInfos.push_back(uniformBufferInfo);
+
+				//	uniformBufferInfo.buffer = outAsset.rData->staticBuffers[uniformBufferInfos.size()];
+				//	descriptorWrite.pBufferInfo = &uniformBufferInfos[uniformBufferInfos.size() - 1];
+
+			}
+			else if (binding.type == InputType::SAMPLER)
+			{
+				VkDescriptorImageInfo imageInfo = {};
+				uint32_t tex = Texture::make(binding.defaultValue);
+
+				TextureRenderData* texData = Texture::getRenderData(tex);
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = texData->sampler;
+
+				imageInfos.push_back(imageInfo);
+			//	descriptorWrite.pImageInfo = &imageInfos[imageInfos.size() - 1];
+			}
+
+			descriptorWrite.pTexelBufferView = nullptr; // Optional
+			descSetWrites.push_back(descriptorWrite);
+			curLayoutEntry += MATERIAL_UNIFORM_LAYOUT_STRIDE;
+
+		}
+
+		curLayoutEntry = &outMaterial.dynamicUniformLayout[0];
+		for (DescriptorSetBinding* bindingPtr : dynamicBindings)
+		{
+			DescriptorSetBinding& binding = *bindingPtr;
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstBinding = binding.binding; //refers to binding in shader
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = 0;
+			descriptorWrite.pImageInfo = 0;
+
+			if (binding.type == InputType::UNIFORM)
+			{
+				VkDescriptorBufferInfo uniformBufferInfo = {};
+				uniformBufferInfo.offset = curLayoutEntry[BUFFER_START_OFFSET_IDX];
+				uniformBufferInfo.range = binding.sizeBytes;
+
+				uniformBufferInfos.push_back(uniformBufferInfo);
+				descriptorWrite.pBufferInfo = &uniformBufferInfos[uniformBufferInfos.size() - 1];
+
+			}
+			else if (binding.type == InputType::SAMPLER)
+			{
+				uint32_t tex = Texture::make(binding.defaultValue);
+				TextureRenderData* texData = Texture::getRenderData(tex);
+
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = texData->sampler;
+
+				imageInfos.push_back(imageInfo);
+
+			}
+
+			descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+			descSetWrites.push_back(descriptorWrite);
+			curLayoutEntry += MATERIAL_UNIFORM_LAYOUT_STRIDE;
+
+		}
+
+		//save off the descriptor set writes for dynamic data for easier updating later
+		uint32_t numDynamicSetWrites = def.numDynamicTextures + def.numDynamicUniforms;
+		uint32_t numStaticSetWrites = def.numStaticTextures + def.numStaticUniforms;
+		uint32_t totalSetWrites = numDynamicSetWrites + numStaticSetWrites;
+
+		outMaterial.defaultBufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * uniformBufferInfos.size());
+		memcpy(outMaterial.defaultBufferInfos, uniformBufferInfos.data(), sizeof(VkDescriptorBufferInfo) * uniformBufferInfos.size());
+
+		outMaterial.defaultImageInfos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * imageInfos.size());
+		memcpy(outMaterial.defaultImageInfos, imageInfos.data(), sizeof(VkDescriptorImageInfo) * imageInfos.size());
+
+		outMaterial.defaultDescWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * totalSetWrites);
+		memcpy(outAsset.rData->defaultDescWrites, descSetWrites.data(), sizeof(VkWriteDescriptorSet) * totalSetWrites);
+
 		///////////////////////////////////////////////////////////////////////////////
 		//set up uniform layouts for shader inputs 
 		///////////////////////////////////////////////////////////////////////////////
@@ -853,8 +1035,6 @@ namespace Material
 		//this is also where we set up the data for the layout of our inputs (on a per binding member basis)
 		//for easy setting of individual uniform values at runtime
 	
-		outAsset.rData->numStaticUniforms		= def.numStaticTextures + def.numStaticUniforms;
-		outAsset.rData->numDynamicUniforms		= def.numDynamicUniforms + def.numDynamicTextures;
 		outAsset.rData->staticUniformMemSize	= def.staticSetsSize;
 		outAsset.rData->dynamicUniformMemSize	= def.dynamicSetsSize;
 
@@ -891,227 +1071,7 @@ namespace Material
 #if 0
 	void make(uint32_t id, Definition def)
 	{
-		using vkh::GContext;
 		
-		MaterialAsset& outAsset = Material::getMaterialAsset(id);
-		outAsset.rData = (MaterialRenderData*)calloc(1,sizeof(MaterialRenderData));
-		
-		MaterialRenderData& outMaterial = *outAsset.rData;
-		VkResult res;
-
-		//for convenience, the first thing we want to do is to built arrays of the static and dynamic bindings
-		//saves us having to iterate over the map a bunch later, we still want the map of all of the bindings though, 
-		//since that makes a few things easier for us to do
-
-		std::vector<DescriptorSetBinding*> staticBindings;
-		std::vector<DescriptorSetBinding*> dynamicBindings;
-
-		for (uint32_t idx : def.staticSets)
-		{
-			for (DescriptorSetBinding& binding : def.descSets[idx])
-			{
-				staticBindings.push_back(&binding);
-			}
-		}
-
-		for (uint32_t idx : def.dynamicSets)
-		{
-			for (DescriptorSetBinding& binding : def.descSets[idx])
-			{
-				dynamicBindings.push_back(&binding);
-			}
-		}
-
-		outMaterial.numDynamicUniforms = static_cast<uint32_t>(def.dynamicSets.size());
-
-
-		/////////////////////////////////////////////////////////////////////////////////
-		////build shader stages
-		/////////////////////////////////////////////////////////////////////////////////
-
-		std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-		{
-			for (uint32_t i = 0; i < def.stages.size(); ++i)
-			{
-				ShaderStageDefinition& stageDef = def.stages[i];
-				VkPipelineShaderStageCreateInfo shaderStageInfo = vkh::shaderPipelineStageCreateInfo(shaderStageEnumToVkEnum(stageDef.stage));
-				vkh::createShaderModule(shaderStageInfo.module, stageDef.shaderPath, GContext.device);
-				shaderStages.push_back(shaderStageInfo);
-			}
-		}
-
-		/////////////////////////////////////////////////////////////////////////////////
-		////set up descriptorSetLayouts
-		/////////////////////////////////////////////////////////////////////////////////
-
-		//The second step of setting up the material is getting an array of VkDescriptorSetLayouts, 
-		//one for each descriptor set in the shaders used by the material. 
-
-		std::vector<VkDescriptorSetLayout> uniformLayouts;
-
-		//it's important to note that this array has to have no gaps in set number, so if a set
-		//isn't used by the shaders, we have to add an empty VkDescriptorSetLayout. 
-
-		//VkDescriptorSetLayouts are created from arrays of VkDescriptorSetLayoutBindings, one for each
-		//binding in the set, so first we use the descSets array on our material definition to give us a 
-		//map that has an array of VkDescriptorSetLayoutBindings for each descriptor set index (the key of the map) 
-		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> uniformSetBindings;
-
-		//the rest of this logic can be wrapped in braces so we can collapse it for easier reading
-		//no other vars are declared that need to be visible outside of this block
-		{
-			//if there is a gap in the descriptor sets our material uses, we need
-			//to add an empty one, so we keep going until we've added an entry for each
-			//of the bindings we know we have. If we hit an empty set, we don't decrement the
-			//remaining inputs var
-
-			uint32_t remainingInputs = static_cast<uint32_t>(def.descSets.size());
-			uint32_t curSet = 0;
-			while (remainingInputs)
-			{
-				bool needsEmpty = true;
-				for (auto& descSetBindings : def.descSets)
-				{
-					if (descSetBindings.first == curSet)
-					{
-						//this is a vector of all the bindings for the curSet
-						std::vector<DescriptorSetBinding>& setBindingCollection = descSetBindings.second;
-						for (auto& binding : setBindingCollection)
-						{
-							VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(binding.type), shaderStageVectorToVkEnum(binding.owningStages), binding.binding, 1);
-							uniformSetBindings[binding.set].push_back(layoutBinding);
-						}
-
-						remainingInputs--;
-						needsEmpty = false;
-					}
-				}
-				if (needsEmpty)
-				{
-					VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0, 0);
-					uniformSetBindings[curSet].push_back(layoutBinding);
-				}
-
-				curSet++;
-
-			}
-
-			//now that we have our map of bindings for each set, we know how many VKDescriptorSetLayouts we're going to need:
-			uniformLayouts.resize(uniformSetBindings.size());
-
-			//and we can generate the VkDescriptorSetLayouts from the map arrays
-			for (auto& bindingCollection : uniformSetBindings)
-			{
-				uint32_t set = bindingCollection.first;
-
-				std::vector<VkDescriptorSetLayoutBinding>& setBindings = uniformSetBindings[bindingCollection.first];
-				VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setBindings.data(), static_cast<uint32_t>(setBindings.size()));
-
-				res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]);
-			}
-
-		
-		}
-		
-		///////////////////////////////////////////////////////////////////////////////
-		//set up pipeline layout
-		///////////////////////////////////////////////////////////////////////////////
-		{
-			//we also use the descriptor set layouts to set up our pipeline layout
-			VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(uniformLayouts.data(), uniformLayouts.size());
-
-			//we need to figure out what's up with push constants here becaus the pipeline layout object needs to know
-			if (def.pcBlock.sizeBytes > 0)
-			{
-				VkPushConstantRange pushConstantRange = {};
-				pushConstantRange.offset = 0;
-				pushConstantRange.size = def.pcBlock.sizeBytes;
-				pushConstantRange.stageFlags = shaderStageVectorToVkEnum(def.pcBlock.owningStages);
-
-				outAsset.rData->pushConstantLayout.visibleStages = pushConstantRange.stageFlags;
-
-				pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-				pipelineLayoutInfo.pushConstantRangeCount = 1;
-
-				outAsset.rData->pushConstantLayout.layout = (uint32_t*)malloc(sizeof(uint32_t) * def.pcBlock.blockMembers.size() * 2);
-				outAsset.rData->pushConstantLayout.blockSize = def.pcBlock.sizeBytes;
-				outAsset.rData->pushConstantLayout.memberCount = static_cast<uint32_t>(def.pcBlock.blockMembers.size());
-				outAsset.rData->pushConstantData = (char*)malloc(def.pcBlock.sizeBytes);
-
-				checkf(def.pcBlock.sizeBytes < 128, "Push constant block is too large in material");
-
-				for (uint32_t i = 0; i < def.pcBlock.blockMembers.size(); ++i)
-				{
-					BlockMember& mem = def.pcBlock.blockMembers[i];
-
-					outAsset.rData->pushConstantLayout.layout[i * 2] = hash(&mem.name[0]);
-					outAsset.rData->pushConstantLayout.layout[i * 2 + 1] = mem.offset;
-				}
-			}
-
-			res = vkCreatePipelineLayout(GContext.device, &pipelineLayoutInfo, nullptr, &outMaterial.pipelineLayout);
-			assert(res == VK_SUCCESS);
-		}
-		///////////////////////////////////////////////////////////////////////////////
-		//set up graphics pipeline
-		///////////////////////////////////////////////////////////////////////////////
-		{
-			//with the pipeline layout all set up, it's time to actually make the pipeline
-			VkVertexInputBindingDescription bindingDescription = vkh::vertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
-
-			const VertexRenderData* vertexLayout = Mesh::vertexRenderData();
-
-			VkPipelineVertexInputStateCreateInfo vertexInputInfo = vkh::pipelineVertexInputStateCreateInfo();
-			vertexInputInfo.vertexBindingDescriptionCount = 1; 		//todo - what would be the reason for multiple binding?
-			vertexInputInfo.vertexAttributeDescriptionCount = vertexLayout->attrCount;
-			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-			vertexInputInfo.pVertexAttributeDescriptions = &vertexLayout->attrDescriptions[0];
-
-			//most of this is all boilerplate that will never change over the lifetime of the application
-			//but some of it could conceivably be set by the material
-			VkPipelineInputAssemblyStateCreateInfo inputAssembly = vkh::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
-			VkViewport viewport = vkh::viewport(0, 0, static_cast<float>(GContext.swapChain.extent.width), static_cast<float>(GContext.swapChain.extent.height));
-			VkRect2D scissor = vkh::rect2D(0, 0, GContext.swapChain.extent.width, GContext.swapChain.extent.height);
-			VkPipelineViewportStateCreateInfo viewportState = vkh::pipelineViewportStateCreateInfo(&viewport, 1, &scissor, 1);
-
-			VkPipelineRasterizationStateCreateInfo rasterizer = vkh::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-			VkPipelineMultisampleStateCreateInfo multisampling = vkh::pipelineMultisampleStateCreateInfo();
-
-			VkPipelineColorBlendAttachmentState colorBlendAttachment = vkh::pipelineColorBlendAttachmentState(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
-			VkPipelineColorBlendStateCreateInfo colorBlending = vkh::pipelineColorBlendStateCreateInfo(colorBlendAttachment);
-
-			VkPipelineDepthStencilStateCreateInfo depthStencil = vkh::pipelineDepthStencilStateCreateInfo(
-				VK_TRUE,
-				VK_TRUE,
-				VK_COMPARE_OP_LESS);
-
-			VkGraphicsPipelineCreateInfo pipelineInfo = {};
-			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-			pipelineInfo.pStages = shaderStages.data();
-			pipelineInfo.pVertexInputState = &vertexInputInfo;
-			pipelineInfo.pInputAssemblyState = &inputAssembly;
-			pipelineInfo.pViewportState = &viewportState;
-			pipelineInfo.pRasterizationState = &rasterizer;
-			pipelineInfo.pMultisampleState = &multisampling;
-			pipelineInfo.pDepthStencilState = nullptr; // Optional
-			pipelineInfo.pColorBlendState = &colorBlending;
-			pipelineInfo.pDynamicState = nullptr; // Optional
-			pipelineInfo.layout = outMaterial.pipelineLayout;
-			pipelineInfo.renderPass = GContext.mainRenderPass;
-			pipelineInfo.pDepthStencilState = &depthStencil;
-
-			pipelineInfo.subpass = 0;
-
-			//can use this to create new pipelines by deriving from old ones
-			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-			pipelineInfo.basePipelineIndex = -1; // Optional
-
-			//if you get an error about push constant ranges not being defined for offset, you have too many things defined in the push
-			//constant in the shader itself
-			res = vkCreateGraphicsPipelines(GContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &outMaterial.pipeline);
-			assert(res == VK_SUCCESS);
-		}
 
 		///////////////////////////////////////////////////////////////////////////////
 		//initialize buffers
@@ -1382,6 +1342,10 @@ namespace Material
 
 		MaterialInstancePage& newPage = data.instPages[data.instPages.size() - 1];
 
+		///////////////////////////////////////////////////////////////////////////////
+		//Allocate buffers for page
+		///////////////////////////////////////////////////////////////////////////////
+
 		VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 		if (data.staticUniformMemSize > 0)
@@ -1414,7 +1378,25 @@ namespace Material
 			newPage.generation[i] = 0;
 		}
 
-		return data.instPages.size() - 1;
+		///////////////////////////////////////////////////////////////////////////////
+		//Allocate / set up descriptor sets for page
+		///////////////////////////////////////////////////////////////////////////////
+
+		//each page only needs a single set of descriptor sets, since we'll bind them and use offsets to get to 
+		//individual page members when needed.
+
+		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * data.numDescSets);
+
+		for (uint32_t i = 0; i < data.numDescSets; ++i)
+		{
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&data.descriptorSetLayouts[i], 1, vkh::GContext.descriptorPool);
+			VkResult res = vkAllocateDescriptorSets(vkh::GContext.device, &allocInfo, &newPage.descSets[i]);
+			checkf(res == VK_SUCCESS, "Error allocating descriptor set");
+		}
+
+	
+
+		return static_cast<uint32_t>(data.instPages.size()) - 1;
 	}
 
 	//without other arg, this will clone static data from root instance

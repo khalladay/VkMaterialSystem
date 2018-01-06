@@ -11,8 +11,16 @@ struct MaterialInstance
 	uint8_t generation;
 };
 
+
+
 struct MaterialAsset
 {
+	uint32_t set;
+	uint32_t binding;
+	uint32_t sizeBytes;
+
+	uint32_t numDescSetBindings;
+
 	MaterialRenderData* rData;
 };
 
@@ -27,8 +35,8 @@ namespace Material
 	MaterialAsset& getMaterialAsset(uint32_t matId);
 
 	void initGlobalShaderData();
-	uint32_t make(const char* assetPath);
-	uint32_t makeInstance(uint32_t parentId);
+	MaterialInstance make(const char* assetPath);
+	MaterialInstance makeInstance(uint32_t parentId);
 
 	//used to create an empty material in material storage, 
 	//only needed if you're creating a material in a way other than

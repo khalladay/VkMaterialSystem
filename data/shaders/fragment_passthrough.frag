@@ -21,5 +21,5 @@ void main()
 {
 	vec4 tex = texture(texSampler, fragUV);
 	vec4 tex2 = texture(testSampler, fragUV);
-    outColor = mix(tex,tex2,fragColor.g) * global.mouse.z;
+    outColor = vec4(0,global.mouse.z,0,1);//mix(tex,tex2,fragColor.g) * global.mouse.z;
 }

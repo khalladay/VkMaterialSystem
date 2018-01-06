@@ -1,7 +1,9 @@
 #pragma once
 
+struct MaterialInstance;
+
 namespace Rendering
 {
 	void init();
-	void draw(uint32_t materialId);
+	void draw(MaterialInstance mInst);
 }

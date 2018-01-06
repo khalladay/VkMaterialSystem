@@ -8,7 +8,7 @@
 #define MATERIAL_IMAGE_UNIFORM_FLAG 0xFFFFFFFF
 
 #define HASHED_NAME_IDX				0
-#define BUFFER_INDEX_IDX			1
+#define BUFFER_START_OFFSET_IDX		1
 #define TEXTUREVIEWPTR_INDEX_IDX	1
 #define MEMBER_SIZE_IDX				2
 #define DESCSET_WRITE_IDX			2
@@ -51,6 +51,9 @@ struct MaterialInstancePage
 {
 	VkBuffer staticBuffer;
 	VkBuffer dynamicBuffer;
+	
+	VkDescriptorSet* descSets;
+
 	std::vector<VkWriteDescriptorSet> descSetWrites;
 
 	//stores the generation of material instances
@@ -62,26 +65,37 @@ struct MaterialInstancePage
 	vkh::Allocation dynamicMem;
 };
 
-
 struct MaterialRenderData
 {
 	//general material data
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 
-	VkDescriptorSet* descSets;
+	VkDescriptorSet globalDescSet;
 	uint32_t numDescSets;
+
+	uint32_t numDescSetLayouts;
+	VkDescriptorSetLayout* descriptorSetLayouts;
 
 	UniformBlockDef pushConstantLayout;
 	char* pushConstantData;
 
 	std::vector<MaterialInstancePage> instPages;
+	
+	VkWriteDescriptorSet* defaultDescWrites;
+	VkDescriptorBufferInfo* defaultBufferInfos;
+	VkDescriptorImageInfo* defaultImageInfos;
+
+	uint32_t numDefaultStaticWrites;
+	uint32_t numDefaultDynamicWrites;
 
 	char* defaultStaticData;
 	char* defaultDynamicData;
 
 	uint32_t numStaticUniforms;
 	uint32_t numDynamicUniforms;
+	uint32_t numStaticTextures;
+	uint32_t numDynamicTextures;
 
 	uint32_t staticUniformMemSize;
 	uint32_t dynamicUniformMemSize;

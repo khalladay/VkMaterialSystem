@@ -65,7 +65,7 @@ namespace Rendering
 	}
 
 
-	void draw(uint32_t materialId)
+	void draw(MaterialInstance mInst)
 	{
 		//acquire an image from the swap chain
 		uint32_t imageIndex;
@@ -108,7 +108,7 @@ namespace Rendering
 		{
 
 			const MeshRenderData& mesh = Mesh::getRenderData();
-			const MaterialRenderData& mat = Material::getRenderData(materialId);
+			const MaterialRenderData& mat = Material::getRenderData(mInst.parent);
 
 
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
@@ -130,11 +130,11 @@ namespace Rendering
 
 			//Material::setUniformVector4(materialId, "global.mouse", mouseData);
 			//Material::setUniformFloat(materialId, "test", 1.0f);
-			if (Material::getRenderData(materialId).pushConstantLayout.blockSize > 0)
+			if (mat.pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector(materialId, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
-				Material::setPushConstantFloat(materialId, "time", (float)(os_getMilliseconds() / 1000.0f));
+				Material::setPushConstantVector(mInst.parent, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
+				Material::setPushConstantFloat(mInst.parent, "time", (float)(os_getMilliseconds() / 1000.0f));
 
 				vkCmdPushConstants(
 					commandBuffers[imageIndex],
@@ -146,7 +146,9 @@ namespace Rendering
 			}
 
 			if (mat.numDescSets > 0)
-				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, mat.numDescSets, mat.descSets, 0, 0);
+			{
+				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
+			}
 
 			vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.iBuffer, 0, VK_INDEX_TYPE_UINT32);
