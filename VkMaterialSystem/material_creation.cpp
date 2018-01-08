@@ -856,6 +856,34 @@ namespace Material
 		res = vkCreateGraphicsPipelines(GContext.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &outMaterial.pipeline);
 		assert(res == VK_SUCCESS);
 
+		///////////////////////////////////////////////////////////////////////////////
+		//set up uniform layouts for shader inputs 
+		///////////////////////////////////////////////////////////////////////////////
+
+		//the initial "base material defined" values for every input are stored on the material
+		//instances can optionally override some or all of these values
+
+		//this is also where we set up the data for the layout of our inputs (on a per binding member basis)
+		//for easy setting of individual uniform values at runtime
+
+		outAsset.rData->staticUniformMemSize = def.staticSetsSize;
+		outAsset.rData->dynamicUniformMemSize = def.dynamicSetsSize;
+
+		outAsset.rData->defaultStaticData = (char*)malloc(def.staticSetsSize);
+		outAsset.rData->defaultDynamicData = (char*)malloc(def.dynamicSetsSize);
+
+		std::vector<uint32_t> staticLayout;
+		collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultStaticData, staticBindings, &staticLayout);
+
+		std::vector<uint32_t> dynamicLayout;
+		collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultDynamicData, dynamicBindings, &dynamicLayout);
+
+		//we can convert the layout array to a bare uint32_t array for storage
+		outMaterial.staticUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * staticLayout.size());
+		outMaterial.dynamicUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * dynamicLayout.size());
+
+		memcpy(outMaterial.staticUniformLayout, staticLayout.data(), sizeof(uint32_t) * staticLayout.size());
+		memcpy(outMaterial.dynamicUniformLayout, dynamicLayout.data(), sizeof(uint32_t) * dynamicLayout.size());
 
 		///////////////////////////////////////////////////////////////////////////////
 		//Write Global Descriptor Set
@@ -928,23 +956,16 @@ namespace Material
 			descriptorWrite.dstBinding = binding.binding;
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
-			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.descriptorCount = binding.set;
 			descriptorWrite.pBufferInfo = 0; //all going to point to the same buffer
 			descriptorWrite.pImageInfo = 0;
-
-			//		descriptorWrite.dstSet = outMaterial.descSets[binding.set];
-
-
+			
 			if (binding.type == InputType::UNIFORM)
 			{
 				VkDescriptorBufferInfo uniformBufferInfo = {};
 				uniformBufferInfo.offset = curLayoutEntry[BUFFER_START_OFFSET_IDX];
 				uniformBufferInfo.range = binding.sizeBytes * MATERIAL_INSTANCE_PAGESIZE;
 				uniformBufferInfos.push_back(uniformBufferInfo);
-
-				//	uniformBufferInfo.buffer = outAsset.rData->staticBuffers[uniformBufferInfos.size()];
-				//	descriptorWrite.pBufferInfo = &uniformBufferInfos[uniformBufferInfos.size() - 1];
-
 			}
 			else if (binding.type == InputType::SAMPLER)
 			{
@@ -976,7 +997,7 @@ namespace Material
 			descriptorWrite.dstBinding = binding.binding; //refers to binding in shader
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
-			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.descriptorCount = binding.set;
 			descriptorWrite.pBufferInfo = 0;
 			descriptorWrite.pImageInfo = 0;
 
@@ -1012,47 +1033,21 @@ namespace Material
 		}
 
 		//save off the descriptor set writes for dynamic data for easier updating later
-		uint32_t numDynamicSetWrites = def.numDynamicTextures + def.numDynamicUniforms;
-		uint32_t numStaticSetWrites = def.numStaticTextures + def.numStaticUniforms;
-		uint32_t totalSetWrites = numDynamicSetWrites + numStaticSetWrites;
+		outMaterial.numDefaultDynamicWrites = def.numDynamicTextures + def.numDynamicUniforms;
+		outMaterial.numDefaultStaticWrites = def.numStaticTextures + def.numStaticUniforms;
+
+		uint32_t totalSetWrites = outMaterial.numDefaultDynamicWrites + outMaterial.numDefaultStaticWrites;
 
 		outMaterial.defaultBufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * uniformBufferInfos.size());
+		outMaterial.numDefaultBufferInfos = uniformBufferInfos.size();
 		memcpy(outMaterial.defaultBufferInfos, uniformBufferInfos.data(), sizeof(VkDescriptorBufferInfo) * uniformBufferInfos.size());
 
 		outMaterial.defaultImageInfos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * imageInfos.size());
+		outMaterial.numDefaultImageInfos = imageInfos.size();
 		memcpy(outMaterial.defaultImageInfos, imageInfos.data(), sizeof(VkDescriptorImageInfo) * imageInfos.size());
 
 		outMaterial.defaultDescWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * totalSetWrites);
 		memcpy(outAsset.rData->defaultDescWrites, descSetWrites.data(), sizeof(VkWriteDescriptorSet) * totalSetWrites);
-
-		///////////////////////////////////////////////////////////////////////////////
-		//set up uniform layouts for shader inputs 
-		///////////////////////////////////////////////////////////////////////////////
-
-		//the initial "base material defined" values for every input are stored on the material
-		//instances can optionally override some or all of these values
-
-		//this is also where we set up the data for the layout of our inputs (on a per binding member basis)
-		//for easy setting of individual uniform values at runtime
-	
-		outAsset.rData->staticUniformMemSize	= def.staticSetsSize;
-		outAsset.rData->dynamicUniformMemSize	= def.dynamicSetsSize;
-
-		outAsset.rData->defaultStaticData	= (char*)malloc(def.staticSetsSize);
-		outAsset.rData->defaultDynamicData	= (char*)malloc(def.dynamicSetsSize);
-
-		std::vector<uint32_t> staticLayout;
-		collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultStaticData, staticBindings, &staticLayout);
-		
-		std::vector<uint32_t> dynamicLayout;
-		collectDefaultValuesIntoBufferAndBuildLayout(outAsset.rData->defaultDynamicData, dynamicBindings, &dynamicLayout);
-
-		//we can convert the layout array to a bare uint32_t array for storage
-		outMaterial.staticUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * staticLayout.size());
-		outMaterial.dynamicUniformLayout = (uint32_t*)malloc(sizeof(uint32_t) * dynamicLayout.size());
-
-		memcpy(outMaterial.staticUniformLayout, staticLayout.data(), sizeof(uint32_t) * staticLayout.size());
-		memcpy(outMaterial.dynamicUniformLayout, dynamicLayout.data(), sizeof(uint32_t) * dynamicLayout.size());
 
 		///////////////////////////////////////////////////////////////////////////////
 		//Set up first page of instance memory
@@ -1385,16 +1380,52 @@ namespace Material
 		//each page only needs a single set of descriptor sets, since we'll bind them and use offsets to get to 
 		//individual page members when needed.
 
-		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * data.numDescSets);
+		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * 2);
 
-		for (uint32_t i = 0; i < data.numDescSets; ++i)
+		newPage.bufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
+		memcpy(newPage.bufferInfos, data.defaultBufferInfos, sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
+		
+		newPage.imageInfos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * data.numDefaultImageInfos);
+		memcpy(newPage.imageInfos, data.defaultImageInfos, sizeof(VkDescriptorImageInfo) * data.numDefaultImageInfos);
+
+		newPage.descSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
+		memcpy(newPage.descSetWrites, data.defaultDescWrites, sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
+
+		for (uint32_t i = 0; i < 2; ++i)
 		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&data.descriptorSetLayouts[i], 1, vkh::GContext.descriptorPool);
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&data.descriptorSetLayouts[i+2], 1, vkh::GContext.descriptorPool);
 			VkResult res = vkAllocateDescriptorSets(vkh::GContext.device, &allocInfo, &newPage.descSets[i]);
 			checkf(res == VK_SUCCESS, "Error allocating descriptor set");
 		}
 
-	
+		uint32_t totalDescWrites = data.numDefaultStaticWrites + data.numDefaultDynamicWrites;
+
+
+		uint32_t curBuffer = 0;
+		uint32_t curImage = 0;
+
+		for (uint32_t i = 0; i < totalDescWrites; ++i)
+		{
+			if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			{
+				newPage.descSetWrites[i].pImageInfo = &newPage.imageInfos[curImage++];
+
+			}
+			else if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{
+				newPage.bufferInfos[curBuffer].buffer = (i >= data.numDefaultStaticWrites) ? newPage.dynamicBuffer : newPage.staticBuffer;
+				newPage.descSetWrites[i].pBufferInfo = &newPage.bufferInfos[curBuffer++];
+			}
+
+			//HACK - store the set number in the count since we're always using 1 descriptor per write 
+			uint32_t targetSet = data.defaultDescWrites[i].descriptorCount;
+			uint32_t binding = data.defaultDescWrites[i].dstBinding;
+			
+			newPage.descSetWrites[i].descriptorCount = 1;
+			newPage.descSetWrites[i].dstSet = newPage.descSets[targetSet-2];
+		}
+
+		vkUpdateDescriptorSets(vkh::GContext.device, totalDescWrites, newPage.descSetWrites, 0, nullptr);
 
 		return static_cast<uint32_t>(data.instPages.size()) - 1;
 	}

@@ -53,8 +53,10 @@ struct MaterialInstancePage
 	VkBuffer dynamicBuffer;
 	
 	VkDescriptorSet* descSets;
+	VkDescriptorBufferInfo* bufferInfos;
+	VkDescriptorImageInfo* imageInfos;
 
-	std::vector<VkWriteDescriptorSet> descSetWrites;
+	VkWriteDescriptorSet* descSetWrites;
 
 	//stores the generation of material instances
 	//0 is not a valid generation, empty slots are 0.
@@ -88,6 +90,8 @@ struct MaterialRenderData
 
 	uint32_t numDefaultStaticWrites;
 	uint32_t numDefaultDynamicWrites;
+	uint32_t numDefaultBufferInfos;
+	uint32_t numDefaultImageInfos;
 
 	char* defaultStaticData;
 	char* defaultDynamicData;

@@ -109,7 +109,7 @@ namespace Rendering
 
 			const MeshRenderData& mesh = Mesh::getRenderData();
 			const MaterialRenderData& mat = Material::getRenderData(mInst.parent);
-
+			const MaterialInstancePage& page = mat.instPages[mInst.page];
 
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
 			VkBuffer vertexBuffers[] = { mesh.vBuffer };
@@ -148,6 +148,8 @@ namespace Rendering
 			if (mat.numDescSets > 0)
 			{
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
+				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 2, 2, page.descSets, 0, 0);
+
 			}
 
 			vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
