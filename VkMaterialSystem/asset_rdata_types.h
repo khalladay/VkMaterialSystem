@@ -65,6 +65,8 @@ struct MaterialInstancePage
 
 	vkh::Allocation staticMem;
 	vkh::Allocation dynamicMem;
+
+	uint32_t numPageDescSets;
 };
 
 struct MaterialRenderData
@@ -106,6 +108,8 @@ struct MaterialRenderData
 
 	uint32_t* staticUniformLayout;
 	uint32_t* dynamicUniformLayout;
+
+	uint8_t usesGlobalData : 1;
 };
 
 struct TextureRenderData

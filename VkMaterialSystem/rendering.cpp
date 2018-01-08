@@ -148,7 +148,7 @@ namespace Rendering
 			if (mat.numDescSets > 0)
 			{
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
-				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 2, 2, page.descSets, 0, 0);
+				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, 0, 0);
 
 			}
 

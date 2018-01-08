@@ -899,7 +899,9 @@ namespace Material
 		checkf(res == VK_SUCCESS, "Error allocating descriptor set");
 
 		//if we're using global data, we pull the data from wherever our global data has been initialized
-		if (def.globalSets.size() > 0)
+		outMaterial.usesGlobalData = def.globalSets.size() > 0;
+
+		if (outMaterial.usesGlobalData)
 		{
 			checkf(def.globalSets.size() == 1, "using more than 1 global buffer isn't supported right now");
 
@@ -1380,7 +1382,9 @@ namespace Material
 		//each page only needs a single set of descriptor sets, since we'll bind them and use offsets to get to 
 		//individual page members when needed.
 
-		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * 2);
+		newPage.numPageDescSets = data.numDescSets - data.usesGlobalData;
+
+		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * newPage.numPageDescSets);
 
 		newPage.bufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
 		memcpy(newPage.bufferInfos, data.defaultBufferInfos, sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
@@ -1391,9 +1395,9 @@ namespace Material
 		newPage.descSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
 		memcpy(newPage.descSetWrites, data.defaultDescWrites, sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
 
-		for (uint32_t i = 0; i < 2; ++i)
+		for (uint32_t i = 0; i < newPage.numPageDescSets; ++i)
 		{
-			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&data.descriptorSetLayouts[i+2], 1, vkh::GContext.descriptorPool);
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&data.descriptorSetLayouts[i+data.usesGlobalData], 1, vkh::GContext.descriptorPool);
 			VkResult res = vkAllocateDescriptorSets(vkh::GContext.device, &allocInfo, &newPage.descSets[i]);
 			checkf(res == VK_SUCCESS, "Error allocating descriptor set");
 		}
@@ -1422,7 +1426,7 @@ namespace Material
 			uint32_t binding = data.defaultDescWrites[i].dstBinding;
 			
 			newPage.descSetWrites[i].descriptorCount = 1;
-			newPage.descSetWrites[i].dstSet = newPage.descSets[targetSet-2];
+			newPage.descSetWrites[i].dstSet = newPage.descSets[targetSet-data.usesGlobalData];
 		}
 
 		vkUpdateDescriptorSets(vkh::GContext.device, totalDescWrites, newPage.descSetWrites, 0, nullptr);
