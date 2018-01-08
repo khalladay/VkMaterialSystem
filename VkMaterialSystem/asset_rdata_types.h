@@ -67,6 +67,7 @@ struct MaterialInstancePage
 	vkh::Allocation dynamicMem;
 
 	uint32_t numPageDescSets;
+	uint32_t numPageDynamicBuffers;
 };
 
 struct MaterialRenderData

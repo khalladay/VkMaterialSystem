@@ -27,7 +27,7 @@ namespace Material
 	const char* shaderReflExtensionForStage(ShaderStage stage);
 	VkShaderStageFlags shaderStageVectorToVkEnum(std::vector<ShaderStage>& vec);
 	VkShaderStageFlagBits shaderStageEnumToVkEnum(ShaderStage stage);
-	VkDescriptorType inputTypeEnumToVkEnum(InputType type);
+	VkDescriptorType inputTypeEnumToVkEnum(InputType type, bool forceDynamicUniforms = false);
 	uint32_t allocInstancePage(uint32_t baseMaterial);
 	MaterialInstance makeInstance(InstanceDefinition def);
 
@@ -90,10 +90,10 @@ namespace Material
 		return outBits;
 	}
 
-	VkDescriptorType inputTypeEnumToVkEnum(InputType type)
+	VkDescriptorType inputTypeEnumToVkEnum(InputType type, bool forceDynamicUniforms)
 	{
 		if (type == InputType::SAMPLER) return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		if (type == InputType::UNIFORM) return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		if (type == InputType::UNIFORM) return forceDynamicUniforms ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 		checkf(0, "trying to use an unsupported descriptor type in a material");
 		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
@@ -712,7 +712,7 @@ namespace Material
 					
 					for (auto& binding : setBindingCollection)
 					{
-						VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(binding.type), shaderStageVectorToVkEnum(binding.owningStages), binding.binding, 1);
+						VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(binding.type, curSet != 0), shaderStageVectorToVkEnum(binding.owningStages), binding.binding, 1);
 						descSetBindingMap[binding.set].push_back(layoutBinding);
 					}
 
@@ -957,7 +957,7 @@ namespace Material
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrite.dstBinding = binding.binding;
 			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
+			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type, true);
 			descriptorWrite.descriptorCount = binding.set;
 			descriptorWrite.pBufferInfo = 0; //all going to point to the same buffer
 			descriptorWrite.pImageInfo = 0;
@@ -998,7 +998,7 @@ namespace Material
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrite.dstBinding = binding.binding; //refers to binding in shader
 			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type);
+			descriptorWrite.descriptorType = inputTypeEnumToVkEnum(binding.type, true);
 			descriptorWrite.descriptorCount = binding.set;
 			descriptorWrite.pBufferInfo = 0;
 			descriptorWrite.pImageInfo = 0;
@@ -1404,6 +1404,7 @@ namespace Material
 
 		uint32_t totalDescWrites = data.numDefaultStaticWrites + data.numDefaultDynamicWrites;
 
+		newPage.numPageDynamicBuffers = 0;
 
 		uint32_t curBuffer = 0;
 		uint32_t curImage = 0;
@@ -1415,10 +1416,11 @@ namespace Material
 				newPage.descSetWrites[i].pImageInfo = &newPage.imageInfos[curImage++];
 
 			}
-			else if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			else if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
 			{
 				newPage.bufferInfos[curBuffer].buffer = (i >= data.numDefaultStaticWrites) ? newPage.dynamicBuffer : newPage.staticBuffer;
 				newPage.descSetWrites[i].pBufferInfo = &newPage.bufferInfos[curBuffer++];
+				newPage.numPageDynamicBuffers++;
 			}
 
 			//HACK - store the set number in the count since we're always using 1 descriptor per write 

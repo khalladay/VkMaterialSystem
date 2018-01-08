@@ -148,8 +148,11 @@ namespace Rendering
 			if (mat.numDescSets > 0)
 			{
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
-				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, 0, 0);
 
+				std::vector<uint32_t> offsets;
+				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offsets.push_back(mInst.index);
+
+				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers,offsets.data());
 			}
 
 			vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
