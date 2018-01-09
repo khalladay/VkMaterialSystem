@@ -57,6 +57,7 @@ struct MaterialInstancePage
 	VkDescriptorImageInfo* imageInfos;
 
 	VkWriteDescriptorSet* descSetWrites;
+	VkWriteDescriptorSet* imageWrites;
 
 	//stores the generation of material instances
 	//0 is not a valid generation, empty slots are 0.

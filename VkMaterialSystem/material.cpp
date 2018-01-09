@@ -112,12 +112,12 @@ namespace Material
 	}
 
 	//note: this cannot be done from within a command buffer
-	/*void setTexture(uint32_t matId, const char* var, uint32_t texId)
+	void setTexture(MaterialInstance inst, const char* var, uint32_t texId)
 	{
-		MaterialRenderData& rData = Material::getRenderData(matId);
+		MaterialRenderData& rData = Material::getRenderData(inst.parent);
 
 		uint32_t varHash = hash(var);
-		for (uint32_t i = 0; i < rData.numDynamicUniforms * 4; i += 4)
+		for (uint32_t i = 0; i < rData.numDynamicUniforms * MATERIAL_UNIFORM_LAYOUT_STRIDE; i += MATERIAL_UNIFORM_LAYOUT_STRIDE)
 		{
 			if (rData.dynamicUniformLayout[i] == varHash)
 			{
@@ -125,7 +125,7 @@ namespace Material
 				uint32_t index = rData.dynamicUniformLayout[i + TEXTUREVIEWPTR_INDEX_IDX];
 				uint32_t setWriteIdx = rData.dynamicUniformLayout[i + DESCSET_WRITE_IDX];
 
-				VkWriteDescriptorSet& setWrite = rData.dynamic.descriptorSetWrites[setWriteIdx];
+				VkWriteDescriptorSet& setWrite = rData.instPages[inst.page].descSetWrites[setWriteIdx * inst.index]; 
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				imageInfo.imageView = texData->view; 
@@ -137,7 +137,7 @@ namespace Material
 			}
 		}
 	}
-	
+	/*
 	void setUniformData(uint32_t matId, const char* name, void* data)
 	{
 		MaterialRenderData& rData = Material::getRenderData(matId);
