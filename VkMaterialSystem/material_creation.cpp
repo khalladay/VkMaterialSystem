@@ -1386,14 +1386,14 @@ namespace Material
 
 		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * newPage.numPageDescSets);
 
-		newPage.bufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
-		memcpy(newPage.bufferInfos, data.defaultBufferInfos, sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
+		VkDescriptorBufferInfo* bufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
+		memcpy(bufferInfos, data.defaultBufferInfos, sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
 		
-		newPage.imageInfos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * data.numDefaultImageInfos);
-		memcpy(newPage.imageInfos, data.defaultImageInfos, sizeof(VkDescriptorImageInfo) * data.numDefaultImageInfos);
+		VkDescriptorImageInfo* imageInfos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * data.numDefaultImageInfos);
+		memcpy(imageInfos, data.defaultImageInfos, sizeof(VkDescriptorImageInfo) * data.numDefaultImageInfos);
 
-		newPage.descSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
-		memcpy(newPage.descSetWrites, data.defaultDescWrites, sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
+		VkWriteDescriptorSet* descSetWrites = (VkWriteDescriptorSet*)malloc(sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
+		memcpy(descSetWrites, data.defaultDescWrites, sizeof(VkWriteDescriptorSet) * (data.numDefaultStaticWrites + data.numDefaultDynamicWrites));
 
 		for (uint32_t i = 0; i < newPage.numPageDescSets; ++i)
 		{
@@ -1413,13 +1413,13 @@ namespace Material
 		{
 			if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 			{
-				newPage.descSetWrites[i].pImageInfo = &newPage.imageInfos[curImage++];
+				descSetWrites[i].pImageInfo = &imageInfos[curImage++];
 
 			}
 			else if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
 			{
-				newPage.bufferInfos[curBuffer].buffer = (i >= data.numDefaultStaticWrites) ? newPage.dynamicBuffer : newPage.staticBuffer;
-				newPage.descSetWrites[i].pBufferInfo = &newPage.bufferInfos[curBuffer++];
+				bufferInfos[curBuffer].buffer = (i >= data.numDefaultStaticWrites) ? newPage.dynamicBuffer : newPage.staticBuffer;
+				descSetWrites[i].pBufferInfo = &bufferInfos[curBuffer++];
 				newPage.numPageDynamicBuffers++;
 			}
 
@@ -1427,12 +1427,15 @@ namespace Material
 			uint32_t targetSet = data.defaultDescWrites[i].descriptorCount;
 			uint32_t binding = data.defaultDescWrites[i].dstBinding;
 			
-			newPage.descSetWrites[i].descriptorCount = 1;
-			newPage.descSetWrites[i].dstSet = newPage.descSets[targetSet-data.usesGlobalData];
+			descSetWrites[i].descriptorCount = 1;
+			descSetWrites[i].dstSet = newPage.descSets[targetSet-data.usesGlobalData];
 		}
 
-		vkUpdateDescriptorSets(vkh::GContext.device, totalDescWrites, newPage.descSetWrites, 0, nullptr);
+		vkUpdateDescriptorSets(vkh::GContext.device, totalDescWrites, descSetWrites, 0, nullptr);
 
+		free(descSetWrites);
+		free(bufferInfos);
+		free(imageInfos);
 		return static_cast<uint32_t>(data.instPages.size()) - 1;
 	}
 

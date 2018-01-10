@@ -8,9 +8,12 @@
 #include "material_creation.h"
 #include "texture.h"
 #include "vkh.h"
+#include "rendering.h"
+
 namespace App
 {
 	MaterialInstance mInstance;
+	DrawCall* drawCalls;
 
 	void init()
 	{
@@ -21,8 +24,19 @@ namespace App
 		mInstance = Material::make("../data/materials/show_uvs.mat");
 
 		Material::loadInstance("../data/instances/red_tint.inst");
+		drawCalls = (DrawCall*)malloc(sizeof(DrawCall) * 1);
 
-//		Material::setTexture(matId, "testSampler", fruits);
+		drawCalls = (DrawCall*)malloc(sizeof(DrawCall) * 25);
+		uint32_t dc = 0;
+		
+		for (uint32_t i = 0; i < 5; ++i)
+		{
+			for (uint32_t j = 0; j < 5; ++j)
+			{
+				drawCalls[dc].meshIdx = Mesh::quad(0.4, 0.4, -0.8 + i * 0.4f, -0.8 + j * 0.4f);
+				drawCalls[dc++].mat = mInstance;
+			}
+		}
 
 		Mesh::quad(2.0f, 2.0f);
 
@@ -31,7 +45,7 @@ namespace App
 
 	void tick(float deltaTime)
 	{
-		Rendering::draw(mInstance);
+		Rendering::draw(drawCalls, 25);
 	}
 
 	void kill()

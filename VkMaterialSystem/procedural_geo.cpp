@@ -6,7 +6,7 @@
 
 namespace Mesh
 {
-	void quad(float width, float height, float xOffset, float yOffset)
+	uint32_t quad(float width, float height, float xOffset, float yOffset)
 	{
 		std::vector<Vertex> verts;
 
@@ -25,6 +25,6 @@ namespace Mesh
 
 		uint32_t indices[6] = { 0,2,1,2,0,3 };
 
-		make(&verts[0], static_cast<uint32_t>(verts.size()), &indices[0], 6);
+		return make(&verts[0], static_cast<uint32_t>(verts.size()), &indices[0], 6);
 	}
 }

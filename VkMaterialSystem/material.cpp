@@ -77,7 +77,9 @@ namespace Material
 
 	MaterialInstance makeInstance(uint32_t parentId)
 	{
-		return{ parentId,0,0,0 };
+		InstanceDefinition def = {};
+		def.parent = parentId;
+		return makeInstance(def);
 	}
 
 	uint32_t reserve(const char* reserveName)
@@ -112,7 +114,7 @@ namespace Material
 	}
 
 	//note: this cannot be done from within a command buffer
-	void setTexture(MaterialInstance inst, const char* var, uint32_t texId)
+	/*void setTexture(MaterialInstance inst, const char* var, uint32_t texId)
 	{
 		MaterialRenderData& rData = Material::getRenderData(inst.parent);
 
@@ -136,7 +138,7 @@ namespace Material
 				vkUpdateDescriptorSets(vkh::GContext.device, 1, &setWrite, 0, nullptr);
 			}
 		}
-	}
+	}*/
 	/*
 	void setUniformData(uint32_t matId, const char* name, void* data)
 	{

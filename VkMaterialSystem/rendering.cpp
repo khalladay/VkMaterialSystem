@@ -65,7 +65,7 @@ namespace Rendering
 	}
 
 
-	void draw(MaterialInstance mInst)
+	void draw(DrawCall* drawCalls, uint32_t count)
 	{
 		//acquire an image from the swap chain
 		uint32_t imageIndex;
@@ -105,11 +105,14 @@ namespace Rendering
 		vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//eventually this will have to iterate over multiple objects/materials
+		for (uint32_t dc = 0; dc < count; dc++)
 		{
+			uint32_t materialId = drawCalls[dc].mat.parent;
+			uint32_t meshId = drawCalls[dc].meshIdx;
 
-			const MeshRenderData& mesh = Mesh::getRenderData();
-			const MaterialRenderData& mat = Material::getRenderData(mInst.parent);
-			const MaterialInstancePage& page = mat.instPages[mInst.page];
+			const MeshRenderData& mesh = Mesh::getRenderData(drawCalls[dc].meshIdx);
+			const MaterialRenderData& mat = Material::getRenderData(materialId);
+			const MaterialInstancePage& page = mat.instPages[drawCalls[dc].mat.page];
 
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
 			VkBuffer vertexBuffers[] = { mesh.vBuffer };
@@ -130,8 +133,8 @@ namespace Rendering
 			if (mat.pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector(mInst.parent, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
-				Material::setPushConstantFloat(mInst.parent, "time", (float)(os_getMilliseconds() / 1000.0f));
+				Material::setPushConstantVector(materialId, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
+				Material::setPushConstantFloat(materialId, "time", (float)(os_getMilliseconds() / 1000.0f));
 
 				vkCmdPushConstants(
 					commandBuffers[imageIndex],
@@ -147,7 +150,7 @@ namespace Rendering
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
 
 				std::vector<uint32_t> offsets;
-				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offsets.push_back(mInst.index);
+				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offsets.push_back(drawCalls[dc].mat.index);
 
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers,offsets.data());
 			}
