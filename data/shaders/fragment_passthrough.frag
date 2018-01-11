@@ -10,6 +10,17 @@ layout(binding = 0, set = 0)uniform GLOBAL_DATA
 	vec4 worldSpaceCameraPos;
 }global;
 
+layout(push_constant) uniform PER_OBJECT 
+{ 
+	vec4 col; 
+}pc;
+
+layout(binding = 0, set = 2) uniform Instance
+{
+	vec4 tint;
+}inst_data;
+
+
 layout(binding = 1, set = 2) uniform sampler2D texSampler;
 layout(binding = 4, set = 3) uniform sampler2D testSampler;
 
@@ -21,5 +32,5 @@ void main()
 {
 	vec4 tex = texture(texSampler, fragUV);
 	vec4 tex2 = texture(testSampler, fragUV);
-    outColor = mix(tex,tex2,fragColor.g) * global.mouse.z;
+    outColor = mix(tex,tex2,fragColor.g) * global.mouse.z * pc.col * inst_data.tint;
 }

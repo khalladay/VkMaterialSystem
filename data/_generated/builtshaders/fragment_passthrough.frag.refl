@@ -1,4 +1,14 @@
 {
+    "push_constants": {
+        "size": 16,
+        "elements": [
+            {
+                "name": "col",
+                "size": 16,
+                "offset": 0
+            }
+        ]
+    },
     "descriptor_sets": [
         {
             "set": 0,
@@ -11,6 +21,20 @@
                     "name": "mouse",
                     "size": 16,
                     "offset": 16
+                }
+            ]
+        },
+        {
+            "set": 2,
+            "binding": 0,
+            "name": "Instance",
+            "size": 16,
+            "type": "UNIFORM",
+            "members": [
+                {
+                    "name": "tint",
+                    "size": 16,
+                    "offset": 0
                 }
             ]
         },
@@ -40,9 +64,9 @@
     "dynamic_sets": [
         3
     ],
-    "static_set_size": 0,
+    "static_set_size": 16,
     "dynamic_set_size": 0,
-    "num_static_uniforms": 0,
+    "num_static_uniforms": 1,
     "num_static_textures": 1,
     "num_dynamic_uniforms": 0,
     "num_dynamic_textures": 1

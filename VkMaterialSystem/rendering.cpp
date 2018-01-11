@@ -64,7 +64,6 @@ namespace Rendering
 
 	}
 
-
 	void draw(DrawCall* drawCalls, uint32_t count)
 	{
 		//acquire an image from the swap chain
@@ -116,7 +115,6 @@ namespace Rendering
 
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
 			VkBuffer vertexBuffers[] = { mesh.vBuffer };
-			VkDeviceSize offsets[] = { 0 };
 
 			glm::vec4 mouseData = glm::vec4(0, 0, 0, 0);
 			mouseData.x = (float)getMouseX();
@@ -130,11 +128,12 @@ namespace Rendering
 			Material::setGlobalVector4("mouse", mouseData);
 			Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
 
+			size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
+
 			if (mat.pushConstantLayout.blockSize > 0)
 			{
 				//push constant data is completely set up for every object 
-				Material::setPushConstantVector(materialId, "col", glm::vec4(0.0, 1.0, 1.0, 1.0));
-				Material::setPushConstantFloat(materialId, "time", (float)(os_getMilliseconds() / 1000.0f));
+				Material::setPushConstantVector(materialId, "col", glm::vec4(1.0, 1.0, 1.0, 1.0));
 
 				vkCmdPushConstants(
 					commandBuffers[imageIndex],
@@ -149,13 +148,16 @@ namespace Rendering
 			{
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
 
-				std::vector<uint32_t> offsets;
-				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offsets.push_back(drawCalls[dc].mat.index);
+				std::vector<uint32_t> offset;
+				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offset.push_back(drawCalls[dc].mat.index * uboAlignment);
 
-				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers,offsets.data());
+
+ 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers, offset.data());
 			}
 
-			vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+			VkDeviceSize vertexOffsets[] = { 0 };
+
+			vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, vertexOffsets);
 			vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.iBuffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.iCount), 1, 0, 0, 0);
 

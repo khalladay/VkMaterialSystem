@@ -527,7 +527,7 @@ namespace Material
 		vkUnmapMemory(vkh::GContext.device, stagingMemory.handle);
 
 		vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
-		vkh::copyBuffer(stagingBuffer, *buffer, dataSize, 0, 0, scratch);
+		vkh::copyBuffer(stagingBuffer, *buffer, dataSize, 0, dstOffset, scratch);
 		vkh::submitScratchCommandBuffer(scratch);
 		vkh::freeDeviceMemory(stagingMemory);
 
@@ -966,7 +966,7 @@ namespace Material
 			{
 				VkDescriptorBufferInfo uniformBufferInfo = {};
 				uniformBufferInfo.offset = curLayoutEntry[BUFFER_START_OFFSET_IDX];
-				uniformBufferInfo.range = binding.sizeBytes * MATERIAL_INSTANCE_PAGESIZE;
+				uniformBufferInfo.range = binding.sizeBytes;
 				uniformBufferInfos.push_back(uniformBufferInfo);
 			}
 			else if (binding.type == InputType::SAMPLER)
@@ -1345,6 +1345,10 @@ namespace Material
 
 		VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
+		VkDeviceSize uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
+		data.staticUniformMemSize = (data.staticUniformMemSize / uboAlignment) * uboAlignment + ((data.staticUniformMemSize % uboAlignment) > 0 ? uboAlignment : 0);
+		data.dynamicUniformMemSize = (data.dynamicUniformMemSize / uboAlignment) * uboAlignment + ((data.dynamicUniformMemSize % uboAlignment) > 0 ? uboAlignment : 0);
+
 		if (data.staticUniformMemSize > 0)
 		{
 			vkh::createBuffer(newPage.staticBuffer,
@@ -1383,7 +1387,6 @@ namespace Material
 		//individual page members when needed.
 
 		newPage.numPageDescSets = data.numDescSets - data.usesGlobalData;
-
 		newPage.descSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * newPage.numPageDescSets);
 
 		VkDescriptorBufferInfo* bufferInfos = (VkDescriptorBufferInfo*)malloc(sizeof(VkDescriptorBufferInfo) * data.numDefaultBufferInfos);
@@ -1493,8 +1496,11 @@ namespace Material
 		char* dynData = (char*)malloc(data.dynamicUniformMemSize);
 		memcpy(dynData, data.defaultDynamicData, data.dynamicUniformMemSize);
 
-		fillBufferWithData(&data.instPages[inst.page].staticBuffer, data.staticUniformMemSize, inst.index * data.staticUniformMemSize, staticData);
-		fillBufferWithData(&data.instPages[inst.page].dynamicBuffer, data.dynamicUniformMemSize, inst.index * data.dynamicUniformMemSize, dynData);
+		if (data.staticUniformMemSize)
+			fillBufferWithData(&data.instPages[inst.page].staticBuffer, data.staticUniformMemSize, inst.index * data.staticUniformMemSize, staticData);
+		
+		if (data.dynamicUniformMemSize)
+			fillBufferWithData(&data.instPages[inst.page].dynamicBuffer, data.dynamicUniformMemSize, inst.index * data.dynamicUniformMemSize, dynData);
 
 		return inst;
 	}

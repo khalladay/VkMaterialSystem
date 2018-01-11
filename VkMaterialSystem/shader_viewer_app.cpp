@@ -24,7 +24,6 @@ namespace App
 		mInstance = Material::make("../data/materials/show_uvs.mat");
 
 		Material::loadInstance("../data/instances/red_tint.inst");
-		drawCalls = (DrawCall*)malloc(sizeof(DrawCall) * 1);
 
 		drawCalls = (DrawCall*)malloc(sizeof(DrawCall) * 25);
 		uint32_t dc = 0;
@@ -34,7 +33,7 @@ namespace App
 			for (uint32_t j = 0; j < 5; ++j)
 			{
 				drawCalls[dc].meshIdx = Mesh::quad(0.4, 0.4, -0.8 + i * 0.4f, -0.8 + j * 0.4f);
-				drawCalls[dc++].mat = mInstance;
+				drawCalls[dc++].mat = Material::makeInstance(mInstance.parent);;
 			}
 		}
 
@@ -45,11 +44,11 @@ namespace App
 
 	void tick(float deltaTime)
 	{
-		Rendering::draw(drawCalls, 25);
+		Rendering::draw(drawCalls, 1);
 	}
 
 	void kill()
 	{
-		
+		free(drawCalls);
 	}
 }
