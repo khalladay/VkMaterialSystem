@@ -15,7 +15,7 @@ layout(push_constant) uniform PER_OBJECT
 	vec4 col; 
 }pc;
 
-layout(binding = 0, set = 2) uniform Instance
+layout(binding = 0, set = 3) uniform Instance
 {
 	vec4 tint;
 }inst_data;

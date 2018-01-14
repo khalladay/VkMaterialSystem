@@ -26,6 +26,14 @@
         },
         {
             "set": 2,
+            "binding": 1,
+            "name": "texSampler",
+            "size": 0,
+            "type": "SAMPLER",
+            "members": []
+        },
+        {
+            "set": 3,
             "binding": 0,
             "name": "Instance",
             "size": 16,
@@ -37,14 +45,6 @@
                     "offset": 0
                 }
             ]
-        },
-        {
-            "set": 2,
-            "binding": 1,
-            "name": "texSampler",
-            "size": 0,
-            "type": "SAMPLER",
-            "members": []
         },
         {
             "set": 3,
@@ -64,10 +64,10 @@
     "dynamic_sets": [
         3
     ],
-    "static_set_size": 16,
-    "dynamic_set_size": 0,
-    "num_static_uniforms": 1,
+    "static_set_size": 0,
+    "dynamic_set_size": 16,
+    "num_static_uniforms": 0,
     "num_static_textures": 1,
-    "num_dynamic_uniforms": 0,
+    "num_dynamic_uniforms": 1,
     "num_dynamic_textures": 1
 }

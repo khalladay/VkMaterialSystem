@@ -139,19 +139,20 @@ namespace Material
 			}
 		}
 	}*/
-	/*
-	void setUniformData(uint32_t matId, const char* name, void* data)
+	
+	void setUniformData(MaterialInstance inst, const char* name, void* data)
 	{
-		MaterialRenderData& rData = Material::getRenderData(matId);
+		MaterialRenderData& rData = Material::getRenderData(inst.parent);
+		
 		uint32_t varHash = hash(name);
 
-		for (uint32_t i = 0; i < rData.numDynamicUniforms * 4; i += 4)
+		for (uint32_t i = 0; i < rData.numDynamicUniforms * MATERIAL_UNIFORM_LAYOUT_STRIDE; i += MATERIAL_UNIFORM_LAYOUT_STRIDE)
 		{
 			if (rData.dynamicUniformLayout[i] == varHash)
 			{
-				VkBuffer& targetBuffer = rData.dynamic.buffers[rData.dynamicUniformLayout[i + BUFFER_INDEX_IDX]];
+				VkBuffer& targetBuffer = rData.instPages[inst.page].dynamicBuffer;// [rData.dynamicUniformLayout[i + BUFFER_INDEX_IDX]];
 				uint32_t size = rData.dynamicUniformLayout[i + MEMBER_SIZE_IDX];
-				uint32_t offset = rData.dynamicUniformLayout[i + MEMBER_OFFSET_IDX];
+				uint32_t offset = rData.dynamicUniformLayout[i + MEMBER_OFFSET_IDX] + rData.dynamicUniformMemSize * inst.index;
 
 				vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
 				vkCmdUpdateBuffer(scratch.buffer, targetBuffer, offset, size, data);
@@ -159,7 +160,7 @@ namespace Material
 				break;
 			}
 		}
-	}*/
+	}
 
 	void setPushConstantVector(uint32_t matId, const char* var, glm::vec4& data)
 	{
@@ -176,25 +177,25 @@ namespace Material
 		setPushConstantData(matId, var, &data, sizeof(float));
 	}
 
-	/*void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data)
+	void setUniformVector4(MaterialInstance inst, const char* name, glm::vec4& data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(inst, name, &data);
 	}
 
-	void setUniformVector2(uint32_t matId, const char* name, glm::vec2& data)
+	void setUniformVector2(MaterialInstance inst, const char* name, glm::vec2& data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(inst, name, &data);
 	}
 
-	void setUniformFloat(uint32_t matId, const char* name, float data)
+	void setUniformFloat(MaterialInstance inst, const char* name, float data)
 	{
-		setUniformData(matId, name, &data);
+		setUniformData(inst, name, &data);
 	}
 
-	void setUniformMatrix(uint32_t matId, const char* name, glm::mat4& data)
+	void setUniformMatrix(MaterialInstance inst, const char* name, glm::mat4& data)
 	{
-		setUniformData(matId, name, &data);
-	}*/
+		setUniformData(inst, name, &data);
+	}
 
 	void setGlobalFloat(const char* name, float data)
 	{

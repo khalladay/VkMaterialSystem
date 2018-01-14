@@ -48,10 +48,10 @@ namespace Material
 	void setPushConstantFloat(uint32_t matId, const char* name, float data);
 	void setPushConstantMatrix(uint32_t matId, const char* name, glm::mat4& data);
 
-	//void setUniformVector4(uint32_t matId, const char* name, glm::vec4& data);
-	//void setUniformVector2(uint32_t matId, const char* name, glm::vec2& data);
-	//void setUniformFloat(uint32_t matId, const char* name, float data);
-	//void setUniformMatrix(uint32_t matId, const char* name, glm::mat4& data);
+	void setUniformVector4(MaterialInstance inst, const char* name, glm::vec4& data);
+	void setUniformVector2(MaterialInstance inst, const char* name, glm::vec2& data);
+	void setUniformFloat(MaterialInstance inst, const char* name, float data);
+	void setUniformMatrix(MaterialInstance inst, const char* name, glm::mat4& data);
 
 	//void setTexture(uint32_t matId, const char* name, uint32_t texId);
 
