@@ -149,7 +149,7 @@ namespace Rendering
 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
 
 				std::vector<uint32_t> offset;
-				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offset.push_back(drawCalls[dc].mat.index * uboAlignment);
+				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offset.push_back(drawCalls[dc].mat.index * mat.dynamicUniformMemSize);
 
 
  				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers, offset.data());

@@ -441,8 +441,7 @@ namespace Material
 				ShaderInputDefinition inputDef;
 				memset(inputDef.value, 0, sizeof(inputDef.value));
 				memset(inputDef.name, 0, sizeof(inputDef.name));
-
-				snprintf(inputDef.name, default["name"].GetStringLength(), "%s", default["name"].GetString());
+				snprintf(inputDef.name, sizeof(inputDef.name), "%s", default["name"].GetString());
 
 				const Value& defaultValue = default["value"];
 				
@@ -452,6 +451,7 @@ namespace Material
 
 					for (uint32_t dv = 0; dv < defaultValue.Size(); ++dv)
 					{
+						float f = defaultValue[dv].GetFloat();
 						defaultFloats[dv] = defaultValue[dv].GetFloat();
 					}
 				}
@@ -1439,6 +1439,7 @@ namespace Material
 		free(descSetWrites);
 		free(bufferInfos);
 		free(imageInfos);
+
 		return static_cast<uint32_t>(data.instPages.size()) - 1;
 	}
 
@@ -1448,16 +1449,16 @@ namespace Material
 		///////////////////////////////////////////////////////////////////////////////
 		//Place Material Instance in a page
 		///////////////////////////////////////////////////////////////////////////////			
-		MaterialRenderData& data = Material::getRenderData(def.parent);
+		MaterialRenderData& rData = Material::getRenderData(def.parent);
 
 		MaterialInstance inst = { 0,0,0,0 };
 		inst.parent = def.parent;
 
 		bool foundSlot = false;
 
-		for (uint32_t page = 0; page < data.instPages.size(); ++page)
+		for (uint32_t page = 0; page < rData.instPages.size(); ++page)
 		{
-			MaterialInstancePage& curPage = data.instPages[page];
+			MaterialInstancePage& curPage = rData.instPages[page];
 
 			if (curPage.freeIndices.size() > 0)
 			{
@@ -1479,7 +1480,7 @@ namespace Material
 			//if code reaches here, there's no room in the parent material's
 			//instance pages for this instance, and we need to alloc a new page
 			uint32_t newPageIdx = allocInstancePage(inst.parent);
-			MaterialInstancePage& curPage = data.instPages[newPageIdx];
+			MaterialInstancePage& curPage = rData.instPages[newPageIdx];
 
 			inst.page = newPageIdx;
 			inst.index = curPage.freeIndices.front();
@@ -1490,17 +1491,52 @@ namespace Material
 		//Set up buffers
 		///////////////////////////////////////////////////////////////////////////////			
 
-		char* staticData = (char*)malloc(data.staticUniformMemSize);
-		memcpy(staticData, data.defaultStaticData, data.staticUniformMemSize);
+		char* staticData = (char*)malloc(rData.staticUniformMemSize);
+		memcpy(staticData, rData.defaultStaticData, rData.staticUniformMemSize);
 
-		char* dynData = (char*)malloc(data.dynamicUniformMemSize);
-		memcpy(dynData, data.defaultDynamicData, data.dynamicUniformMemSize);
+		char* dynData = (char*)malloc(rData.dynamicUniformMemSize);
+		memcpy(dynData, rData.defaultDynamicData, rData.dynamicUniformMemSize);
+		size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
 
-		if (data.staticUniformMemSize)
-			fillBufferWithData(&data.instPages[inst.page].staticBuffer, data.staticUniformMemSize, inst.index * data.staticUniformMemSize, staticData);
-		
-		if (data.dynamicUniformMemSize)
-			fillBufferWithData(&data.instPages[inst.page].dynamicBuffer, data.dynamicUniformMemSize, inst.index * data.dynamicUniformMemSize, dynData);
+		for (Material::ShaderInputDefinition& inputDef : def.defaults)
+		{
+			uint32_t varHash = hash(inputDef.name);
+
+			for (uint32_t i = 0; i < rData.numStaticUniforms * MATERIAL_UNIFORM_LAYOUT_STRIDE; i += MATERIAL_UNIFORM_LAYOUT_STRIDE)
+			{
+				if (rData.staticUniformLayout[i] == varHash)
+				{
+					uint32_t size = rData.staticUniformLayout[i + MEMBER_SIZE_IDX];
+					uint32_t offset = rData.staticUniformLayout[i + MEMBER_OFFSET_IDX];
+					
+					memcpy(staticData + offset, inputDef.value, size);
+				}
+			}
+
+
+			for (uint32_t i = 0; i < rData.numDynamicUniforms * MATERIAL_UNIFORM_LAYOUT_STRIDE; i += MATERIAL_UNIFORM_LAYOUT_STRIDE)
+			{
+				if (rData.dynamicUniformLayout[i] == varHash)
+				{
+					uint32_t size = rData.dynamicUniformLayout[i + MEMBER_SIZE_IDX];
+					uint32_t offset = rData.dynamicUniformLayout[i + MEMBER_OFFSET_IDX];
+					memcpy(dynData + offset, inputDef.value, size);
+				}
+			}
+		}
+
+		if (rData.staticUniformMemSize)
+		{
+			fillBufferWithData(&rData.instPages[inst.page].staticBuffer, rData.staticUniformMemSize, inst.index * rData.staticUniformMemSize, staticData);
+		}
+
+		if (rData.dynamicUniformMemSize)
+		{
+			fillBufferWithData(&rData.instPages[inst.page].dynamicBuffer, rData.dynamicUniformMemSize, inst.index * rData.dynamicUniformMemSize, dynData);
+		}
+
+		free(dynData);
+		free(staticData);
 
 		return inst;
 	}

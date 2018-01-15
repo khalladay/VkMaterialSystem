@@ -150,7 +150,7 @@ namespace Material
 		{
 			if (rData.dynamicUniformLayout[i] == varHash)
 			{
-				VkBuffer& targetBuffer = rData.instPages[inst.page].dynamicBuffer;// [rData.dynamicUniformLayout[i + BUFFER_INDEX_IDX]];
+				VkBuffer& targetBuffer = rData.instPages[inst.page].dynamicBuffer;
 				uint32_t size = rData.dynamicUniformLayout[i + MEMBER_SIZE_IDX];
 				uint32_t offset = rData.dynamicUniformLayout[i + MEMBER_OFFSET_IDX] + rData.dynamicUniformMemSize * inst.index;
 

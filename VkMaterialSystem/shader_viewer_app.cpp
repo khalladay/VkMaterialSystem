@@ -18,12 +18,11 @@ namespace App
 	void init()
 	{
 		Rendering::init();
-		//Texture::make("../data/textures/test_texture.jpg");
+
 		Material::initGlobalShaderData();
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
 		mInstance = Material::make("../data/materials/show_uvs.mat");
 
-		Material::loadInstance("../data/instances/red_tint.inst");
 		
 		mInstance = Material::makeInstance(Material::loadInstance("../data/instances/red_tint.inst"));
 		drawCalls = (DrawCall*)malloc(sizeof(DrawCall) * 25);
@@ -34,11 +33,11 @@ namespace App
 			for (uint32_t j = 0; j < 5; ++j)
 			{
 				drawCalls[dc].meshIdx = Mesh::quad(0.4, 0.4, -0.8 + i * 0.4f, -0.8 + j * 0.4f);
-				drawCalls[dc++].mat = Material::makeInstance(mInstance.parent);;
+				drawCalls[dc++].mat = Material::makeInstance(Material::loadInstance("../data/instances/red_tint.inst"));
 				
-				if (j == i && i == 0)
+				if (j == i && i == 1)
 				{
-					Material::setUniformVector4(drawCalls[dc - 1].mat, "tint", glm::vec4(1, 0, 0, 0));
+					Material::setUniformVector4(drawCalls[dc - 1].mat, "tint", glm::vec4(0, 0, 1, 0));
 				}
 			}
 		}
