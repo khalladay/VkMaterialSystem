@@ -93,6 +93,7 @@ namespace Material
 	//since we don't have a path to hash to use as the (potential) map key
 	MaterialInstance make(uint32_t matId, Material::Definition def);
 	MaterialInstance makeInstance(Material::InstanceDefinition def);
+	MaterialInstance duplicateInstance(MaterialInstance inst);
 
 	Definition load(const char* assetPath);
 	InstanceDefinition loadInstance(const char* instancePath);

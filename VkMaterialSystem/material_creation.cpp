@@ -1353,7 +1353,7 @@ namespace Material
 		{
 			vkh::createBuffer(newPage.staticBuffer,
 				data.staticUniformMemSize * MATERIAL_INSTANCE_PAGESIZE,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				memFlags);
 
 			allocateDeviceMemoryForBuffers(newPage.staticMem, data.staticUniformMemSize * MATERIAL_INSTANCE_PAGESIZE, &newPage.staticBuffer, memFlags);
@@ -1365,7 +1365,7 @@ namespace Material
 		{
 			vkh::createBuffer(newPage.dynamicBuffer,
 				data.dynamicUniformMemSize * MATERIAL_INSTANCE_PAGESIZE,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				memFlags);
 
 			allocateDeviceMemoryForBuffers(newPage.dynamicMem, data.dynamicUniformMemSize * MATERIAL_INSTANCE_PAGESIZE, &newPage.dynamicBuffer, memFlags);
@@ -1443,16 +1443,12 @@ namespace Material
 		return static_cast<uint32_t>(data.instPages.size()) - 1;
 	}
 
-	//without other arg, this will clone static data from root instance
-	MaterialInstance makeInstance(InstanceDefinition def)
+	MaterialInstance getFreeInstance(uint32_t parent)
 	{
-		///////////////////////////////////////////////////////////////////////////////
-		//Place Material Instance in a page
-		///////////////////////////////////////////////////////////////////////////////			
-		MaterialRenderData& rData = Material::getRenderData(def.parent);
+		MaterialRenderData& rData = Material::getRenderData(parent);
 
 		MaterialInstance inst = { 0,0,0,0 };
-		inst.parent = def.parent;
+		inst.parent = parent;
 
 		bool foundSlot = false;
 
@@ -1486,7 +1482,47 @@ namespace Material
 			inst.index = curPage.freeIndices.front();
 			curPage.freeIndices.pop();
 		}
+		return inst;
 
+	}
+
+	MaterialInstance duplicateInstance(MaterialInstance copyFrom)
+	{
+		///////////////////////////////////////////////////////////////////////////////
+		//Place Material Instance in a page
+		///////////////////////////////////////////////////////////////////////////////			
+		MaterialRenderData& rData = Material::getRenderData(copyFrom.parent);
+		MaterialInstance inst = getFreeInstance(copyFrom.parent);
+
+		///////////////////////////////////////////////////////////////////////////////
+		//Set up buffers
+		///////////////////////////////////////////////////////////////////////////////			
+
+		vkh::VkhCommandBuffer scratch = vkh::beginScratchCommandBuffer(vkh::ECommandPoolType::Transfer);
+	
+		if (rData.staticUniformMemSize > 0)
+		{
+			vkh::copyBuffer(rData.instPages[copyFrom.page].staticBuffer, rData.instPages[inst.page].staticBuffer, rData.staticUniformMemSize, copyFrom.index * rData.staticUniformMemSize, inst.index * rData.staticUniformMemSize, scratch);
+		}
+
+		if (rData.dynamicUniformMemSize > 0)
+		{
+			vkh::copyBuffer(rData.instPages[copyFrom.page].dynamicBuffer, rData.instPages[inst.page].dynamicBuffer, rData.dynamicUniformMemSize, copyFrom.index * rData.dynamicUniformMemSize, inst.index * rData.dynamicUniformMemSize, scratch);
+		}
+
+		vkh::submitScratchCommandBuffer(scratch);
+		return inst;
+	}
+
+
+	MaterialInstance makeInstance(InstanceDefinition def)
+	{
+		///////////////////////////////////////////////////////////////////////////////
+		//Place Material Instance in a page
+		///////////////////////////////////////////////////////////////////////////////			
+		MaterialRenderData& rData = Material::getRenderData(def.parent);
+		MaterialInstance inst = getFreeInstance(def.parent);
+		
 		///////////////////////////////////////////////////////////////////////////////
 		//Set up buffers
 		///////////////////////////////////////////////////////////////////////////////			

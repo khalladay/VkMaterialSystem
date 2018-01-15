@@ -33,7 +33,7 @@ namespace App
 			for (uint32_t j = 0; j < 5; ++j)
 			{
 				drawCalls[dc].meshIdx = Mesh::quad(0.4, 0.4, -0.8 + i * 0.4f, -0.8 + j * 0.4f);
-				drawCalls[dc++].mat = Material::makeInstance(Material::loadInstance("../data/instances/red_tint.inst"));
+				drawCalls[dc++].mat = Material::duplicateInstance(mInstance);
 				
 				if (j == i && i == 1)
 				{
