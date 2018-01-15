@@ -46,7 +46,7 @@ namespace Texture
 
 		//STBI_rgb_alpha forces an alpha even if the image doesn't have one
 		stbi_uc* pixels = stbi_load(filepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
+	
 		checkf(pixels, "Could not load image");
 
 		VkDeviceSize imageSize = texWidth * texHeight * 4;

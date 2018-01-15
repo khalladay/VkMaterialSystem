@@ -15,6 +15,11 @@ namespace Rendering
 	vkh::VkhRenderBuffer			depthBuffer;
 	std::vector<VkCommandBuffer>	commandBuffers;
 
+	struct GlobalData
+	{
+
+	};
+
 	void createMainRenderPass();
 
 	void init()

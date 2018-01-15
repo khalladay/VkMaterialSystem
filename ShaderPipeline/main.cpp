@@ -1,4 +1,4 @@
-#include <spirv_glsl.hpp>
+﻿#include <spirv_glsl.hpp>
 #include <argh.h>
 #include <string>
 #include <vector>
@@ -7,6 +7,8 @@
 #include "string_utils.h"
 #include "shaderdata.h"
 #include "config.h"
+#include <cstdio>
+#include <codecvt>
 
 std::string baseTypeToString(spirv_cross::SPIRType::BaseType type);
 
@@ -86,6 +88,21 @@ int main(int argc, const char** argv)
 		std::string pathToShaderCompile = "../third_party/glslangValidator";
 		pathToShaderCompile = makeFullPath(pathToShaderCompile);
 
+		//write out config file - need to specify UTF-8 because
+		//otherwise we end up with UTF-16 by default and glslang can't read
+		//a config file with that encoding
+		const unsigned int initial_cp = GetConsoleOutputCP();
+		SetConsoleOutputCP(CP_UTF8);
+
+		FILE* configOut;
+		fopen_s(&configOut, "myconf.conf", "w");
+		fputs(gpuConfig, configOut);
+		fclose(configOut);
+
+		SetConsoleOutputCP(initial_cp);
+
+
+		std::string configPath = makeFullPath("myconf.conf");
 
 		for (uint32_t i = 0; i < inputShaders.size(); ++i)
 		{
@@ -95,7 +112,7 @@ int main(int argc, const char** argv)
 			std::string shaderOutFull = makeFullPath(shaderOutPath);
 			std::string fileOut = shaderOutFull +"/"+ inputShaders[i] + ".spv";
 
-			std::string compilecommand = pathToShaderCompile+" -V -o " + fileOut + " " + fullPath; 
+			std::string compilecommand = pathToShaderCompile + " -V -o " + fileOut + " " + fullPath + " " + configPath;
 			printf("%s\n", compilecommand.c_str());
 			compileErr = system(compilecommand.c_str());
 		}
@@ -203,7 +220,7 @@ int main(int argc, const char** argv)
 		}
 	}
 
-	if (compileErr) getchar();
+	 getchar();
 	return 0;
 }
 

@@ -13,13 +13,16 @@ layout(binding = 0, set = 0)uniform GLOBAL_DATA
 layout(push_constant) uniform PER_OBJECT 
 { 
 	vec4 col; 
+	int img1;
+	int img2;
 }pc;
+
+layout(binding = 1, set = 0) uniform texture2D textures[4096];
 
 layout(binding = 0, set = 3) uniform Instance
 {
 	vec4 tint;
 }inst_data;
-
 
 layout(binding = 1, set = 2) uniform sampler2D texSampler;
 layout(binding = 4, set = 3) uniform sampler2D testSampler;

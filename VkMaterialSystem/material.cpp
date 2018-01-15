@@ -18,7 +18,6 @@ struct MaterialStorage
 
 MaterialStorage matStorage;
 
-
 struct GlobalShaderData
 {
 	__declspec(align(16)) glm::float32 time;
@@ -27,6 +26,9 @@ struct GlobalShaderData
 	__declspec(align(16)) glm::mat4 viewMatrix;
 	__declspec(align(16)) glm::vec4 worldSpaceCameraPos;
 };
+
+
+
 //
 namespace Material
 {
