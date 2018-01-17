@@ -284,6 +284,11 @@ namespace vkh
 				score += deviceFeatures.geometryShader ? 1000 : 0;
 				score += deviceFeatures.tessellationShader ? 1000 : 0;
 
+				if (!deviceFeatures.shaderSampledImageArrayDynamicIndexing)
+				{
+					continue;
+				}
+
 				//make sure the device supports presenting
 
 				uint32_t extensionCount;
@@ -1010,7 +1015,7 @@ namespace vkh
 		VkShaderModuleCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = dataSize;
-
+		
 		//data for vulkan is stored in uint32_t  -  so we have to temporarily copy it to a container that respects that alignment
 
 		std::vector<uint32_t> codeAligned;

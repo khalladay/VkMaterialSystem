@@ -15,10 +15,7 @@ namespace Rendering
 	vkh::VkhRenderBuffer			depthBuffer;
 	std::vector<VkCommandBuffer>	commandBuffers;
 
-	struct GlobalData
-	{
-
-	};
+	VkDescriptorSet*				globalDescSets;
 
 	void createMainRenderPass();
 
@@ -69,8 +66,27 @@ namespace Rendering
 
 	}
 
+	void writeGlobalData()
+	{
+		glm::vec4 mouseData = glm::vec4(0, 0, 0, 0);
+		mouseData.x = (float)getMouseX();
+		mouseData.y = (float)getMouseY();
+		mouseData.z = (float)getMouseLeftButton();
+		mouseData.w = (float)getMouseRightButton();
+
+		glm::vec2 resolution = glm::vec2(100, 100);
+
+		Material::setGlobalVector2("resolution", resolution);
+		Material::setGlobalVector4("mouse", mouseData);
+		Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
+
+
+	}
+
 	void draw(DrawCall* drawCalls, uint32_t count)
 	{
+		writeGlobalData();
+
 		//acquire an image from the swap chain
 		uint32_t imageIndex;
 
@@ -121,18 +137,6 @@ namespace Rendering
 			vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipeline);
 			VkBuffer vertexBuffers[] = { mesh.vBuffer };
 
-			glm::vec4 mouseData = glm::vec4(0, 0, 0, 0);
-			mouseData.x = (float)getMouseX();
-			mouseData.y = (float)getMouseY();
-			mouseData.z = (float)getMouseLeftButton();
-			mouseData.w = (float)getMouseRightButton();
-
-			glm::vec2 resolution = glm::vec2(100, 100);
-
-			Material::setGlobalVector2("resolution", resolution);
-			Material::setGlobalVector4("mouse", mouseData);
-			Material::setGlobalFloat("time", (float)(os_getMilliseconds() / 1000.0f));
-
 			size_t uboAlignment = vkh::GContext.gpu.deviceProps.limits.minUniformBufferOffsetAlignment;
 
 			if (mat.pushConstantLayout.blockSize > 0)
@@ -151,13 +155,14 @@ namespace Rendering
 
 			if (mat.numDescSets > 0)
 			{
-				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &mat.globalDescSet, 0, 0);
+
+				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &Material::getGlobalDescSets()[0], 0, 0);
 
 				std::vector<uint32_t> offset;
 				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offset.push_back(drawCalls[dc].mat.index * mat.dynamicUniformMemSize);
 
 
- 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, mat.usesGlobalData, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers, offset.data());
+ 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 1, page.numPageDescSets-1, &page.descSets[1], page.numPageDynamicBuffers, offset.data());
 			}
 
 			VkDeviceSize vertexOffsets[] = { 0 };

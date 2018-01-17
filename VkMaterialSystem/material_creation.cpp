@@ -705,7 +705,14 @@ namespace Material
 
 			for (auto& descSetBindings : def.descSets)
 			{
-				if (descSetBindings.first == curSet)
+				if (descSetBindings.first == 0 && curSet == 0)
+				{
+					VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 1);
+					descSetBindingMap[0].push_back(layoutBinding);
+					remainingInputs--;
+					needsEmpty = false;
+				}
+				else if (descSetBindings.first == curSet)
 				{
 					//this is a vector of all the bindings for the curSet
 					std::vector<DescriptorSetBinding>& setBindingCollection = descSetBindings.second;
@@ -737,11 +744,20 @@ namespace Material
 		for (auto& bindingCollection : descSetBindingMap)
 		{
 			uint32_t set = bindingCollection.first;
+			
+			if (set == 0)
+			{
+				extern VkDescriptorSetLayout*	globalDescSetLayouts;
+				Material::initGlobalShaderData();
+				uniformLayouts[0] = globalDescSetLayouts[0];
+			}
+			else
+			{
+				std::vector<VkDescriptorSetLayoutBinding>& setBindings = descSetBindingMap[bindingCollection.first];
+				VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setBindings.data(), static_cast<uint32_t>(setBindings.size()));
 
-			std::vector<VkDescriptorSetLayoutBinding>& setBindings = descSetBindingMap[bindingCollection.first];
-			VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setBindings.data(), static_cast<uint32_t>(setBindings.size()));
-
-			res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]);
+				res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]);
+			}
 		}
 
 		//for sanity in storage, we want to keep MaterialAssets and MaterialRenderDatas POD structs, so we need to convert our lovely
@@ -893,41 +909,39 @@ namespace Material
 		//todo: move this to a single desc set for the whole application? 
 
 		//global is always set 0, to make this easier
-		VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[0], 1, GContext.descriptorPool);
-		
-		res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.globalDescSet);
-		checkf(res == VK_SUCCESS, "Error allocating descriptor set");
+		//VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[0], 1, GContext.descriptorPool);
+		//
+		//res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.globalDescSet);
+		//checkf(res == VK_SUCCESS, "Error allocating descriptor set");
 
-		//if we're using global data, we pull the data from wherever our global data has been initialized
-		outMaterial.usesGlobalData = def.globalSets.size() > 0;
+		////if we're using global data, we pull the data from wherever our global data has been initialized
+		//outMaterial.usesGlobalData = def.globalSets.size() > 0;
 
-		if (outMaterial.usesGlobalData)
-		{
-			checkf(def.globalSets.size() == 1, "using more than 1 global buffer isn't supported right now");
+		//if (outMaterial.usesGlobalData)
+		//{
+		//	checkf(def.globalSets.size() == 1, "using more than 1 global buffer isn't supported right now");
 
-			std::vector<DescriptorSetBinding> globalBindings = def.descSets[def.globalSets[0]];
+		//	extern VkBuffer globalBuffer;
+		//	extern uint32_t globalSize;
 
-			extern VkBuffer globalBuffer;
-			extern uint32_t globalSize;
+		//	VkDescriptorBufferInfo globalBufferInfo = {};
+		//	globalBufferInfo.offset = 0;
+		//	globalBufferInfo.buffer = globalBuffer;
+		//	globalBufferInfo.range = globalSize;
 
-			VkDescriptorBufferInfo globalBufferInfo = {};
-			globalBufferInfo.offset = 0;
-			globalBufferInfo.buffer = globalBuffer;
-			globalBufferInfo.range = globalSize;
+		//	VkWriteDescriptorSet globalDescriptorWrite = {};
+		//	globalDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//	globalDescriptorWrite.dstSet = outMaterial.globalDescSet;
+		//	globalDescriptorWrite.dstBinding = 0; //refers to binding in shader
+		//	globalDescriptorWrite.dstArrayElement = 0;
+		//	globalDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		//	globalDescriptorWrite.descriptorCount = 1;
+		//	globalDescriptorWrite.pBufferInfo = &globalBufferInfo;
+		//	globalDescriptorWrite.pImageInfo = 0;
+		//	globalDescriptorWrite.pTexelBufferView = nullptr; // Optional
 
-			VkWriteDescriptorSet globalDescriptorWrite = {};
-			globalDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			globalDescriptorWrite.dstSet = outMaterial.globalDescSet;
-			globalDescriptorWrite.dstBinding = 0; //refers to binding in shader
-			globalDescriptorWrite.dstArrayElement = 0;
-			globalDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			globalDescriptorWrite.descriptorCount = 1;
-			globalDescriptorWrite.pBufferInfo = &globalBufferInfo;
-			globalDescriptorWrite.pImageInfo = 0;
-			globalDescriptorWrite.pTexelBufferView = nullptr; // Optional
-
-			vkUpdateDescriptorSets(GContext.device, 1, &globalDescriptorWrite, 0, nullptr);
-		}
+		//	vkUpdateDescriptorSets(GContext.device, 1, &globalDescriptorWrite, 0, nullptr);
+		//}
 
 		///////////////////////////////////////////////////////////////////////////////
 		//Create Default VkWriteDescriptorSet Objects

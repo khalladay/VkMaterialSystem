@@ -2,7 +2,6 @@
 
 #include "texture.h"
 #include "asset_rdata_types.h"
-#include "hash.h"
 #include <map>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -19,6 +18,7 @@ struct TextureAsset
 struct TextureStorage
 {
 	std::map<uint32_t, TextureAsset> data;
+	std::vector<uint32_t> deletedKeys;
 };
 
 TextureStorage texStorage;
@@ -31,9 +31,21 @@ namespace Texture
 		return &texStorage.data[texId].rData;
 	}
 
+	uint32_t nextKey()
+	{
+		if (texStorage.deletedKeys.size() == 0)
+		{
+			return texStorage.data.size();
+		}
+
+		uint32_t id = texStorage.deletedKeys.back();
+		texStorage.deletedKeys.pop_back();
+		return id;
+	}
+
 	uint32_t make(const char* filepath)
 	{
-		uint32_t newId = hash(filepath);
+		uint32_t newId = nextKey();
 		if (texStorage.data.find(newId) != texStorage.data.end())
 		{
 			return newId;

@@ -1,6 +1,6 @@
 {
     "push_constants": {
-        "size": 24,
+        "size": 16,
         "elements": [
             {
                 "name": "col",

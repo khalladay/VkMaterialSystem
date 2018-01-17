@@ -172,6 +172,8 @@
     <ClCompile Include="vkh_allocator_pool.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\data\instances\sampler_library.h" />
+    <ClInclude Include="..\data\instances\texture_library.h" />
     <ClInclude Include="asset_rdata_types.h" />
     <ClInclude Include="file_utils.h" />
     <ClInclude Include="array.h" />

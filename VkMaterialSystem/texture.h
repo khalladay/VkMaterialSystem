@@ -8,6 +8,9 @@ namespace Texture
 	uint32_t make(const char* filepath);
 	
 	TextureRenderData* getRenderData(uint32_t texId);
+	uint32_t nextKey();
+
+	
 
 	void destroy(uint64_t texId);
 }

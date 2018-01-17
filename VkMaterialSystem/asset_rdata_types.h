@@ -59,6 +59,10 @@ struct MaterialInstancePage
 	uint8_t generation[MATERIAL_INSTANCE_PAGESIZE];
 	std::queue<uint8_t> freeIndices;
 
+	// each texture is 2 uints - one for tex Id and one for sampler id
+	//if a material uses 2 textures, stride is 4. count is 4 * pagesize;
+	uint32_t* textures;
+
 	vkh::Allocation staticMem;
 	vkh::Allocation dynamicMem;
 
@@ -72,7 +76,6 @@ struct MaterialRenderData
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 
-	VkDescriptorSet globalDescSet;
 	uint32_t numDescSets;
 
 	uint32_t numDescSetLayouts;

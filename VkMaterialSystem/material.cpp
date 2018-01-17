@@ -4,6 +4,7 @@
 #include "asset_rdata_types.h"
 #include "hash.h"
 #include "vkh.h"
+#include "vkh_initializers.h"
 #include <vector>
 #include "texture.h"
 #include <map>
@@ -27,16 +28,28 @@ struct GlobalShaderData
 	__declspec(align(16)) glm::vec4 worldSpaceCameraPos;
 };
 
-
-
 //
 namespace Material
 {
-	vkh::Allocation globalMem;
-	VkBuffer globalBuffer;
-	GlobalShaderData globalShaderData;
-	void* mappedMemory;
-	uint32_t globalSize;
+	//set 0, binding 0 - global uniforms
+	vkh::Allocation			globalMem;
+	VkBuffer				globalBuffer;
+	GlobalShaderData		globalShaderData;
+	uint32_t				globalSize;
+	void*					globalMappedMemory;
+
+	VkDescriptorSet*		globalDescSets;
+	VkDescriptorSetLayout*	globalDescSetLayouts;
+	VkWriteDescriptorSet	globalTextureSetWrite;
+	VkDescriptorSetLayoutCreateInfo globalDescSetLayoutCreateInfo;
+
+	//I want to to move the creation of the global descriptor set to here, out of material creation (it shouldn't be there anyway), to 
+	//pave the way for a second global descriptor set (neither should live in an individual material) that contains all the textures we need
+
+	VkDescriptorSet* getGlobalDescSets()
+	{
+		return globalDescSets;
+	}
 
 	void initGlobalShaderData()
 	{
@@ -61,8 +74,49 @@ namespace Material
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			vkMapMemory(vkh::GContext.device, globalMem.handle, globalMem.offset, globalSize, 0, &mappedMemory);
+			vkMapMemory(vkh::GContext.device, globalMem.handle, globalMem.offset, globalSize, 0, &globalMappedMemory);
 			isInitialized = true;
+
+
+			globalDescSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 2);
+			globalDescSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * 2);
+
+
+			VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 1);
+			
+			//when we add the texture array, ,this will have to be updated
+			globalDescSetLayoutCreateInfo = vkh::descriptorSetLayoutCreateInfo(&layoutBinding, 1);
+
+			VkResult vkres = vkCreateDescriptorSetLayout(vkh::GContext.device, &globalDescSetLayoutCreateInfo, nullptr, &globalDescSetLayouts[0]);
+			checkf(vkres == VK_SUCCESS, "Error creating global descriptor set layout");
+		
+			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&globalDescSetLayouts[0], 1, vkh::GContext.descriptorPool);
+			vkres = vkAllocateDescriptorSets(vkh::GContext.device, &allocInfo, &globalDescSets[0]);
+			checkf(vkres == VK_SUCCESS, "Error allocating global descriptor set");
+
+			{
+				extern VkBuffer globalBuffer;
+				extern uint32_t globalSize;
+
+				VkDescriptorBufferInfo globalBufferInfo = {};
+				globalBufferInfo.offset = 0;
+				globalBufferInfo.buffer = globalBuffer;
+				globalBufferInfo.range = globalSize;
+
+				VkWriteDescriptorSet globalDescriptorWrite = {};
+				globalDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				globalDescriptorWrite.dstSet = globalDescSets[0];
+				globalDescriptorWrite.dstBinding = 0; //refers to binding in shader
+				globalDescriptorWrite.dstArrayElement = 0;
+				globalDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				globalDescriptorWrite.descriptorCount = 1;
+				globalDescriptorWrite.pBufferInfo = &globalBufferInfo;
+				globalDescriptorWrite.pImageInfo = 0;
+				globalDescriptorWrite.pTexelBufferView = nullptr; // Optional
+
+				vkUpdateDescriptorSets(vkh::GContext.device, 1, &globalDescriptorWrite, 0, nullptr);
+
+			}
 		}
 	}
 
@@ -203,21 +257,21 @@ namespace Material
 	{
 		initGlobalShaderData();
 		globalShaderData.time = data;
-		memcpy(mappedMemory, &globalShaderData, globalSize);
+		memcpy(globalMappedMemory, &globalShaderData, globalSize);
 	}
 
 	void setGlobalVector4(const char* name, glm::vec4& data)
 	{
 		initGlobalShaderData();
 		globalShaderData.mouse = data;
-		memcpy(mappedMemory, &globalShaderData, globalSize);
+		memcpy(globalMappedMemory, &globalShaderData, globalSize);
 	}
 
 	void setGlobalVector2(const char* name, glm::vec2& data)
 	{
 		initGlobalShaderData();
 		globalShaderData.resolution = data;
-		memcpy(mappedMemory, &globalShaderData, globalSize);
+		memcpy(globalMappedMemory, &globalShaderData, globalSize);
 	}
 
 

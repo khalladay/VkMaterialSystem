@@ -1,5 +1,6 @@
 #pragma once
 #include "stdafx.h"
+#include "vkh.h"
 
 struct MaterialRenderData;
 
@@ -58,6 +59,8 @@ namespace Material
 	void setGlobalFloat(const char* name, float data);
 	void setGlobalVector4(const char* name, glm::vec4& data);
 	void setGlobalVector2(const char* name, glm::vec2& data);
+
+	VkDescriptorSet* getGlobalDescSets();
 
 	void destroy();
 }

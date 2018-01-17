@@ -143,6 +143,12 @@
     <ClInclude Include="vkh_allocator_pool.h">
       <Filter>Header Files\allocators</Filter>
     </ClInclude>
+    <ClInclude Include="..\data\instances\texture_library.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\data\instances\sampler_library.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\fragment_passthrough.frag">
