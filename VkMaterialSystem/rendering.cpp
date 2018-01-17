@@ -160,9 +160,7 @@ namespace Rendering
 
 				std::vector<uint32_t> offset;
 				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offset.push_back(drawCalls[dc].mat.index * mat.dynamicUniformMemSize);
-
-
- 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 1, page.numPageDescSets-1, &page.descSets[1], page.numPageDynamicBuffers, offset.data());
+ 				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 1, page.numPageDescSets, page.descSets, page.numPageDynamicBuffers, offset.data());
 			}
 
 			VkDeviceSize vertexOffsets[] = { 0 };
