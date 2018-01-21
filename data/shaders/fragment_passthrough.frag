@@ -11,8 +11,8 @@ layout(binding = 0, set = 0) uniform GLOBAL_DATA
 }global;
 
 //arrays of sampler2Ds crash glslangValidator
-//layout(set = 1, binding = 0) uniform texture2D gTextures[16];
-//layout(set = 2, binding = 0) uniform sampler gSamp[8];
+layout(set = 0, binding = 2) uniform texture2D gTextures[800];
+layout(set = 0, binding = 3) uniform sampler gSamp[8];
 
 layout(push_constant) uniform PER_OBJECT 
 { 
@@ -36,7 +36,7 @@ layout(location = 1) in vec2 fragUV;
 void main() 
 {
 	vec4 tex = texture(texSampler, fragUV);
-	vec4 tex2 = texture(testSampler, fragUV);
-//	vec4 tex2 = texture(sampler2D(gTextures[pc.img1],gSamp[0]), fragUV);
+	//vec4 tex2 = texture(testSampler, fragUV);
+	vec4 tex2 = texture(sampler2D(gTextures[0],gSamp[0]), fragUV);
     outColor = mix(tex,tex2,fragColor.g) * global.mouse.z * pc.col * inst_data.tint;
 }

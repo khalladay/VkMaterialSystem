@@ -11,6 +11,26 @@ struct BlockMember
 	uint32_t offset;
 };
 
+enum class BlockType : uint8_t
+{
+	UNIFORM = 0,
+	TEXTURE = 1,
+	SEPARATETEXTURE = 2,
+	SAMPLER = 3,
+	TEXTUREARRAY = 4,
+	SAMPLERARRAY = 5
+};
+
+std::string BlockTypeNames[] =
+{
+	"UNIFORM",
+	"TEXTURE",
+	"SEPARATETEXTURE"
+	"SAMPLER",
+	"TEXTUREARRAY",
+	"SAMPELRARRAY"
+};
+
 struct InputBlock
 {
 	std::string name;
@@ -18,7 +38,8 @@ struct InputBlock
 	std::vector<BlockMember> members;
 	uint32_t set;
 	uint32_t binding;
-	bool isTextureBlock;
+	BlockType type;
+	uint32_t arrayLen;
 };
 
 struct ShaderData
@@ -55,8 +76,10 @@ void writeInputGroup(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, s
 		writer.String(block.name.c_str());
 		writer.Key("size");
 		writer.Int(block.size);
+		writer.Key("arraylen");
+		writer.Int(block.arrayLen);
 		writer.Key("type");
-		writer.String(block.isTextureBlock ? "SAMPLER" : "UNIFORM");
+		writer.String(BlockTypeNames[(uint8_t)block.type].c_str());
 
 		writer.Key("members");
 		writer.StartArray();

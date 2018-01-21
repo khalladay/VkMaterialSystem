@@ -15,6 +15,7 @@
             "binding": 0,
             "name": "GLOBAL_DATA",
             "size": 128,
+            "arraylen": 0,
             "type": "UNIFORM",
             "members": [
                 {
@@ -25,11 +26,30 @@
             ]
         },
         {
+            "set": 0,
+            "binding": 2,
+            "name": "gTextures",
+            "size": 0,
+            "arraylen": 800,
+            "type": "SAMPELRARRAY",
+            "members": []
+        },
+        {
+            "set": 0,
+            "binding": 3,
+            "name": "gSamp",
+            "size": 0,
+            "arraylen": 8,
+            "type": "",
+            "members": []
+        },
+        {
             "set": 2,
             "binding": 1,
             "name": "texSampler",
             "size": 0,
-            "type": "SAMPLER",
+            "arraylen": 0,
+            "type": "TEXTURE",
             "members": []
         },
         {
@@ -37,6 +57,7 @@
             "binding": 0,
             "name": "Instance",
             "size": 16,
+            "arraylen": 0,
             "type": "UNIFORM",
             "members": [
                 {
@@ -51,11 +72,14 @@
             "binding": 4,
             "name": "testSampler",
             "size": 0,
-            "type": "SAMPLER",
+            "arraylen": 0,
+            "type": "TEXTURE",
             "members": []
         }
     ],
     "global_sets": [
+        0,
+        0,
         0
     ],
     "static_sets": [

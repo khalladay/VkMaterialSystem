@@ -5,6 +5,7 @@
             "binding": 0,
             "name": "GLOBAL_DATA",
             "size": 128,
+            "arraylen": 0,
             "type": "UNIFORM",
             "members": [
                 {

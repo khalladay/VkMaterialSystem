@@ -38,18 +38,46 @@ void createUniformBlockForResource(InputBlock* outBlock, spirv_cross::Resource r
 	outBlock->size = compiler.get_declared_struct_size(ub_type);
 	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
-	outBlock->isTextureBlock = false;
+	outBlock->arrayLen = 0;
+	outBlock->type = BlockType::UNIFORM;
+}
+
+void createSeparateSamplerBlockForResource(InputBlock* outBlock, spirv_cross::Resource res, spirv_cross::CompilerGLSL& compiler)
+{
+	uint32_t id = res.id;
+
+	outBlock->name = res.name;
+	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
+	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
+
+	//.array is an array of uint32_t array sizes (for cases of more than one array)
+	outBlock->arrayLen = compiler.get_type(res.type_id).array[0];
+
+	outBlock->type = outBlock->arrayLen == 1 ? BlockType::SAMPLER : BlockType::SAMPLERARRAY;
+}
+
+void createSeparateTextureBlockForResource(InputBlock* outBlock, spirv_cross::Resource res, spirv_cross::CompilerGLSL& compiler)
+{
+	uint32_t id = res.id;
+
+	outBlock->name = res.name;
+	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
+	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
+	
+	
+	outBlock->arrayLen = compiler.get_type(res.type_id).array[0];
+	outBlock->type = outBlock->arrayLen == 1 ? BlockType::SEPARATETEXTURE : BlockType::TEXTUREARRAY;
 }
 
 void createTextureBlockForResource(InputBlock* outBlock, spirv_cross::Resource res, spirv_cross::CompilerGLSL& compiler)
 {
 	uint32_t id = res.id;
-	std::vector<spirv_cross::BufferRange> ranges = compiler.get_active_buffer_ranges(id);
 
 	outBlock->name = res.name;
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
 	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
-	outBlock->isTextureBlock = true;
+	outBlock->arrayLen = 0;
+	outBlock->type = BlockType::TEXTURE;
 }
 
 int main(int argc, const char** argv)
@@ -160,7 +188,7 @@ int main(int argc, const char** argv)
 				createUniformBlockForResource(&data.pushConstants, res, glsl);
 			}
 
-			data.descriptorSets.resize(resources.uniform_buffers.size() + resources.sampled_images.size());
+			data.descriptorSets.resize(resources.uniform_buffers.size() + resources.sampled_images.size() + resources.separate_images.size() + resources.separate_samplers.size());
 
 			uint32_t idx = 0;
 			for (spirv_cross::Resource res : resources.uniform_buffers)
@@ -171,6 +199,16 @@ int main(int argc, const char** argv)
 			for (spirv_cross::Resource res : resources.sampled_images)
 			{
 				createTextureBlockForResource(&data.descriptorSets[idx++], res, glsl);
+			}
+
+			for (spirv_cross::Resource res : resources.separate_images)
+			{
+				createSeparateTextureBlockForResource(&data.descriptorSets[idx++], res, glsl);
+			}
+
+			for (spirv_cross::Resource res : resources.separate_samplers)
+			{
+				createSeparateSamplerBlockForResource(&data.descriptorSets[idx++], res, glsl);
 			}
 
 			std::sort(data.descriptorSets.begin(), data.descriptorSets.end(), [](const InputBlock& lhs, const InputBlock& rhs)
@@ -187,7 +225,7 @@ int main(int argc, const char** argv)
 				if (b.set == GLOBAL_SET) data.globalSets.push_back(b.set);
 				else if (b.set == DYNAMIC_SET)
 				{
-					if (b.isTextureBlock) data.numDynamicTextures++;
+					if (b.type == BlockType::TEXTURE) data.numDynamicTextures++;
 					else data.numDynamicUniforms++;
 
 					if (std::find(data.dynamicSets.begin(), data.dynamicSets.end(), b.set) == data.dynamicSets.end())
@@ -198,7 +236,7 @@ int main(int argc, const char** argv)
 				}
 				else
 				{
-					if (b.isTextureBlock) data.numStaticTextures++;
+					if (b.type == BlockType::TEXTURE) data.numStaticTextures++;
 					else data.numStaticUniforms++;
 
 					if (std::find(data.staticSets.begin(), data.staticSets.end(), b.set) == data.staticSets.end())

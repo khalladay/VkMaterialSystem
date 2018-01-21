@@ -707,14 +707,9 @@ namespace Material
 			{
 				if (descSetBindings.first == 0 && curSet == 0)
 				{
-					//ignore set 0, we'll use global data
-
-					//VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 1);
-					//descSetBindingMap[0].push_back(layoutBinding);
 					remainingInputs--;
-					needsEmpty = false;
 				}
-				else if (descSetBindings.first == curSet)
+				if (descSetBindings.first == curSet && curSet != 0)
 				{
 					//this is a vector of all the bindings for the curSet
 					std::vector<DescriptorSetBinding>& setBindingCollection = descSetBindings.second;
@@ -730,6 +725,11 @@ namespace Material
 				}
 			}
 
+			if (curSet == 0)
+			{
+				needsEmpty = false;
+			}
+
 			if (needsEmpty)
 			{
 				VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0, 0);
@@ -741,49 +741,41 @@ namespace Material
 
 		//now that we have our map of bindings for each set, we know how many VKDescriptorSetLayouts we're going to need:
 		//always have at least 1 layout, for global data
-		uniformLayouts.resize(descSetBindingMap.size());
+		uniformLayouts.resize(descSetBindingMap.size()+1); //+1 for global data
+
+		//instert the global descriptor layout to the front at the last minute to make sure the
+		//pipeline layout is valid, but so that the rest of the material doesn't have an extra desc set allocated
+		extern VkDescriptorSetLayout*	globalDescSetLayouts;
+		uniformLayouts[0] = globalDescSetLayouts[0];
 
 		//and we can generate the VkDescriptorSetLayouts from the map arrays
 		for (auto& bindingCollection : descSetBindingMap)
 		{
 			uint32_t set = bindingCollection.first;
 			
-			if (set == 0)
-			{
-			/*	extern VkDescriptorSetLayout*	globalDescSetLayouts;
-				Material::initGlobalShaderData();
-				uniformLayouts[0] = globalDescSetLayouts[0];*/
-			}
-			else
+			if (set != 0)
 			{
 				std::vector<VkDescriptorSetLayoutBinding>& setBindings = descSetBindingMap[bindingCollection.first];
 				VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setBindings.data(), static_cast<uint32_t>(setBindings.size()));
 
-				res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first-1]); //HACK - subtract one because we know we have 1 global thing
+				res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]); 
 			}
 		}
 
 		//for sanity in storage, we want to keep MaterialAssets and MaterialRenderDatas POD structs, so we need to convert our lovely
 		//containers to arrays. This might change later, if I decide to start using POD arrays. In any case, in a real application you'd
 		//almost certainly want these allocations done with any allocator other than malloc
-		outMaterial.numDescSetLayouts = static_cast<uint32_t>(uniformLayouts.size());
-		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
-		memcpy(outMaterial.descriptorSetLayouts, uniformLayouts.data(), sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
+		outMaterial.numDescSetLayouts = static_cast<uint32_t>(uniformLayouts.size()-1); //HACK - subtract one because we know we have 1 global thing
+		outMaterial.numDescSets = outMaterial.numDescSetLayouts;
 
-		//we need the global lay
-		outMaterial.numDescSets = static_cast<uint32_t>(uniformLayouts.size());
+		outMaterial.descriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
+		memcpy(outMaterial.descriptorSetLayouts, &uniformLayouts.data()[1], sizeof(VkDescriptorSetLayout) * outMaterial.numDescSetLayouts);
 
 		///////////////////////////////////////////////////////////////////////////////
 		//set up pipeline layout
 		///////////////////////////////////////////////////////////////////////////////
 		
 		//we also use the descriptor set layouts to set up our pipeline layout
-		
-		//instert the global descriptor layout to the front at the last minute to make sure the
-		//pipeline layout is valid, but so that the rest of the material doesn't have an extra desc set allocated
-		extern VkDescriptorSetLayout*	globalDescSetLayouts;
-
-		uniformLayouts.insert(uniformLayouts.begin(), globalDescSetLayouts[0]);
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = vkh::pipelineLayoutCreateInfo(uniformLayouts.data(), static_cast<uint32_t>(uniformLayouts.size()));
 
 		//we need to figure out what's up with push constants here becaus the pipeline layout object needs to know
@@ -910,48 +902,6 @@ namespace Material
 		memcpy(outMaterial.dynamicUniformLayout, dynamicLayout.data(), sizeof(uint32_t) * dynamicLayout.size());
 
 		///////////////////////////////////////////////////////////////////////////////
-		//Write Global Descriptor Set
-		///////////////////////////////////////////////////////////////////////////////
-
-		//while each instance page will have it's own set of descriptor sets, the base material will store the global descriptor set
-		//todo: move this to a single desc set for the whole application? 
-
-		//global is always set 0, to make this easier
-		//VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&outMaterial.descriptorSetLayouts[0], 1, GContext.descriptorPool);
-		//
-		//res = vkAllocateDescriptorSets(GContext.device, &allocInfo, &outMaterial.globalDescSet);
-		//checkf(res == VK_SUCCESS, "Error allocating descriptor set");
-
-		////if we're using global data, we pull the data from wherever our global data has been initialized
-		//outMaterial.usesGlobalData = def.globalSets.size() > 0;
-
-		//if (outMaterial.usesGlobalData)
-		//{
-		//	checkf(def.globalSets.size() == 1, "using more than 1 global buffer isn't supported right now");
-
-		//	extern VkBuffer globalBuffer;
-		//	extern uint32_t globalSize;
-
-		//	VkDescriptorBufferInfo globalBufferInfo = {};
-		//	globalBufferInfo.offset = 0;
-		//	globalBufferInfo.buffer = globalBuffer;
-		//	globalBufferInfo.range = globalSize;
-
-		//	VkWriteDescriptorSet globalDescriptorWrite = {};
-		//	globalDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//	globalDescriptorWrite.dstSet = outMaterial.globalDescSet;
-		//	globalDescriptorWrite.dstBinding = 0; //refers to binding in shader
-		//	globalDescriptorWrite.dstArrayElement = 0;
-		//	globalDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		//	globalDescriptorWrite.descriptorCount = 1;
-		//	globalDescriptorWrite.pBufferInfo = &globalBufferInfo;
-		//	globalDescriptorWrite.pImageInfo = 0;
-		//	globalDescriptorWrite.pTexelBufferView = nullptr; // Optional
-
-		//	vkUpdateDescriptorSets(GContext.device, 1, &globalDescriptorWrite, 0, nullptr);
-		//}
-
-		///////////////////////////////////////////////////////////////////////////////
 		//Create Default VkWriteDescriptorSet Objects
 		///////////////////////////////////////////////////////////////////////////////
 
@@ -1002,7 +952,6 @@ namespace Material
 				imageInfo.sampler = texData->sampler;
 
 				imageInfos.push_back(imageInfo);
-			//	descriptorWrite.pImageInfo = &imageInfos[imageInfos.size() - 1];
 			}
 
 			descriptorWrite.pTexelBufferView = nullptr; // Optional
@@ -1189,7 +1138,7 @@ namespace Material
 			uint32_t binding = data.defaultDescWrites[i].dstBinding;
 			
 			descSetWrites[i].descriptorCount = 1;
-			descSetWrites[i].dstSet = newPage.descSets[targetSet-1]; //HACK - subtract one because we know we have 1 global thing
+			descSetWrites[i].dstSet = newPage.descSets[targetSet-1]; //HACK - subtract one because we know we have 1 global descriptor set
 		}
 
 		vkUpdateDescriptorSets(vkh::GContext.device, totalDescWrites, descSetWrites, 0, nullptr);
