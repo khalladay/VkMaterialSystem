@@ -80,7 +80,7 @@ void createTextureBlockForResource(InputBlock* outBlock, spirv_cross::Resource r
 	outBlock->name = res.name;
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
 	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
-	outBlock->arrayLen = 0;
+	outBlock->arrayLen = 1;
 	outBlock->type = BlockType::TEXTURE;
 }
 

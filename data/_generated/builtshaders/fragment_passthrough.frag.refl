@@ -1,7 +1,13 @@
 {
     "push_constants": {
         "size": 16,
-        "elements": []
+        "elements": [
+            {
+                "name": "col",
+                "size": 16,
+                "offset": 0
+            }
+        ]
     },
     "descriptor_sets": [
         {
@@ -20,26 +26,52 @@
             ]
         },
         {
+            "set": 2,
+            "binding": 1,
+            "name": "texSampler",
+            "size": 0,
+            "arrayLen": 1,
+            "type": "TEXTURE",
+            "members": []
+        },
+        {
             "set": 3,
             "binding": 0,
             "name": "Instance",
             "size": 16,
             "arrayLen": 1,
             "type": "UNIFORM",
+            "members": [
+                {
+                    "name": "tint",
+                    "size": 16,
+                    "offset": 0
+                }
+            ]
+        },
+        {
+            "set": 3,
+            "binding": 4,
+            "name": "testSampler",
+            "size": 0,
+            "arrayLen": 1,
+            "type": "TEXTURE",
             "members": []
         }
     ],
     "global_sets": [
         0
     ],
-    "static_sets": [],
+    "static_sets": [
+        2
+    ],
     "dynamic_sets": [
         3
     ],
     "static_set_size": 0,
     "dynamic_set_size": 16,
     "num_static_uniforms": 0,
-    "num_static_textures": 0,
+    "num_static_textures": 1,
     "num_dynamic_uniforms": 1,
-    "num_dynamic_textures": 0
+    "num_dynamic_textures": 1
 }
