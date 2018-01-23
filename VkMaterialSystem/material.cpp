@@ -121,24 +121,25 @@ namespace Material
 			VkDescriptorSetLayoutBinding globalLayoutBindings[] = 
 			{
 				vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 1),
-			//	vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1, 8),
+				vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1, 8),
 	//			vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT, 2, 4096) //the "num descriptors" is the array size
 			};
 		
 			//when we add the texture array, ,this will have to be updated
-			globalDescSetLayoutCreateInfo = vkh::descriptorSetLayoutCreateInfo(globalLayoutBindings, 1);
+			globalDescSetLayoutCreateInfo = vkh::descriptorSetLayoutCreateInfo(globalLayoutBindings, 2);
 
 			VkResult vkres = vkCreateDescriptorSetLayout(vkh::GContext.device, &globalDescSetLayoutCreateInfo, nullptr, &globalDescSetLayouts[0]);
 			checkf(vkres == VK_SUCCESS, "Error creating global descriptor set layout");
 		
+			//no matter how many bindings we have, we'll only ever have 1 global descriptor set
 			VkDescriptorSetAllocateInfo allocInfo = vkh::descriptorSetAllocateInfo(&globalDescSetLayouts[0], 1, vkh::GContext.descriptorPool);
 			vkres = vkAllocateDescriptorSets(vkh::GContext.device, &allocInfo, &globalDescSets[0]);
 			checkf(vkres == VK_SUCCESS, "Error allocating global descriptor set");
 
-			VkWriteDescriptorSet globalWrites[1];
+			VkWriteDescriptorSet globalWrites[2];
 
 			VkDescriptorImageInfo samplerInfo[8];
-			for (uint32_t i = 0; i < 8; ++i) samplerInfo[i].sampler = globalSamplers[0];
+			for (uint32_t i = 0; i < 8; ++i) samplerInfo[i].sampler = globalSamplers[i];
 
 			//set 0 binding 0 -> global uniform memory 
 			{
@@ -159,7 +160,7 @@ namespace Material
 				globalWrites[0].pTexelBufferView = nullptr; // Optional
 			}
 			//set 0 binding 1 -> global sampler array
-		/*	{
+			{
 
 				globalWrites[1] = {};
 				globalWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -170,7 +171,7 @@ namespace Material
 				globalWrites[1].dstSet = globalDescSets[0];
 				globalWrites[1].pBufferInfo = 0;
 				globalWrites[1].pImageInfo = samplerInfo;
-			}*/
+			}
 			////set 0 binding 2 -> global texture array
 			//{
 			//	globalWrites[2] = {};
@@ -183,7 +184,7 @@ namespace Material
 			//	globalWrites[2].pImageInfo = 0;
 			//}
 
-			vkUpdateDescriptorSets(vkh::GContext.device, 1, globalWrites, 0, nullptr);
+			vkUpdateDescriptorSets(vkh::GContext.device, 2, globalWrites, 0, nullptr);
 
 		}
 	}

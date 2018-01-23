@@ -26,12 +26,21 @@
             ]
         },
         {
+            "set": 0,
+            "binding": 1,
+            "name": "gSamp",
+            "size": 0,
+            "arrayLen": 8,
+            "type": "SAMPLERARRAY",
+            "members": []
+        },
+        {
             "set": 2,
             "binding": 1,
             "name": "texSampler",
             "size": 0,
             "arrayLen": 1,
-            "type": "TEXTURE",
+            "type": "SEPARATETEXTURE",
             "members": []
         },
         {
@@ -41,13 +50,7 @@
             "size": 16,
             "arrayLen": 1,
             "type": "UNIFORM",
-            "members": [
-                {
-                    "name": "tint",
-                    "size": 16,
-                    "offset": 0
-                }
-            ]
+            "members": []
         },
         {
             "set": 3,
@@ -55,7 +58,7 @@
             "name": "testSampler",
             "size": 0,
             "arrayLen": 1,
-            "type": "TEXTURE",
+            "type": "SEPARATETEXTURE",
             "members": []
         }
     ],

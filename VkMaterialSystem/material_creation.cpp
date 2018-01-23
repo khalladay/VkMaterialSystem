@@ -972,7 +972,7 @@ namespace Material
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				imageInfo.imageView = texData->view;
-				imageInfo.sampler = 0;
+				imageInfo.sampler = nullptr;
 
 				imageInfos.push_back(imageInfo);
 

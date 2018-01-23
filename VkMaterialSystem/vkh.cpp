@@ -54,9 +54,13 @@ namespace vkh
 		types.push_back(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 		types.push_back(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 		types.push_back(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		types.push_back(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+		types.push_back(VK_DESCRIPTOR_TYPE_SAMPLER);
 
 		std::vector<uint32_t> counts;
 		counts.reserve(3);
+		counts.push_back(128);
+		counts.push_back(128);
 		counts.push_back(128);
 		counts.push_back(128);
 		counts.push_back(128);

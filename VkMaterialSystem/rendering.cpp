@@ -156,7 +156,7 @@ namespace Rendering
 			if (mat.numDescSets > 0)
 			{
 
-				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, &Material::getGlobalDescSets()[0], 0, 0);
+				vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, mat.pipelineLayout, 0, 1, Material::getGlobalDescSets(), 0, 0);
 
 				std::vector<uint32_t> offset;
 				for (uint32_t i = 0; i < page.numPageDynamicBuffers; ++i) offset.push_back(drawCalls[dc].mat.index * mat.dynamicUniformMemSize);
