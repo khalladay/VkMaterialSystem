@@ -101,7 +101,7 @@ namespace Texture
 		vkh::transitionImageLayout(t.rData.image, t.rData.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		vkh::createImageView(t.rData.view, 1, t.rData.image, t.rData.format);
-		vkh::createTexSampler(t.rData.sampler);
+		t.rData.samplerIdx = 2;
 
 		vkDestroyBuffer(vkh::GContext.device, stagingBuffer, nullptr);
 		vkh::freeDeviceMemory(stagingBufferMemory);

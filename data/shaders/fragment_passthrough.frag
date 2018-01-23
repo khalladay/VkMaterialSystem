@@ -10,9 +10,8 @@ layout(binding = 0, set = 0) uniform GLOBAL_DATA
 	vec4 worldSpaceCameraPos;
 }global;
 
-//arrays of sampler2Ds crash glslangValidator
-layout(set = 0, binding = 2) uniform texture2D gTextures[800];
-layout(set = 0, binding = 3) uniform sampler gSamp[8];
+//layout(set = 0, binding = 1) uniform sampler gSamp[8];
+//layout(set = 0, binding = 2) uniform texture2D gTextures[4096];
 
 layout(push_constant) uniform PER_OBJECT 
 { 
@@ -26,8 +25,8 @@ layout(binding = 0, set = 3) uniform Instance
 	vec4 tint;
 }inst_data;
 
-layout(binding = 1, set = 2) uniform sampler2D texSampler;
-layout(binding = 4, set = 3) uniform sampler2D testSampler;
+//layout(binding = 1, set = 2) uniform sampler2D texSampler;
+//layout(binding = 4, set = 3) uniform sampler2D testSampler;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec4 fragColor;
@@ -35,8 +34,9 @@ layout(location = 1) in vec2 fragUV;
 
 void main() 
 {
-	vec4 tex = texture(texSampler, fragUV);
+	//vec4 tex = texture(sampler2D(texSampler, gSamp[2]), fragUV);
+	//vec4 tex = texture(texSampler, fragUV);
 	//vec4 tex2 = texture(testSampler, fragUV);
-	vec4 tex2 = texture(sampler2D(gTextures[0],gSamp[0]), fragUV);
-    outColor = mix(tex,tex2,fragColor.g) * global.mouse.z * pc.col * inst_data.tint;
+	//vec4 tex2 = texture(sampler2D(testSampler,gSamp[0]), fragUV);
+    outColor = vec4(global.mouse.z,global.mouse.z,global.mouse.z,global.mouse.z); //mix(tex,tex2,fragColor.g) * global.mouse.z * pc.col * inst_data.tint;
 }

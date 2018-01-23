@@ -118,7 +118,7 @@ struct TextureRenderData
 	vkh::Allocation deviceMemory;
 	VkImageView view;
 	VkFormat format;
-	VkSampler sampler;
+	uint32_t samplerIdx;
 };
 
 struct VertexRenderData

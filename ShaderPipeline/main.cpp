@@ -38,7 +38,7 @@ void createUniformBlockForResource(InputBlock* outBlock, spirv_cross::Resource r
 	outBlock->size = compiler.get_declared_struct_size(ub_type);
 	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
-	outBlock->arrayLen = 0;
+	outBlock->arrayLen = 1;
 	outBlock->type = BlockType::UNIFORM;
 }
 
@@ -64,8 +64,12 @@ void createSeparateTextureBlockForResource(InputBlock* outBlock, spirv_cross::Re
 	outBlock->set = compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
 	outBlock->binding = compiler.get_decoration(res.id, spv::DecorationBinding);
 	
-	
-	outBlock->arrayLen = compiler.get_type(res.type_id).array[0];
+	outBlock->arrayLen = 1;
+
+	if (compiler.get_type(res.type_id).array.size() > 0)
+	{
+		outBlock->arrayLen = compiler.get_type(res.type_id).array[0];
+	}
 	outBlock->type = outBlock->arrayLen == 1 ? BlockType::SEPARATETEXTURE : BlockType::TEXTUREARRAY;
 }
 
@@ -222,10 +226,18 @@ int main(int argc, const char** argv)
 			{
 				InputBlock& b = data.descriptorSets[blockIdx];
 
-				if (b.set == GLOBAL_SET) data.globalSets.push_back(b.set);
+				if (b.set == GLOBAL_SET)
+				{
+					if (std::find(data.globalSets.begin(), data.globalSets.end(), b.set) == data.globalSets.end())
+					{
+						data.globalSets.push_back(b.set);
+					}
+				}
 				else if (b.set == DYNAMIC_SET)
 				{
 					if (b.type == BlockType::TEXTURE) data.numDynamicTextures++;
+					else if (b.type == BlockType::SEPARATETEXTURE) data.numDynamicTextures++;
+					else if (b.type == BlockType::TEXTUREARRAY) data.numDynamicTextures++;
 					else data.numDynamicUniforms++;
 
 					if (std::find(data.dynamicSets.begin(), data.dynamicSets.end(), b.set) == data.dynamicSets.end())
@@ -237,6 +249,8 @@ int main(int argc, const char** argv)
 				else
 				{
 					if (b.type == BlockType::TEXTURE) data.numStaticTextures++;
+					else if (b.type == BlockType::SEPARATETEXTURE) data.numStaticTextures++;
+					else if (b.type == BlockType::TEXTUREARRAY) data.numStaticTextures++;
 					else data.numStaticUniforms++;
 
 					if (std::find(data.staticSets.begin(), data.staticSets.end(), b.set) == data.staticSets.end())

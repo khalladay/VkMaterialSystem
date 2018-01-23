@@ -12,14 +12,14 @@ namespace vkh
 		return info;
 	}
 
-	inline VkDescriptorSetLayoutBinding descriptorSetLayoutBinding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding, uint32_t descriptorCount = 1)
+	inline VkDescriptorSetLayoutBinding descriptorSetLayoutBinding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding, uint32_t descriptorCount = 1, const VkSampler* immutableSamplers = nullptr)
 	{
 		VkDescriptorSetLayoutBinding layoutBinding = {};
 		layoutBinding.descriptorCount = descriptorCount;
 		layoutBinding.binding = binding;
 		layoutBinding.stageFlags = stageFlags;
 		layoutBinding.descriptorType = type;
-		layoutBinding.pImmutableSamplers = nullptr;
+		layoutBinding.pImmutableSamplers = immutableSamplers;
 		return layoutBinding;
 	}
 
@@ -50,6 +50,34 @@ namespace vkh
 		allocInfo.pSetLayouts = layouts;
 		return allocInfo;
 
+	}
+
+	inline VkSamplerCreateInfo samplerCreateInfo(VkFilter minMagFilter, VkSamplerAddressMode addressMode, VkSamplerMipmapMode mipMapMode, float maxAniso)
+	{
+		VkSamplerCreateInfo samplerInfo = {};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = minMagFilter;
+		samplerInfo.minFilter = minMagFilter;
+
+		samplerInfo.addressModeU = addressMode;
+		samplerInfo.addressModeV = addressMode;
+		samplerInfo.addressModeW = addressMode;
+
+		samplerInfo.anisotropyEnable = maxAniso > 0.01f ? VK_TRUE : VK_FALSE;
+		samplerInfo.maxAnisotropy = maxAniso;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+
+		//mostly for pcf? 
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+		samplerInfo.mipmapMode = mipMapMode;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		return samplerInfo;
 	}
 
 	inline VkVertexInputBindingDescription vertexInputBindingDescription(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate)

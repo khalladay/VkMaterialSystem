@@ -35,7 +35,10 @@ namespace Material
 	{
 		if (!strcmp(str,"UNIFORM")) return InputType::UNIFORM;
 		if (!strcmp(str,"SAMPLER")) return InputType::SAMPLER;
-		 
+		if (!strcmp(str, "SAMPLERARRAY")) return InputType::SAMPLERARRAY;
+		if (!strcmp(str, "TEXTUREARRAY")) return InputType::TEXTUREARRAY;
+		if (!strcmp(str, "SEPARATETEXTURE")) return InputType::SEPARATETEXTURE;
+		if (!strcmp(str, "TEXTURE")) return InputType::TEXTURE;
 		checkf(0, "trying to convert an invalid string to input type");
 		return InputType::MAX;
 	}
@@ -94,6 +97,10 @@ namespace Material
 	{
 		if (type == InputType::SAMPLER) return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		if (type == InputType::UNIFORM) return forceDynamicUniforms ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		if (type == InputType::SAMPLERARRAY) return VK_DESCRIPTOR_TYPE_SAMPLER;
+		if (type == InputType::TEXTUREARRAY) return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		if (type == InputType::SEPARATETEXTURE) return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		if (type == InputType::TEXTURE) return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
 		checkf(0, "trying to use an unsupported descriptor type in a material");
 		return VK_DESCRIPTOR_TYPE_MAX_ENUM;
@@ -291,6 +298,7 @@ namespace Material
 					descSetBindingDef.set = curDescBlockFromReflData["set"].GetInt();
 					descSetBindingDef.binding = curDescBlockFromReflData["binding"].GetInt();
 					descSetBindingDef.type = stringToInputType(curDescBlockFromReflData["type"].GetString());
+					descSetBindingDef.arrayLen = curDescBlockFromReflData["arrayLen"].GetInt();
 
 					//we might already know about this descriptor set binding if it was also in a previous stage,
 					//in that case, all we need to do is add the current shader's stage to the set binding's stages array
@@ -347,7 +355,7 @@ namespace Material
 						{
 							const Value& arrayOfDefaultValuesFromMaterial = materialDoc["defaults"];
 
-							if (descSetBindingDef.type == InputType::SAMPLER)
+							if (descSetBindingDef.type == InputType::SAMPLER || descSetBindingDef.type == InputType::SEPARATETEXTURE || descSetBindingDef.type == InputType::TEXTURE)
 							{
 								int32_t index = -1;
 								for (uint32_t idx = 0; idx < defaultNamesFromMaterialFile.size(); ++idx)
@@ -691,7 +699,7 @@ namespace Material
 		//binding in the set, so first we use the descSets array in our material definition to give us a 
 		//map that has an array of VkDescriptorSetLayoutBindings for each descriptor set index (the key of the map) 
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> descSetBindingMap;
-
+		
 		//if there is a gap in the descriptor sets our material uses, we need
 		//to add an empty one, so we keep going until we've added an entry for each
 		//of the bindings we know we have. If we hit an empty set, we don't decrement the
@@ -716,7 +724,7 @@ namespace Material
 					
 					for (auto& binding : setBindingCollection)
 					{
-						VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(binding.type, curSet != 0), shaderStageVectorToVkEnum(binding.owningStages), binding.binding, 1);
+						VkDescriptorSetLayoutBinding layoutBinding = vkh::descriptorSetLayoutBinding(inputTypeEnumToVkEnum(binding.type, curSet != 0), shaderStageVectorToVkEnum(binding.owningStages), binding.binding, binding.arrayLen);
 						descSetBindingMap[binding.set].push_back(layoutBinding);
 					}
 
@@ -759,6 +767,7 @@ namespace Material
 				VkDescriptorSetLayoutCreateInfo layoutInfo = vkh::descriptorSetLayoutCreateInfo(setBindings.data(), static_cast<uint32_t>(setBindings.size()));
 
 				res = vkCreateDescriptorSetLayout(GContext.device, &layoutInfo, nullptr, &uniformLayouts[bindingCollection.first]); 
+				checkf(res == VK_SUCCESS, "Error creating desc set layout");
 			}
 		}
 
@@ -941,18 +950,34 @@ namespace Material
 				uniformBufferInfo.range = binding.sizeBytes;
 				uniformBufferInfos.push_back(uniformBufferInfo);
 			}
-			else if (binding.type == InputType::SAMPLER)
+			else if (binding.type == InputType::TEXTURE)
 			{
 				VkDescriptorImageInfo imageInfo = {};
 				uint32_t tex = Texture::make(binding.defaultValue);
 
+				extern 	VkSampler*				globalSamplers;
+
 				TextureRenderData* texData = Texture::getRenderData(tex);
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				imageInfo.imageView = texData->view;
-				imageInfo.sampler = texData->sampler;
+				imageInfo.sampler = globalSamplers[2];
 
 				imageInfos.push_back(imageInfo);
 			}
+			else if (binding.type == InputType::SEPARATETEXTURE)
+			{
+				uint32_t tex = Texture::make(binding.defaultValue);
+				TextureRenderData* texData = Texture::getRenderData(tex);
+
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = 0;
+
+				imageInfos.push_back(imageInfo);
+
+			}
+
 
 			descriptorWrite.pTexelBufferView = nullptr; // Optional
 			descSetWrites.push_back(descriptorWrite);
@@ -984,7 +1009,22 @@ namespace Material
 				descriptorWrite.pBufferInfo = &uniformBufferInfos[uniformBufferInfos.size() - 1];
 
 			}
-			else if (binding.type == InputType::SAMPLER)
+			else if (binding.type == InputType::TEXTURE)
+			{
+				uint32_t tex = Texture::make(binding.defaultValue);
+				TextureRenderData* texData = Texture::getRenderData(tex);
+
+				extern VkSampler*				globalSamplers;
+
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = texData->view;
+				imageInfo.sampler = globalSamplers[2];
+
+				imageInfos.push_back(imageInfo);
+
+			}
+			else if (binding.type == InputType::SEPARATETEXTURE)
 			{
 				uint32_t tex = Texture::make(binding.defaultValue);
 				TextureRenderData* texData = Texture::getRenderData(tex);
@@ -992,7 +1032,7 @@ namespace Material
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				imageInfo.imageView = texData->view;
-				imageInfo.sampler = texData->sampler;
+				imageInfo.sampler = 0;
 
 				imageInfos.push_back(imageInfo);
 
@@ -1125,6 +1165,10 @@ namespace Material
 			{
 				descSetWrites[i].pImageInfo = &imageInfos[curImage++];
 
+			}
+			else if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+			{
+				descSetWrites[i].pImageInfo = &imageInfos[curImage++];
 			}
 			else if (data.defaultDescWrites[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
 			{

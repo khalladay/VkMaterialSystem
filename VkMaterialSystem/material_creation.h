@@ -21,6 +21,10 @@ namespace Material
 	{
 		UNIFORM,
 		SAMPLER,
+		SAMPLERARRAY,
+		TEXTURE,
+		TEXTUREARRAY,
+		SEPARATETEXTURE,
 		MAX
 	};
 
@@ -45,6 +49,7 @@ namespace Material
 		uint32_t set;
 		uint32_t binding;
 		uint32_t sizeBytes;
+		uint32_t arrayLen;
 		char name[32];
 		char defaultValue[64];
 		std::vector<ShaderStage> owningStages;

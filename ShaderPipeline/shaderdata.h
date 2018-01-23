@@ -25,10 +25,10 @@ std::string BlockTypeNames[] =
 {
 	"UNIFORM",
 	"TEXTURE",
-	"SEPARATETEXTURE"
+	"SEPARATETEXTURE",
 	"SAMPLER",
 	"TEXTUREARRAY",
-	"SAMPELRARRAY"
+	"SAMPLERARRAY"
 };
 
 struct InputBlock
@@ -76,11 +76,10 @@ void writeInputGroup(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, s
 		writer.String(block.name.c_str());
 		writer.Key("size");
 		writer.Int(block.size);
-		writer.Key("arraylen");
+		writer.Key("arrayLen");
 		writer.Int(block.arrayLen);
 		writer.Key("type");
 		writer.String(BlockTypeNames[(uint8_t)block.type].c_str());
-
 		writer.Key("members");
 		writer.StartArray();
 		for (uint32_t i = 0; i < block.members.size(); ++i)
