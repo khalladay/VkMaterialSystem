@@ -21,7 +21,9 @@ namespace App
 	{
 		Rendering::init();
 
+		Texture::loadDefaultTexture();
 		Material::initGlobalShaderData();
+		
 		uint32_t fruits = Texture::make("../data/textures/fruits.png");
 		mInstance = Material::make("../data/materials/show_uvs.mat");
 

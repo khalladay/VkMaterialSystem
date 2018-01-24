@@ -17,8 +17,8 @@ struct TextureAsset
 
 struct TextureStorage
 {
-	std::map<uint32_t, TextureAsset> data;
-	std::vector<uint32_t> deletedKeys;
+	std::vector<TextureAsset> data;
+	std::vector<uint32_t> deletedIndices;
 };
 
 TextureStorage texStorage;
@@ -33,24 +33,28 @@ namespace Texture
 
 	uint32_t nextKey()
 	{
-		if (texStorage.deletedKeys.size() == 0)
+		if (texStorage.deletedIndices.size() == 0)
 		{
 			return texStorage.data.size();
 		}
 
-		uint32_t id = texStorage.deletedKeys.back();
-		texStorage.deletedKeys.pop_back();
+		uint32_t id = texStorage.deletedIndices.back();
+		texStorage.deletedIndices.pop_back();
 		return id;
+	}
+
+	void loadDefaultTexture()
+	{
+		uint32_t id = nextKey();
+		checkf(id == 0, "Trying to load default texture after other texture assets have already been loaded");
+
+		const char* default_file = "../data/textures/chckerbw2.png";
+		make(default_file);
 	}
 
 	uint32_t make(const char* filepath)
 	{
 		uint32_t newId = nextKey();
-		if (texStorage.data.find(newId) != texStorage.data.end())
-		{
-			return newId;
-		}
-
 
 		TextureAsset t;
 
@@ -106,7 +110,7 @@ namespace Texture
 		vkDestroyBuffer(vkh::GContext.device, stagingBuffer, nullptr);
 		vkh::freeDeviceMemory(stagingBufferMemory);
 
-		texStorage.data.insert(std::pair<uint32_t, TextureAsset>(newId, t));
+		texStorage.data.push_back(t); // (std::pair<uint32_t, TextureAsset>(newId, t));
 		return newId;
 	}
 

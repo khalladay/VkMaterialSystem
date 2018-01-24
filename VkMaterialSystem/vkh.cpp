@@ -62,7 +62,7 @@ namespace vkh
 		counts.push_back(128);
 		counts.push_back(128);
 		counts.push_back(128);
-		counts.push_back(128);
+		counts.push_back(8192);
 		counts.push_back(128);
 
 		createDescriptorPool(outContext.descriptorPool, outContext.device, types, counts);

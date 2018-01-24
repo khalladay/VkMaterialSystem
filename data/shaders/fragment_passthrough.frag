@@ -11,7 +11,7 @@ layout(binding = 0, set = 0) uniform GLOBAL_DATA
 }global;
 
 layout(set = 0, binding = 1) uniform sampler gSamp[8];
-//layout(set = 0, binding = 2) uniform texture2D gTextures[4096];
+layout(set = 0, binding = 2) uniform texture2D gTextures[4096];
 
 layout(push_constant) uniform PER_OBJECT 
 { 
@@ -37,6 +37,6 @@ void main()
 	vec4 tex = texture(sampler2D(texSampler, gSamp[0]), fragUV);
 	//vec4 tex = texture(texSampler, fragUV);
 	//vec4 tex2 = texture(testSampler, fragUV);
-	vec4 tex2 = texture(sampler2D(texSampler,gSamp[3]), fragUV);
+	vec4 tex2 = texture(sampler2D(gTextures[0],gSamp[3]), fragUV);
     outColor = mix(tex,tex2,global.mouse.z) * pc.col; //* inst_data.tint;
 }

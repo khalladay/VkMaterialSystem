@@ -35,6 +35,15 @@
             "members": []
         },
         {
+            "set": 0,
+            "binding": 2,
+            "name": "gTextures",
+            "size": 0,
+            "arrayLen": 4096,
+            "type": "TEXTUREARRAY",
+            "members": []
+        },
+        {
             "set": 2,
             "binding": 1,
             "name": "texSampler",

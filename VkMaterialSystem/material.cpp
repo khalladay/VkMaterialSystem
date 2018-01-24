@@ -44,7 +44,6 @@ namespace Material
 	VkWriteDescriptorSet	globalTextureSetWrite;
 	VkDescriptorSetLayoutCreateInfo globalDescSetLayoutCreateInfo;
 	VkDescriptorImageInfo*	globalImageInfos;
-	VkImageView*			globalImageViews;
 
 	//I want to to move the creation of the global descriptor set to here, out of material creation (it shouldn't be there anyway), to 
 	//pave the way for a second global descriptor set (neither should live in an individual material) that contains all the textures we need
@@ -81,8 +80,8 @@ namespace Material
 			isInitialized = true;
 			
 
-			globalDescSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 2);
-			globalDescSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * 2);
+			globalDescSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 1);
+			globalDescSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * 1);
 
 
 			globalSamplers = (VkSampler*)malloc(sizeof(VkSampler) * 8);
@@ -108,25 +107,26 @@ namespace Material
 				checkf(res == VK_SUCCESS, "Error creating global sampler");
 			}
 
-			//globalImageViews = (VkImageView*)malloc(sizeof(VkImageView) * 4096);
+			globalImageInfos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * 4096);
+			TextureRenderData* defaultRenderData = Texture::getRenderData(0);
 
-			/*for (uint32_t i = 0; i < 4096; ++i)
+			for (uint32_t i = 0; i < 4096; ++i)
 			{
-				globalImageInfos[i].sampler = globalSamplers[2];
-				globalImageInfos[i].imageView = globalImageViews[i];
+				globalImageInfos[i].sampler = nullptr;
 				globalImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				globalImageInfos[i].imageView = defaultRenderData->view;
 			}
-		*/
+		
 
 			VkDescriptorSetLayoutBinding globalLayoutBindings[] = 
 			{
 				vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 1),
 				vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1, 8),
-	//			vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT, 2, 4096) //the "num descriptors" is the array size
+				vkh::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT, 2, 4096) //the "num descriptors" is the array size
 			};
 		
 			//when we add the texture array, ,this will have to be updated
-			globalDescSetLayoutCreateInfo = vkh::descriptorSetLayoutCreateInfo(globalLayoutBindings, 2);
+			globalDescSetLayoutCreateInfo = vkh::descriptorSetLayoutCreateInfo(globalLayoutBindings, 3);
 
 			VkResult vkres = vkCreateDescriptorSetLayout(vkh::GContext.device, &globalDescSetLayoutCreateInfo, nullptr, &globalDescSetLayouts[0]);
 			checkf(vkres == VK_SUCCESS, "Error creating global descriptor set layout");
@@ -136,17 +136,19 @@ namespace Material
 			vkres = vkAllocateDescriptorSets(vkh::GContext.device, &allocInfo, &globalDescSets[0]);
 			checkf(vkres == VK_SUCCESS, "Error allocating global descriptor set");
 
-			VkWriteDescriptorSet globalWrites[2];
+			VkWriteDescriptorSet globalWrites[3];
 
 			VkDescriptorImageInfo samplerInfo[8];
 			for (uint32_t i = 0; i < 8; ++i) samplerInfo[i].sampler = globalSamplers[i];
 
+
+			VkDescriptorBufferInfo globalBufferInfo = {};
+			globalBufferInfo.offset = 0;
+			globalBufferInfo.buffer = globalBuffer;
+			globalBufferInfo.range = globalSize;
+
 			//set 0 binding 0 -> global uniform memory 
 			{
-				VkDescriptorBufferInfo globalBufferInfo = {};
-				globalBufferInfo.offset = 0;
-				globalBufferInfo.buffer = globalBuffer;
-				globalBufferInfo.range = globalSize;
 
 				globalWrites[0] = {};
 				globalWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -172,19 +174,20 @@ namespace Material
 				globalWrites[1].pBufferInfo = 0;
 				globalWrites[1].pImageInfo = samplerInfo;
 			}
-			////set 0 binding 2 -> global texture array
-			//{
-			//	globalWrites[2] = {};
-			//	globalWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			//	globalWrites[2].dstBinding = 2;
-			//	globalWrites[2].dstArrayElement = 0;
-			//	globalWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			//	globalWrites[2].descriptorCount = 4096;
-			//	globalWrites[2].pBufferInfo = 0;
-			//	globalWrites[2].pImageInfo = 0;
-			//}
+			//set 0 binding 2 -> global texture array
+			{
+				globalWrites[2] = {};
+				globalWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				globalWrites[2].dstBinding = 2;
+				globalWrites[2].dstArrayElement = 0;
+				globalWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				globalWrites[2].descriptorCount = 4096;
+				globalWrites[2].pBufferInfo = 0;
+				globalWrites[2].dstSet = globalDescSets[0];
+				globalWrites[2].pImageInfo = globalImageInfos;
+			}
 
-			vkUpdateDescriptorSets(vkh::GContext.device, 2, globalWrites, 0, nullptr);
+			vkUpdateDescriptorSets(vkh::GContext.device, 3, globalWrites, 0, nullptr);
 
 		}
 	}

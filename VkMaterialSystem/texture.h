@@ -11,6 +11,6 @@ namespace Texture
 	uint32_t nextKey();
 
 	
-
+	void loadDefaultTexture();
 	void destroy(uint64_t texId);
 }
